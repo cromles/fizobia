@@ -48,6 +48,9 @@ def main() -> None:
 
         print(f"\n  PROOF ID: {proof_body.get('proof_id')}")
         print(f"  VERDICT:  {proof_body.get('verdict')}")
+        share = body.get("share", {})
+        if share.get("card"):
+            print(f"  PAYLAŞ:   {share['card']}")
         print(f"  LATENCY:  {proof_body.get('total_latency_ms')}ms")
         print(f"  STAKING:  ${body.get('revenue', {}).get('staking_usd')}\n")
 

@@ -198,6 +198,38 @@ def parse_payment_proof(
 
     payer = raw.get("payer") or raw.get("from") or raw.get("payerAddress")
     payment_id = raw.get("payment_id") or raw.get("paymentId") or f"x402_{uuid.uuid4().hex[:16]}"
+    tx_hash = raw.get("tx_hash") or raw.get("transactionHash")
+
+    if tx_hash and not settings.x402_dev_accept_proof:
+        from app.investment.x402_chain_verify import verify_usdc_transfer
+
+        chain = verify_usdc_transfer(str(tx_hash), min_amount_usdc=required_usd)
+        return {
+            "amount_usdc": chain["amount_usdc"],
+            "payer": chain.get("payer") or payer,
+            "payment_id": payment_id,
+            "network": chain.get("network") or settings.x402_network,
+            "asset": "USDC",
+            "tx_hash": chain["tx_hash"],
+            "verified_on_chain": True,
+        }
+
+    if tx_hash and settings.x402_dev_accept_proof:
+        try:
+            from app.investment.x402_chain_verify import verify_usdc_transfer
+
+            chain = verify_usdc_transfer(str(tx_hash), min_amount_usdc=required_usd)
+            return {
+                "amount_usdc": chain["amount_usdc"],
+                "payer": chain.get("payer") or payer,
+                "payment_id": payment_id,
+                "network": chain.get("network") or settings.x402_network,
+                "asset": "USDC",
+                "tx_hash": chain["tx_hash"],
+                "verified_on_chain": True,
+            }
+        except Exception:
+            pass
 
     return {
         "amount_usdc": round(amount_f, 8),

@@ -499,12 +499,17 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         return;
       }}
       const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
+      const share = data.share || {{}};
       if (resultEl) {{
         resultEl.className = 'mesh-proof-result success';
         resultEl.textContent = '✓ ' + verdict;
+        if (share.card) {{
+          resultEl.innerHTML = '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>';
+        }}
       }}
-      showToast('Mesh kanıtı OK · 3 gerçek işçi');
+      showToast('Mesh kanıtı OK · paylaşım linki hazır');
       refreshLive();
+      refreshHeroStats();
     }} catch (err) {{
       if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
       showToast(err.message || 'Bağlantı hatası', true);
@@ -591,8 +596,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }} catch (_) {{}}
   }}
 
+  async function refreshHeroStats() {{
+    try {{
+      const res = await fetch('/hub/stats?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const s = await res.json();
+      const el = $('heroProofStats');
+      if (!el) return;
+      const proofs = s.mesh_proofs?.proofs_recorded || 0;
+      const rev = s.total_revenue_usd || 0;
+      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 3) + ' gerçek API</span>';
+      const badge = $('heroLiveBadge');
+      if (badge) badge.textContent = (s.live_workers || 3) + ' canlı API · mesh kanıtı';
+    }} catch (_) {{}}
+  }}
+
   initMeshCanvas();
   ensureLatestBuild();
+  refreshHeroStats();
   updateWalletUI();
   if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
   console.info('[Hub] build:', '{build}');

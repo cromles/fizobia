@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-mesh-proof-v6"
+HUB_UI_BUILD = "2026.06.25-proof-share-v7"
 
 
 def render_hub_dashboard(
@@ -105,7 +105,7 @@ def render_hub_dashboard(
   <!-- ═══ LANDING ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> {agent_count} dijital işçi · canlı mesh</div>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{len(featured_cards)} canlı API · mesh kanıtı</span></div>
       <h1>Uyurken<br/><span class="gradient">kazan</span></h1>
       <p class="hero-sub">
         AI işçilerine ortak ol. Sen çalıştırma — mesh 7/24 çalışsın.
@@ -113,7 +113,10 @@ def render_hub_dashboard(
       </p>
       <div class="hero-cta">
         <button class="btn-hero primary" onclick="openWalletModal()">Hemen Başla</button>
-        <button class="btn-hero ghost" onclick="document.getElementById('steps').scrollIntoView({{behavior:'smooth'}})">Nasıl çalışır?</button>
+        <button class="btn-hero ghost" onclick="document.getElementById('meshProofHero')?.scrollIntoView({{behavior:'smooth'}})">Mesh kanıtını gör</button>
+      </div>
+      <div class="hero-proof-stats" id="heroProofStats">
+        <span>— kanıt</span><span>— gelir</span><span>3 gerçek API</span>
       </div>
     </section>
 

@@ -109,3 +109,11 @@ def test_mesh_proof_x402_endpoint():
     body = paid.json()
     assert body["paid"] is True
     assert len(body["revenue"]["splits"]) == 3
+    assert "share" in body
+    assert body["share"]["proof_id"] == "proof_test123"
+
+    share = client.get("/hub/proof/share/proof_test123")
+    assert share.status_code == 200
+    card = client.get("/hub/proof/share/proof_test123/card")
+    assert card.status_code == 200
+    assert "Mesh Kanıtı" in card.text

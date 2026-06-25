@@ -43,6 +43,8 @@ from app.investment.x402_gateway import (
     sentiment_radar_price_usd,
 )
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
+from app.mesh.proof_vault import get_proof_vault
+from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_RADAR_AGENT_ID, fetch_sentiment_snapshot_async
@@ -65,7 +67,7 @@ class MeshProofRunRequest(BaseModel):
     url: str | None = Field(default=None, description="Opsiyonel RSS/HTML URL")
 
 
-HUB_BUILD = "2026.06.25-mesh-proof-v6"
+HUB_BUILD = "2026.06.25-proof-share-v7"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -614,10 +616,24 @@ async def mesh_proof_run(
     )
     total_staking = sum(row["staking_usd"] for row in revenue_rows)
 
+    vault = get_proof_vault()
+    stored = vault.store(
+        result,
+        paid_usdc=payment["amount_usdc"],
+        staking_usdc=total_staking,
+        payer=payment.get("payer"),
+    )
+    base = settings.public_base_url.rstrip("/")
+
     return {
         "paid": True,
         "payment": payment,
         "proof": result,
+        "share": {
+            "proof_id": stored.proof_id,
+            "json": f"{base}/hub/proof/share/{stored.proof_id}",
+            "card": f"{base}/hub/proof/share/{stored.proof_id}/card",
+        },
         "revenue": {
             "gross_usd": payment["amount_usdc"],
             "staking_usd": round(total_staking, 6),
@@ -625,6 +641,57 @@ async def mesh_proof_run(
             "source": "x402",
         },
         "message": result["message"],
+    }
+
+
+@router.get("/proof/recent")
+async def mesh_proof_recent(limit: int = Query(default=12, ge=1, le=50)) -> Dict[str, Any]:
+    """Son mesh kanıtları — vitrin / skeptik listesi."""
+    vault = get_proof_vault()
+    return {
+        "proofs": vault.list_recent(limit),
+        "stats": vault.stats(),
+    }
+
+
+@router.get("/proof/share/{proof_id}")
+async def mesh_proof_share(proof_id: str) -> Dict[str, Any]:
+    record = get_proof_vault().get(proof_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Kanıt bulunamadı")
+    return record.to_public()
+
+
+@router.get("/proof/share/{proof_id}/card", response_class=HTMLResponse)
+async def mesh_proof_share_card(proof_id: str) -> HTMLResponse:
+    record = get_proof_vault().get(proof_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Kanıt bulunamadı")
+    html = render_proof_share_card(record, base_url=settings.public_base_url)
+    return HTMLResponse(
+        content=html,
+        headers={"Cache-Control": "no-store", "X-Hub-Build": HUB_BUILD},
+    )
+
+
+@router.get("/stats")
+async def hub_public_stats() -> Dict[str, Any]:
+    """Landing / vitrin için canlı metrikler."""
+    hub = get_investment_hub()
+    agents = _mesh().list_agents()
+    cards = hub.list_identity_cards(agents)
+    total_revenue = sum(c.finance.total_revenue_usd for c in cards)
+    vault_stats = get_proof_vault().stats()
+    from app.workers.registry import LIVE_WORKER_IDS
+
+    return {
+        "hub_build": HUB_BUILD,
+        "live_workers": len(LIVE_WORKER_IDS),
+        "total_agents": len(cards),
+        "total_revenue_usd": round(total_revenue, 4),
+        "mesh_proofs": vault_stats,
+        "x402_services": len(list_x402_services().get("services", [])),
+        "tagline": "Mock yok · Gerçek API · Pasif ortaklık",
     }
 
 

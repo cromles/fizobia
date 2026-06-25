@@ -154,6 +154,15 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   max-width: 520px; margin: 0 auto 2rem; font-weight: 400;
   animation: fadeUp 0.9s var(--ease) 0.25s both;
 }}
+.hero-proof-stats {{
+  display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap;
+  margin-top: 1.5rem; font-size: 0.78rem; color: var(--dim);
+}}
+.hero-proof-stats span {{
+  padding: 0.35rem 0.75rem; border-radius: 999px;
+  border: 1px solid var(--border); background: rgba(0,0,0,0.25);
+}}
+
 .hero-cta {{
   display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;
   animation: fadeUp 0.9s var(--ease) 0.35s both;
