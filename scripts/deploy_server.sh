@@ -4,7 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo ""
-echo "  OAM Hub — sunucu kurulumu (domain gerekmez, IP yeterli)"
+echo "  OAM Hub — sunucu kurulumu"
+echo "  IP yeterli; .tr domain varsa: docs/deploy-domain-tr.md"
 echo ""
 
 python3 -m pip install -q -r requirements.txt

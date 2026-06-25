@@ -6,7 +6,7 @@ HUB_IP="89.47.113.150"
 HUB_PORT="8787"
 INSTALL_DIR="/opt/fizobia"
 REPO="https://github.com/cromles/fizobia.git"
-BRANCH="cursor/real-worker-x402-0b7c"
+BRANCH="main"
 
 echo ""
 echo "  OAM Hub kurulumu — ${HUB_IP}"
