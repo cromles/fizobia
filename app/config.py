@@ -38,6 +38,7 @@ class OAMSettings:
     x402_webhook_secret: str
     x402_market_pulse_price_usd: float
     x402_sentiment_radar_price_usd: float
+    x402_mesh_proof_price_usd: float
     x402_network: str
     x402_payee_address: str
     x402_dev_accept_proof: bool
@@ -72,6 +73,7 @@ class OAMSettings:
         x402_webhook_secret = os.getenv("OAM_X402_WEBHOOK_SECRET", "")
         x402_market_pulse_price_usd = float(os.getenv("OAM_X402_MARKET_PULSE_PRICE", "0.05"))
         x402_sentiment_radar_price_usd = float(os.getenv("OAM_X402_SENTIMENT_PRICE", "0.04"))
+        x402_mesh_proof_price_usd = float(os.getenv("OAM_X402_MESH_PROOF_PRICE", "0.10"))
         x402_network = os.getenv("OAM_X402_NETWORK", "base-sepolia")
         x402_payee_address = os.getenv("OAM_X402_PAYEE_ADDRESS", "")
         x402_dev_accept_proof = os.getenv("OAM_X402_DEV_ACCEPT_PROOF", "true").lower() in (
@@ -110,6 +112,7 @@ class OAMSettings:
             x402_webhook_secret=x402_webhook_secret,
             x402_market_pulse_price_usd=x402_market_pulse_price_usd,
             x402_sentiment_radar_price_usd=x402_sentiment_radar_price_usd,
+            x402_mesh_proof_price_usd=x402_mesh_proof_price_usd,
             x402_network=x402_network,
             x402_payee_address=x402_payee_address,
             x402_dev_accept_proof=x402_dev_accept_proof,

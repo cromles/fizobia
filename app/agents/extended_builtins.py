@@ -34,8 +34,13 @@ def _orchestrator_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _web_fetch_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    url = data.get("url", data.get("query", ""))
-    return {"raw_text": f"Web içeriği: {url}", "source_url": url or "https://mesh.oam"}
+    from app.workers.web_crawler import fetch_web_snapshot
+
+    url = data.get("url") or data.get("query")
+    try:
+        return fetch_web_snapshot(str(url) if url else None)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.fetcher.web.local"}
 
 
 def _report_handler(data: Dict[str, Any]) -> Dict[str, Any]:

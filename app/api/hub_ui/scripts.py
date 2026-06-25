@@ -462,6 +462,56 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.triggerLiveRun = triggerLiveRun;
 
+  window.runMeshProof = async function(btn) {{
+    btn.classList.add('loading');
+    const resultEl = $('meshProofResult');
+    if (resultEl) {{
+      resultEl.className = 'mesh-proof-result';
+      resultEl.textContent = '3 işçi çalışıyor…';
+    }}
+    const proof = JSON.stringify({{
+      amount_usdc: {settings.x402_mesh_proof_price_usd},
+      payer: getWallet() || '0x' + 'a'.repeat(40),
+      payment_id: 'mesh_' + Date.now(),
+      network: 'x402-demo',
+      asset: 'USDC',
+    }});
+    try {{
+      const res = await fetch('/hub/proof/mesh/run', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'X-Payment-Proof': proof,
+        }},
+        body: JSON.stringify({{ symbol: 'bitcoin' }}),
+      }});
+      const data = await res.json();
+      if (res.status === 402) {{
+        if (resultEl) resultEl.textContent = 'Ödeme gerekli — tekrar deneyin';
+        showToast('x402 ödeme gerekli', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      if (!res.ok) {{
+        if (resultEl) resultEl.textContent = data.detail || 'Hata';
+        showToast(data.detail || 'Mesh kanıt hatası', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
+      if (resultEl) {{
+        resultEl.className = 'mesh-proof-result success';
+        resultEl.textContent = '✓ ' + verdict;
+      }}
+      showToast('Mesh kanıtı OK · 3 gerçek işçi');
+      refreshLive();
+    }} catch (err) {{
+      if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
+      showToast(err.message || 'Bağlantı hatası', true);
+    }}
+    btn.classList.remove('loading');
+  }};
+
   window.tryX402MarketPulse = async function(agentId, btn) {{
     return tryX402Service('market-pulse', agentId, btn, {{ symbol: 'bitcoin' }});
   }};

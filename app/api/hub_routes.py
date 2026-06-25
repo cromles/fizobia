@@ -34,15 +34,19 @@ from app.investment.schemas import (
 from app.investment.x402 import parse_x402_payment, verify_webhook_secret
 from app.investment.x402_gateway import (
     PaymentRequiredError,
+    build_mesh_proof_payment_required,
     build_payment_required,
     list_x402_services,
     market_pulse_price_usd,
+    mesh_proof_price_usd,
     parse_payment_proof,
     sentiment_radar_price_usd,
 )
+from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_RADAR_AGENT_ID, fetch_sentiment_snapshot_async
+from app.workers.web_crawler import AGENT_ID as WEB_CRAWLER_AGENT_ID
 
 
 class MarketPulseAnalyzeRequest(BaseModel):
@@ -56,7 +60,12 @@ class SentimentRadarAnalyzeRequest(BaseModel):
     )
 
 
-HUB_BUILD = "2026.06.25-hardcore-v5"
+class MeshProofRunRequest(BaseModel):
+    symbol: str = Field(default="bitcoin")
+    url: str | None = Field(default=None, description="Opsiyonel RSS/HTML URL")
+
+
+HUB_BUILD = "2026.06.25-mesh-proof-v6"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -155,6 +164,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "x402_services": f"{base}/hub/x402/services",
             "x402_market_pulse": f"{base}/hub/x402/market-pulse/analyze",
             "x402_sentiment_radar": f"{base}/hub/x402/sentiment-radar/analyze",
+            "mesh_proof": f"{base}/hub/proof/mesh/run",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -496,6 +506,125 @@ async def x402_sentiment_radar_analyze(
             "task_id": task_id,
         },
         "message": "Gerçek Fear&Greed + metin sentiment — x402 ödeme kaydedildi",
+    }
+
+
+def _record_mesh_proof_revenue(
+    hub: Any,
+    mesh: OpenAgentMeshRouter,
+    proof_id: str,
+    amount_usdc: float,
+    payer: str | None,
+) -> List[Dict[str, Any]]:
+    """Pipeline gelirini 3 gerçek işçiye eşit böler."""
+    share = round(amount_usdc / len(MESH_PROOF_AGENTS), 8)
+    recorded: List[Dict[str, Any]] = []
+    for index, agent_id in enumerate(MESH_PROOF_AGENTS):
+        manifest = mesh.registry.get(agent_id)
+        if manifest is None:
+            continue
+        task_id = f"x402_{proof_id}_{index}"
+        hub.record_external_revenue(
+            manifest,
+            task_id,
+            share,
+            payer=payer,
+        )
+        event = hub.revenue.list_events(agent_id=agent_id, limit=1)[-1]
+        recorded.append(
+            {
+                "agent_id": agent_id,
+                "gross_usd": event.gross_usd,
+                "staking_usd": event.staking_usd,
+                "task_id": task_id,
+            }
+        )
+    return recorded
+
+
+@router.get("/proof/mesh")
+async def mesh_proof_discover(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Mesh Kanıtı — skeptiklere cevap: 3 gerçek işçi pipeline keşfi."""
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+    return {
+        "service": "mesh-proof",
+        "tagline": "Mock yok. Simülasyon yok. 3 gerçek API, 1 pipeline.",
+        "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse"],
+        "pipeline": "web-crawl → sentiment → market-pulse",
+        "price_usdc": mesh_proof_price_usd(),
+        "symbol": symbol,
+        "real_data": True,
+        "payment_required": build_mesh_proof_payment_required(symbol=symbol),
+        "run": {
+            "method": "POST",
+            "url": f"{settings.public_base_url.rstrip('/')}/hub/proof/mesh/run",
+            "headers_without_payment": "402 Payment Required",
+            "headers_with_payment": "X-Payment-Proof veya X-PAYMENT",
+        },
+        "curl_demo": (
+            f"curl -X POST {settings.public_base_url.rstrip('/')}/hub/proof/mesh/run "
+            "-H 'Content-Type: application/json' -H 'X-Payment-Proof: ...' "
+            f"-d '{{\"symbol\":\"{symbol}\"}}'"
+        ),
+    }
+
+
+@router.post("/proof/mesh/run")
+async def mesh_proof_run(
+    request: MeshProofRunRequest,
+    x_payment: str | None = Header(default=None, alias="X-PAYMENT"),
+    x_payment_proof: str | None = Header(default=None, alias="X-Payment-Proof"),
+) -> Any:
+    """
+    OAM Mesh Kanıtı — ödeme sonrası 3 gerçek işçi ardışık çalışır.
+    Rakiplerin mock vitrinine karşı: crawl + sentiment + market tek yanıtta.
+    """
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+
+    proof_header = x_payment_proof if settings.x402_dev_accept_proof else None
+    try:
+        payment = parse_payment_proof(
+            x_payment,
+            proof_header,
+            required_usd=mesh_proof_price_usd(),
+        )
+    except PaymentRequiredError:
+        return JSONResponse(
+            status_code=402,
+            content=build_mesh_proof_payment_required(symbol=request.symbol),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        result = await run_mesh_proof_pipeline(symbol=request.symbol, url=request.url)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Mesh kanıt hatası: {exc}") from exc
+
+    hub = get_investment_hub()
+    mesh = _mesh()
+    revenue_rows = _record_mesh_proof_revenue(
+        hub,
+        mesh,
+        result["proof_id"],
+        payment["amount_usdc"],
+        payment.get("payer"),
+    )
+    total_staking = sum(row["staking_usd"] for row in revenue_rows)
+
+    return {
+        "paid": True,
+        "payment": payment,
+        "proof": result,
+        "revenue": {
+            "gross_usd": payment["amount_usdc"],
+            "staking_usd": round(total_staking, 6),
+            "splits": revenue_rows,
+            "source": "x402",
+        },
+        "message": result["message"],
     }
 
 

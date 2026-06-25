@@ -59,6 +59,13 @@ def sentiment_radar_price_usd() -> float:
     return X402_SERVICES["sentiment-radar"].price_usd()
 
 
+def mesh_proof_price_usd() -> float:
+    return settings.x402_mesh_proof_price_usd
+
+
+MESH_PROOF_RESOURCE = "/hub/proof/mesh/run"
+
+
 def service_price_usd(service_id: str) -> float:
     spec = X402_SERVICES.get(service_id)
     if spec is None:
@@ -68,6 +75,43 @@ def service_price_usd(service_id: str) -> float:
 
 def usdc_atomic_amount(amount_usd: float) -> str:
     return str(int(round(amount_usd * 1_000_000)))
+
+
+def build_mesh_proof_payment_required(*, symbol: str = "bitcoin") -> Dict[str, Any]:
+    amount = mesh_proof_price_usd()
+    base = settings.public_base_url.rstrip("/")
+    pay_to = settings.x402_payee_address or "0x0000000000000000000000000000000000000000"
+    return {
+        "x402Version": 1,
+        "error": "payment_required",
+        "message": "Mesh Kanıtı — 3 gerçek işçi pipeline için USDC ödemesi gerekli",
+        "accepts": [
+            {
+                "scheme": "exact",
+                "network": settings.x402_network,
+                "maxAmountRequired": usdc_atomic_amount(amount),
+                "resource": f"{base}{MESH_PROOF_RESOURCE}",
+                "description": f"Web crawl → Sentiment → Market ({symbol}) — mock yok",
+                "mimeType": "application/json",
+                "payTo": pay_to,
+                "maxTimeoutSeconds": 300,
+                "asset": "USDC",
+                "extra": {
+                    "service_id": "mesh-proof",
+                    "price_usd": amount,
+                    "symbol": symbol,
+                    "workers": 3,
+                },
+            }
+        ],
+        "service": {
+            "service_id": "mesh-proof",
+            "name": "OAM Mesh Proof",
+            "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse"],
+            "real_data_source": "coindesk+alternative.me+coingecko",
+            "revenue_split_staking_pct": 65,
+        },
+    }
 
 
 def build_payment_required(
@@ -189,6 +233,22 @@ def list_x402_services() -> Dict[str, Any]:
                 },
             }
         )
+    services.append(
+        {
+            "id": "mesh-proof",
+            "agent_id": "oam.mesh.proof",
+            "name": "Mesh Kanıtı",
+            "description": "3 gerçek işçi zinciri: web crawl → sentiment → market (tek ödeme)",
+            "price_usdc": mesh_proof_price_usd(),
+            "real_data": True,
+            "data_source": "coindesk+alternative.me+coingecko",
+            "methods": {
+                "discover": f"{base}/hub/proof/mesh",
+                "run": f"{base}{MESH_PROOF_RESOURCE}",
+                "revenue_webhook": f"{base}/hub/revenue/x402",
+            },
+        }
+    )
     return {
         "protocol": "x402",
         "version": 1,

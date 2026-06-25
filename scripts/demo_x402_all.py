@@ -9,6 +9,7 @@ import sys
 
 def main() -> None:
     scripts = [
+        "scripts/demo_mesh_proof.py",
         "scripts/demo_x402_market_pulse.py",
         "scripts/demo_x402_sentiment_radar.py",
     ]

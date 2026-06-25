@@ -355,6 +355,89 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .net-online {{ color: var(--mint) !important; }}
 .net-degraded {{ color: var(--danger) !important; text-transform: capitalize; }}
 
+.mesh-proof-hero {{
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding: 1.35rem 1.5rem;
+  border-radius: calc(var(--radius) + 6px);
+  border: 1px solid rgba(255,209,102,0.35);
+  background: linear-gradient(135deg, rgba(255,209,102,0.1), rgba(0,255,163,0.06) 55%, rgba(8,8,15,0.95));
+  animation: cardReveal 0.7s var(--ease) both;
+  position: relative;
+  overflow: hidden;
+}}
+.mesh-proof-hero::after {{
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+  animation: shine 8s ease-in-out infinite;
+  pointer-events: none;
+}}
+.mesh-proof-kicker {{
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+}}
+.mesh-proof-copy h3 {{
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: 800;
+  margin: 0.35rem 0 0.5rem;
+}}
+.mesh-proof-copy p {{ color: var(--muted); line-height: 1.6; margin-bottom: 0.75rem; }}
+.mesh-proof-steps {{
+  margin: 0; padding-left: 1.1rem;
+  color: var(--muted); font-size: 0.8rem; line-height: 1.7;
+}}
+.mesh-proof-action {{
+  display: flex; flex-direction: column; justify-content: center; gap: 0.65rem;
+  position: relative; z-index: 1;
+}}
+.mesh-proof-price {{
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem;
+  color: var(--gold);
+  font-weight: 700;
+}}
+.btn-mesh-proof {{
+  position: relative;
+  padding: 1rem 1.25rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #1a1200;
+  background: linear-gradient(135deg, var(--gold), #ffb347);
+  box-shadow: 0 12px 40px rgba(255,209,102,0.25);
+  transition: transform 0.25s var(--ease);
+}}
+.btn-mesh-proof:hover {{ transform: translateY(-2px) scale(1.02); }}
+.btn-mesh-proof.loading .btn-text {{ opacity: 0; }}
+.btn-mesh-proof .btn-loader {{
+  display: none;
+  position: absolute; inset: 0; margin: auto;
+  width: 20px; height: 20px;
+  border: 2px solid rgba(26,18,0,0.25);
+  border-top-color: #1a1200;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}}
+.btn-mesh-proof.loading .btn-loader {{ display: block; }}
+.mesh-proof-result {{
+  font-size: 0.72rem;
+  color: var(--dim);
+  line-height: 1.5;
+  min-height: 2.8em;
+}}
+.mesh-proof-result.success {{ color: var(--mint); }}
+
 .featured-slot {{ margin-bottom: 1.25rem; }}
 .featured-grid {{
   display: grid;
@@ -737,6 +820,7 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 
 @media (max-width: 900px) {{
   .featured-body {{ grid-template-columns: 1fr; }}
+  .mesh-proof-hero {{ grid-template-columns: 1fr; }}
   .wc-compact-main {{ grid-template-columns: auto 1fr; }}
   .wc-compact-meta {{ grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }}
 }}

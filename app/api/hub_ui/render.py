@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Dict, List, Optional
 
+from app.config import settings
 from app.api.hub_ui.cards import render_featured_worker_card, render_worker_card
 from app.api.hub_ui.helpers import esc
 from app.api.hub_ui.scripts import hub_scripts
@@ -11,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-hardcore-v5"
+HUB_UI_BUILD = "2026.06.25-mesh-proof-v6"
 
 
 def render_hub_dashboard(
@@ -224,6 +225,27 @@ def render_hub_dashboard(
             <button class="filter-tab" onclick="filterWorkers('pool', this)">Havuz ({pool_count})</button>
           </div>
           {trigger_btn}
+        </div>
+
+        <div class="mesh-proof-hero" id="meshProofHero">
+          <div class="mesh-proof-copy">
+            <span class="mesh-proof-kicker">Skeptiklere cevap</span>
+            <h3>Mesh Kanıtı</h3>
+            <p>3 gerçek dijital işçi ardışık çalışır — <strong>mock yok</strong>, simülasyon yok.</p>
+            <ol class="mesh-proof-steps">
+              <li>Web-Crawler → canlı haber çeker</li>
+              <li>Sentiment-Radar → Fear &amp; Greed + NLP</li>
+              <li>Market-Pulse → CoinGecko fiyat</li>
+            </ol>
+          </div>
+          <div class="mesh-proof-action">
+            <div class="mesh-proof-price">x402 · ${settings.x402_mesh_proof_price_usd:.2f}</div>
+            <button type="button" class="btn-mesh-proof" id="btnMeshProof" onclick="runMeshProof(this)">
+              <span class="btn-text">Mesh Kanıtını Çalıştır</span>
+              <span class="btn-loader"></span>
+            </button>
+            <p class="mesh-proof-result" id="meshProofResult">Tek tıkla kanıt üret — gelirin %65'i havuza</p>
+          </div>
         </div>
 
         <div class="featured-slot featured-grid" id="featuredSlot">
