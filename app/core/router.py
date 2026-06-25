@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -9,6 +10,7 @@ import httpx
 
 from app.adapters.layer import DataAdapterLayer
 from app.matching.factory import create_matcher
+from app.investment.factory import get_investment_hub
 from app.network.factory import (
     create_nat_coordinator,
     create_sandbox_executor,
@@ -45,6 +47,7 @@ class OpenAgentMeshRouter:
         nat_coordinator: Optional[Any] = None,
         global_mesh: Optional[GlobalNetworkMesh] = None,
         sandbox: Optional[SandboxExecutor] = None,
+        investment_hub: Optional[Any] = None,
     ):
         self.registry = registry or InMemoryAgentRegistry()
         self.adapter_layer = adapter_layer or DataAdapterLayer()
@@ -57,12 +60,23 @@ class OpenAgentMeshRouter:
         self.global_mesh = global_mesh or get_global_mesh()
         self.nat_coordinator = nat_coordinator or create_nat_coordinator()
         self.sandbox = sandbox or create_sandbox_executor()
+        self._investment_hub_override = investment_hub
+
+    @property
+    def investment_hub(self) -> Any:
+        if self._investment_hub_override is not None:
+            return self._investment_hub_override
+        return get_investment_hub()
 
     def register_agent(self, manifest: AgentManifest) -> bool:
-        return self.registry.register(manifest)
+        accepted = self.registry.register(manifest)
+        if accepted:
+            self.investment_hub.ensure_agent(manifest)
+        return accepted
 
     def upsert_agent(self, manifest: AgentManifest) -> None:
         self.registry.upsert(manifest)
+        self.investment_hub.ensure_agent(manifest)
 
     def get_capability(
         self, agent_id: str, capability_name: str
@@ -265,21 +279,33 @@ class OpenAgentMeshRouter:
                     await asyncio.sleep(0.05)
                     continue
 
-                async def run_node(node: TaskNode) -> Tuple[str, Dict[str, Any]]:
+                async def run_node(node: TaskNode) -> Tuple[str, Dict[str, Any], float]:
+                    start = time.perf_counter()
                     prepared = await self._prepare_node_input(node, plan.graph, results)
                     output = await self._execute_node(client, node, prepared)
-                    return node.task_id, output
+                    latency_ms = (time.perf_counter() - start) * 1000
+                    return node.task_id, output, latency_ms
 
                 node_results = await asyncio.gather(
                     *[run_node(node) for node in ready_nodes]
                 )
 
                 for node in ready_nodes:
-                    task_id, output = next(
-                        (tid, out) for tid, out in node_results if tid == node.task_id
+                    task_id, output, latency_ms = next(
+                        (tid, out, lat) for tid, out, lat in node_results if tid == node.task_id
                     )
                     results[task_id] = output
                     completed_tasks.add(task_id)
+
+                    manifest = self.registry.get(node.agent_id)
+                    if manifest is not None:
+                        success = isinstance(output, dict) and "error" not in output
+                        self.investment_hub.record_execution(
+                            manifest,
+                            task_id,
+                            success=success,
+                            latency_ms=latency_ms,
+                        )
 
                     if isinstance(output, dict) and "error" in output:
                         self._penalize_reliability(node.agent_id)

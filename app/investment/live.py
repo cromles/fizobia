@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
+
+import httpx
+
+from app.config import settings
+from app.investment.hub import InvestmentHub
+from app.protocol.schemas import AgentManifest
+
+
+def _probe_endpoint(endpoint: str) -> Tuple[bool, float]:
+    if not endpoint or not endpoint.startswith("http"):
+        return False, 0.0
+    url = f"{endpoint.rstrip('/')}/health"
+    try:
+        start = time.perf_counter()
+        with httpx.Client(timeout=2.0) as client:
+            response = client.get(url)
+        latency_ms = (time.perf_counter() - start) * 1000
+        return response.status_code == 200, latency_ms
+    except Exception:
+        return False, 0.0
+
+
+def build_live_snapshot(
+    hub: InvestmentHub,
+    agents: List[AgentManifest],
+) -> Dict[str, Any]:
+    cards = hub.list_identity_cards(agents)
+    events = hub.revenue.list_events(limit=30)
+    total_tvl = sum(c.finance.staking_pool_tvl_usd for c in cards)
+    total_revenue = sum(c.finance.total_revenue_usd for c in cards)
+    total_calls = sum(c.health.total_calls for c in cards)
+
+    agent_rows: List[Dict[str, Any]] = []
+    reachable_count = 0
+    for card in cards:
+        manifest = next((m for m in agents if m.agent_id == card.profile.agent_id), None)
+        endpoint = manifest.endpoint if manifest else ""
+        reachable, probe_latency = _probe_endpoint(endpoint)
+        if reachable:
+            reachable_count += 1
+
+        if reachable:
+            status = "active"
+            latency_ms = round(probe_latency, 1)
+        elif card.health.total_calls > 0:
+            status = "offline"
+            latency_ms = card.health.avg_latency_ms
+        else:
+            status = "standby"
+            latency_ms = 0.0
+
+        agent_rows.append(
+            {
+                "agent_id": card.profile.agent_id,
+                "display_name": card.profile.display_name,
+                "token_symbol": card.profile.token_symbol,
+                "agent_class": card.profile.agent_class.value,
+                "status": status,
+                "reachable": reachable,
+                "success_rate": card.health.success_rate,
+                "latency_ms": latency_ms,
+                "total_calls": card.health.total_calls,
+                "apy": card.finance.estimated_apy,
+                "tvl": card.finance.staking_pool_tvl_usd,
+                "revenue_24h": card.finance.volume_24h_usd,
+                "endpoint": endpoint,
+            }
+        )
+
+    feed: List[Dict[str, Any]] = []
+    name_by_id = {c.profile.agent_id: c.profile.display_name for c in cards}
+    for event in reversed(events[-20:]):
+        is_demo = event.task_id.startswith("demo_")
+        worker_name = name_by_id.get(event.agent_id, event.agent_id)
+        feed.append(
+            {
+                "type": "revenue",
+                "agent_id": event.agent_id,
+                "worker_name": worker_name,
+                "task_id": event.task_id,
+                "gross_usd": event.gross_usd,
+                "staking_usd": event.staking_usd,
+                "success": event.success,
+                "latency_ms": event.latency_ms,
+                "tx_hash": event.tx_hash,
+                "time": event.created_at.isoformat() if event.created_at else "",
+                "simulated": is_demo,
+                "message": (
+                    f"{worker_name} sizin adınıza görev tamamladı"
+                    if event.success and not is_demo
+                    else (
+                        f"{worker_name} görev denedi (başarısız)"
+                        if not is_demo
+                        else f"{worker_name} · demo kayıt"
+                    )
+                ),
+            }
+        )
+
+    real_events = [e for e in feed if not e.get("simulated")]
+
+    return {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "demo_mode": settings.hub_demo_mode,
+        "data_notice": (
+            "Metrikler ve geçmiş işlemler DEMO verisidir. "
+            "Gerçek mod için OAM_HUB_DEMO=false ve python -m app.run_stack kullanın."
+            if settings.hub_demo_mode
+            else (
+                "Her kayıt gerçek ajan faaliyetinden gelir — dijital işçileriniz "
+                "ağda görev alır, çalışır ve kazancın payını size aktarır."
+            )
+        ),
+        "network": {
+            "status": "online" if reachable_count > 0 else "degraded",
+            "protocol": "OAM-NAT-v2",
+            "reachable_agents": reachable_count,
+            "active_agents": len([a for a in agent_rows if a["status"] == "active"]),
+            "total_agents": len(agent_rows),
+            "total_tvl_usd": round(total_tvl, 2),
+            "total_revenue_usd": round(total_revenue, 4),
+            "total_calls": total_calls,
+            "real_event_count": len(real_events),
+        },
+        "agents": agent_rows,
+        "activity_feed": feed,
+    }
