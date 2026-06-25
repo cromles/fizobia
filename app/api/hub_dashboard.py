@@ -172,6 +172,7 @@ def render_hub_dashboard(
     split: RevenueSplitConfig,
     manifests: Optional[Dict[str, AgentManifest]] = None,
     build: str = "dev",
+    demo_mode: bool = True,
 ) -> str:
     manifests = manifests or {}
     card_html = "".join(
@@ -182,6 +183,14 @@ def render_hub_dashboard(
     staking_pct = split.staking_share * 100
     platform_pct = split.platform_share * 100
     operator_pct = split.operator_share * 100
+
+    class_attr = ' class="has-demo-banner"' if demo_mode else ""
+    demo_banner = (
+        '<div class="demo-banner">⚠ DEMO MODU — TVL, çağrı sayısı ve aktivite akışının çoğu simüle veridir. '
+        "Gerçek test: <code>OAM_HUB_DEMO=false</code> + <code>python -m app.run_stack</code></div>"
+        if demo_mode
+        else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="tr">
@@ -644,13 +653,24 @@ def render_hub_dashboard(
     .toast.show {{ transform: none; opacity: 1; }}
     .toast.error {{ border-color: rgba(255,100,100,0.3); color: #ff8a8a; }}
 
+    .demo-banner {{
+      position: fixed; top: 4rem; left: 0; right: 0; z-index: 99;
+      background: linear-gradient(90deg, rgba(180,83,9,0.9), rgba(120,53,15,0.9));
+      color: #fef3c7; text-align: center; padding: 0.55rem 1rem;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.03em;
+      border-bottom: 1px solid rgba(251,191,36,0.3);
+    }}
+    body.has-demo-banner #landing {{ padding-top: 7rem; }}
+    body.has-demo-banner #market {{ padding-top: 7rem; }}
     .build-badge {{
       font-size: 0.65rem; color: var(--muted); opacity: 0.6;
       font-family: ui-monospace, monospace; margin-left: 0.75rem;
     }}
+    #landing.hidden {{ display: none; }}
   </style>
 </head>
-<body>
+<body{class_attr}>
+  {demo_banner}
   <div class="ambient"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
   <nav class="site-nav">
@@ -859,6 +879,8 @@ def render_hub_dashboard(
       return a.length > 12 ? a.slice(0,6) + '…' + a.slice(-4) : a;
     }}
 
+    const DEMO_MODE = {'true' if demo_mode else 'false'};
+
     function updateWalletUI() {{
       const w = getWallet();
       const connected = document.getElementById('walletConnected');
@@ -878,7 +900,7 @@ def render_hub_dashboard(
           showMarketSplash();
         }} else {{
           startLiveFeed();
-          startProcessAnimation();
+          if (DEMO_MODE) startProcessAnimation();
         }}
         window.scrollTo({{ top: 0, behavior: 'smooth' }});
       }} else {{
@@ -901,7 +923,7 @@ def render_hub_dashboard(
       setTimeout(() => {{
         splash.classList.remove('show');
         startLiveFeed();
-        startProcessAnimation();
+        if (DEMO_MODE) startProcessAnimation();
       }}, 1600);
     }}
 
@@ -956,9 +978,10 @@ def render_hub_dashboard(
       el.innerHTML = feed.slice(0, 12).map((item, i) => {{
         const name = agentNameMap[item.agent_id] || item.agent_id.split('.')[0];
         const cls = i === 0 && isNew ? 'feed-item new' : 'feed-item';
+        const sim = item.simulated ? ' · <span style="color:#fbbf24">DEMO</span>' : '';
         const status = item.success ? '✓ görev tamamlandı' : '✗ hata';
         return `<div class="${{cls}}">
-          <span class="feed-agent">${{name}}</span> · ${{status}}
+          <span class="feed-agent">${{name}}</span> · ${{status}}${{sim}}
           <div class="feed-meta">+$${{item.staking_usd?.toFixed(4) || item.gross_usd?.toFixed(4)}} staking · ${{Math.round(item.latency_ms)}}ms · ${{item.tx_hash?.slice(0,10)}}…</div>
         </div>`;
       }}).join('');
@@ -973,7 +996,12 @@ def render_hub_dashboard(
         const text = card.querySelector('.status-text');
         const lat = card.querySelector('.status-latency');
         dot.className = 'status-dot ' + a.status;
-        const labels = {{ active: 'Çevrimiçi · görev alıyor', standby: 'Hazır · bekliyor', degraded: 'Düşük performans' }};
+        const labels = {{
+          active: a.reachable ? 'Çevrimiçi · endpoint yanıt veriyor' : 'Kayıtlı · endpoint kapalı',
+          standby: 'Kayıtlı · henüz görev yok',
+          degraded: 'Düşük performans',
+          offline: 'Çevrimdışı · ajan yanıt vermiyor',
+        }};
         text.textContent = labels[a.status] || a.status;
         lat.textContent = a.latency_ms > 0 ? Math.round(a.latency_ms) + 'ms' : '';
         card.classList.toggle('is-live', a.status === 'active');

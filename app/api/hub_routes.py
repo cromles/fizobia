@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_dashboard import render_hub_dashboard
+from app.config import settings
 from app.core.router import OpenAgentMeshRouter
 from app.investment.factory import get_investment_hub
 from app.investment.live import build_live_snapshot
@@ -36,7 +37,9 @@ async def hub_dashboard() -> HTMLResponse:
     agents = mesh.list_agents()
     cards = hub.list_identity_cards(agents)
     manifests = {m.agent_id: m for m in agents}
-    html = render_hub_dashboard(cards, hub.split, manifests, build=HUB_BUILD)
+    html = render_hub_dashboard(
+        cards, hub.split, manifests, build=HUB_BUILD, demo_mode=settings.hub_demo_mode
+    )
     return HTMLResponse(
         content=html,
         headers={
@@ -48,8 +51,12 @@ async def hub_dashboard() -> HTMLResponse:
 
 
 @router.get("/version")
-async def hub_version() -> Dict[str, str]:
-    return {"hub_build": HUB_BUILD, "status": "ok"}
+async def hub_version() -> Dict[str, Any]:
+    return {
+        "hub_build": HUB_BUILD,
+        "status": "ok",
+        "demo_mode": settings.hub_demo_mode,
+    }
 
 
 @router.get("/live")

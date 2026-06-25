@@ -24,6 +24,7 @@ class OAMSettings:
     sandbox_backend: str
     extra_stun_servers: List[str]
     turn_servers: List[str]
+    hub_demo_mode: bool
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -54,6 +55,7 @@ class OAMSettings:
             sandbox_backend=os.getenv("OAM_SANDBOX_BACKEND", "local").lower(),
             extra_stun_servers=extra_stun,
             turn_servers=turn_servers,
+            hub_demo_mode=os.getenv("OAM_HUB_DEMO", "true").lower() in ("1", "true", "yes"),
         )
 
     @property
