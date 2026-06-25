@@ -13,4 +13,8 @@ def get_investment_hub() -> InvestmentHub:
         if settings.hub_demo_mode:
             _hub.seed_demo_liquidity()
             _hub.seed_demo_metrics()
+        if settings.onchain_enabled:
+            from app.investment.onchain import apply_pool_addresses
+
+            apply_pool_addresses(_hub)
     return _hub

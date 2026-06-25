@@ -1,0 +1,11 @@
+{
+  "chain_id": 0,
+  "network": "local",
+  "rpc_url": "http://127.0.0.1:8545",
+  "deployer": "",
+  "usdc": "",
+  "factory": "",
+  "pools": {},
+  "usdc_decimals": 6,
+  "deployed_at": ""
+}

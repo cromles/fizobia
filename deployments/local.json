@@ -1,0 +1,24 @@
+{
+  "chain_id": 31337,
+  "network": "hardhat",
+  "rpc_url": "http://127.0.0.1:8545",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "factory": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  "pools": {
+    "oam.fetcher.local": {
+      "address": "0x75537828f2ce51be7289709686A69CbFDbB714F1",
+      "token_symbol": "BMF-TKN"
+    },
+    "oam.synthesizer.local": {
+      "address": "0xE451980132E65465d0a498c53f0b5227326Dd73F",
+      "token_symbol": "CAV4-TKN"
+    },
+    "oam.transformer.local": {
+      "address": "0x5392A33F7F677f59e833FEBF4016cDDD88fF9E67",
+      "token_symbol": "DN-TKN"
+    }
+  },
+  "usdc_decimals": 6,
+  "deployed_at": "2026-06-25T18:25:09.781Z"
+}

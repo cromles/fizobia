@@ -15,6 +15,7 @@ from app.investment.schemas import (
 )
 from app.investment.seed import DEFAULT_PROFILES
 from app.investment.staking import StakingPoolManager
+from app.config import settings
 from app.protocol.schemas import AgentManifest
 
 
@@ -85,6 +86,13 @@ class InvestmentHub:
         )
         if success and event.staking_usd > 0:
             self.pools.distribute_staking_rewards(manifest.agent_id, event.staking_usd)
+            if settings.onchain_enabled:
+                from app.investment.onchain import fund_pool_rewards
+
+                try:
+                    fund_pool_rewards(manifest.agent_id, event.staking_usd)
+                except Exception:
+                    pass
 
     def build_identity_card(
         self,
