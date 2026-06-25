@@ -10,9 +10,9 @@ from app.core.router import OpenAgentMeshRouter
 logger = logging.getLogger(__name__)
 
 _LIVE_GOALS: List[Tuple[str, Dict[str, Any]]] = [
-    ("veri analizi yap", {"query": "biyomedikal araştırma"}),
-    ("web verisi çek ve özetle", {"query": "kripto piyasa"}),
-    ("ham metni normalize et", {"raw_text": "Open Agent Mesh canlı entegrasyon testi"}),
+    ("BioMed literatür taraması yap", {"query": "kardiyovasküler RCT meta-analizi"}),
+    ("finansal risk özeti sentezle", {"query": "ETH volatilite ve likidite"}),
+    ("ham veriyi normalize et", {"raw_text": "OAM ağı canlı iş akışı — şema dönüşümü"}),
 ]
 
 

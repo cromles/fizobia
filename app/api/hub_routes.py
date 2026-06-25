@@ -19,7 +19,7 @@ from app.investment.schemas import (
 )
 from app.protocol.schemas import AgentManifest
 
-HUB_BUILD = "2026.06.25-real-integration"
+HUB_BUILD = "2026.06.25-digital-workers"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 

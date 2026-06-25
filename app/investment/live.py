@@ -73,12 +73,15 @@ def build_live_snapshot(
         )
 
     feed: List[Dict[str, Any]] = []
+    name_by_id = {c.profile.agent_id: c.profile.display_name for c in cards}
     for event in reversed(events[-20:]):
         is_demo = event.task_id.startswith("demo_")
+        worker_name = name_by_id.get(event.agent_id, event.agent_id)
         feed.append(
             {
                 "type": "revenue",
                 "agent_id": event.agent_id,
+                "worker_name": worker_name,
                 "task_id": event.task_id,
                 "gross_usd": event.gross_usd,
                 "staking_usd": event.staking_usd,
@@ -87,6 +90,15 @@ def build_live_snapshot(
                 "tx_hash": event.tx_hash,
                 "time": event.created_at.isoformat() if event.created_at else "",
                 "simulated": is_demo,
+                "message": (
+                    f"{worker_name} sizin adınıza görev tamamladı"
+                    if event.success and not is_demo
+                    else (
+                        f"{worker_name} görev denedi (başarısız)"
+                        if not is_demo
+                        else f"{worker_name} · demo kayıt"
+                    )
+                ),
             }
         )
 
@@ -99,7 +111,10 @@ def build_live_snapshot(
             "Metrikler ve geçmiş işlemler DEMO verisidir. "
             "Gerçek mod için OAM_HUB_DEMO=false ve python -m app.run_stack kullanın."
             if settings.hub_demo_mode
-            else "Yalnızca gerçek görev çalıştırmaları kaydedilir."
+            else (
+                "Her kayıt gerçek ajan faaliyetinden gelir — dijital işçileriniz "
+                "ağda görev alır, çalışır ve kazancın payını size aktarır."
+            )
         ),
         "network": {
             "status": "online" if reachable_count > 0 else "degraded",

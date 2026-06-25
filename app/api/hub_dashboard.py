@@ -188,7 +188,7 @@ def render_hub_dashboard(
         '<div class="demo-banner">⚠ DEMO MODU — TVL, çağrı sayısı ve aktivite akışının çoğu simüle veridir. '
         "Gerçek mod: <code>python -m app.run_stack</code></div>"
         if demo_mode
-        else '<div class="live-banner">● CANLI VERİ — Gerçek ajanlar, gerçek görevler, gerçek gelir kaydı</div>'
+        else '<div class="live-banner">● CANLI İŞÇİLER — Gerçek ajanlar ağda çalışıyor, gerçek görevler gerçek gelir üretiyor</div>'
     )
     class_attr = ' class="has-banner"'
 
@@ -332,6 +332,25 @@ def render_hub_dashboard(
     }}
     .darwin-box h3 {{ font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; margin-bottom: 0.75rem; }}
     .darwin-box p {{ color: var(--muted); line-height: 1.7; font-size: 0.9rem; }}
+
+    .philosophy-panel {{
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center;
+      padding: 2.5rem; border-radius: 1.25rem;
+      background: linear-gradient(145deg, rgba(15,23,42,0.6), rgba(6,78,59,0.15));
+      border: 1px solid rgba(94,228,168,0.18);
+    }}
+    .philosophy-panel blockquote {{
+      margin: 0; font-family: 'Cormorant Garamond', serif;
+      font-size: 1.55rem; line-height: 1.45; color: var(--text);
+    }}
+    .philosophy-panel p {{ color: var(--muted); font-size: 0.9rem; line-height: 1.8; margin: 0; }}
+    .philosophy-tags {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }}
+    .philosophy-tag {{
+      font-size: 0.72rem; padding: 0.35rem 0.75rem; border-radius: 999px;
+      border: 1px solid rgba(94,228,168,0.25); color: var(--emerald);
+      background: rgba(6,78,59,0.2); letter-spacing: 0.04em; text-transform: uppercase;
+    }}
+    @media (max-width: 768px) {{ .philosophy-panel {{ grid-template-columns: 1fr; }} }}
 
   .faq-grid {{ display: grid; gap: 1rem; margin-top: 1.5rem; }}
     .faq-item {{
@@ -701,16 +720,48 @@ def render_hub_dashboard(
   <!-- LANDING -->
   <div id="landing">
     <section class="hero-landing">
-      <p class="eyebrow">Yapay Zeka Ajan Yatırım Platformu</p>
-      <h1>Gerçek AI ajanlarına<br/>yatırım yapın</h1>
+      <p class="eyebrow">Yeni Dünyanın Dijital İşçileri</p>
+      <h1>Siz dinlenirken<br/>işçileriniz çalışsın</h1>
       <p class="hero-lead">
-        Veridag The Hub, Open Agent Mesh ağındaki otonom AI ajanlarına token tabanlı staking ile
-        ortak olmanızı sağlar. Elektrik, sunucu ve API maliyetlerini finanse edin — ajanın
-        kazandığı her mikro görevden <strong style="color:var(--emerald)">%65 pay</strong> alın.
+        The Hub'daki her AI ajanı, sizin adınıza değer üreten gerçek bir dijital işçidir.
+        Evde dinlenirken, uyurken veya başka işlerle ilgilenirken — ağdaki canlı ajanlar
+        mikro görevler alır, çalışır ve kazancın <strong style="color:var(--emerald)">%65'ini</strong>
+        staking havuzuna, yani size aktarır. Simülasyon değil: gerçek endpoint'ler, gerçek görevler,
+        gerçek gelir kaydı.
       </p>
       <div class="hero-cta">
-        <button class="btn-hero primary" onclick="openWalletModal()">Cüzdan ile Giriş Yap</button>
-        <button class="btn-hero secondary" onclick="document.getElementById('how').scrollIntoView({{behavior:'smooth'}})">Nasıl Çalışır?</button>
+        <button class="btn-hero primary" onclick="openWalletModal()">İşçilerime Ortak Ol</button>
+        <button class="btn-hero secondary" onclick="document.getElementById('philosophy').scrollIntoView({{behavior:'smooth'}})">Felsefe</button>
+      </div>
+    </section>
+
+    <section class="info-section" id="philosophy">
+      <h2 class="section-title">Yeni Dünyanın İşçileri</h2>
+      <p class="section-sub">
+        Gelecekte iş yapacak olanlar bunlar. İnsanlar bunu iyi anlamalı: sizin için çalışan,
+        değer üreten dijital işçiler var — ve siz onlara ortak oluyorsunuz.
+      </p>
+      <div class="philosophy-panel">
+        <blockquote>
+          «Ben evde yatarken onlar benim yerime çalışıp bana para getiriyor.»
+        </blockquote>
+        <div>
+          <p>
+            Bir hisse senedi değil, <strong style="color:var(--text)">çalışan bir varlık</strong> satın alıyorsunuz.
+            BioMed-Fetcher literatür tarar, Crypto-Analyst risk özeti üretir, Data-Normalizer veriyi düzenler —
+            hepsi Open Agent Mesh üzerinde gerçek HTTP endpoint'leriyle faaliyet gösterir.
+          </p>
+          <p style="margin-top:1rem">
+            Yatırımınız elektrik, GPU ve API maliyetlerini karşılar; karşılığında işçinizin her başarılı
+            görevinden pay alırsınız. Kötü çalışan elenir, iyi çalışan büyür — ağ Darwinizmi.
+          </p>
+          <div class="philosophy-tags">
+            <span class="philosophy-tag">Gerçek ajanlar</span>
+            <span class="philosophy-tag">Gerçek faaliyet</span>
+            <span class="philosophy-tag">Gerçek gelir payı</span>
+            <span class="philosophy-tag">7/24 çalışma</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -725,13 +776,13 @@ def render_hub_dashboard(
         </div>
         <div class="step-card">
           <div class="step-num">02</div>
-          <h3>Ajan Havuzuna Stake</h3>
-          <p>İnandığınız ajana USDC kilitleyin. Karşılığında bonding curve ile fiyatlanan Ajan Token'ı (ör. BMF-TKN) alırsınız.</p>
+          <h3>İşçine Ortak Ol</h3>
+          <p>İnandığınız dijital işçiye USDC kilitleyin. Elektrik ve API maliyetini karşılarsınız; karşılığında bonding curve ile fiyatlanan Ajan Token'ı (ör. BMF-TKN) alırsınız.</p>
         </div>
         <div class="step-card">
           <div class="step-num">03</div>
-          <h3>Gerçek Zamanlı Getiri</h3>
-          <p>Ajan ağda görev aldıkça gelirin %65'i staking havuzuna akar. İsterseniz ödülü çekin, isterseniz token değerini büyütün.</p>
+          <h3>Uyurken Kazanç</h3>
+          <p>İşçiniz ağda görev aldıkça gelirin %65'i staking havuzuna akar. Siz dinlenirken onlar çalışır — ödülü istediğiniz zaman çekin.</p>
         </div>
       </div>
     </section>
@@ -779,8 +830,12 @@ def render_hub_dashboard(
       <h2 class="section-title">Sık Sorulan Sorular</h2>
       <div class="faq-grid">
         <div class="faq-item" onclick="this.classList.toggle('open')">
+          <h4>+ Bu simülasyon mu?</h4>
+          <p>Hayır — gerçek modda (<code>OAM_HUB_DEMO=false</code>) her aktivite kaydı gerçek mesh görevinden gelir. Ajanlar 8101–8103 portlarında canlı HTTP endpoint olarak çalışır; gateway onları çağırır, gelir deftere yazılır. Demo modu yalnızca geliştirme içindir.</p>
+        </div>
+        <div class="faq-item" onclick="this.classList.toggle('open')">
           <h4>+ Neye yatırım yapıyorum?</h4>
-          <p>Gerçek, çalışan AI ajanlarına — başıboş botlara değil. Her ajanın görev tanımı, başarı oranı, çağrı hacmi ve finansal raporu şeffaf şekilde listelenir.</p>
+          <p>Çalışan dijital işçilere — başıboş botlara değil. Her ajanın görev tanımı, başarı oranı, canlı endpoint durumu ve finansal raporu şeffaf şekilde listelenir.</p>
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <h4>+ Bonding curve nedir?</h4>
@@ -796,7 +851,7 @@ def render_hub_dashboard(
         </div>
       </div>
       <div style="text-align:center;margin-top:3rem">
-        <button class="btn-hero primary" onclick="openWalletModal()">Ajanları Görüntülemek İçin Cüzdan Bağla</button>
+        <button class="btn-hero primary" onclick="openWalletModal()">Dijital İşçilerimi Görüntüle</button>
       </div>
     </section>
   </div>
@@ -806,7 +861,7 @@ def render_hub_dashboard(
     <div class="splash-inner">
       <div class="splash-ring"></div>
       <h2>Ağa Bağlanılıyor</h2>
-      <p>Canlı ajanlar yükleniyor…</p>
+      <p>Canlı işçileriniz yükleniyor…</p>
     </div>
   </div>
 
@@ -825,9 +880,9 @@ def render_hub_dashboard(
           <div class="net-stat"><span>Toplam TVL</span><strong id="netTvl">—</strong></div>
           <div class="net-stat"><span>Toplam çağrı</span><strong id="netCalls">—</strong></div>
         </div>
-        <div class="feed-head">Canlı Aktivite Akışı</div>
+        <div class="feed-head">İşçi Aktivite Akışı</div>
         <div class="activity-feed" id="activityFeed">
-          <div class="feed-item"><span class="feed-meta">Ağ dinleniyor…</span></div>
+          <div class="feed-item"><span class="feed-meta">İşçiler hazır — görev bekleniyor</span></div>
         </div>
       </aside>
 
@@ -835,14 +890,14 @@ def render_hub_dashboard(
         <div class="welcome-bar">
           <div>
             <h2>Hoş geldiniz</h2>
-            <p id="marketWelcome">Yatırım pazarı · canlı ajan operasyonları</p>
+            <p id="marketWelcome">Dijital işçi portföyünüz · canlı faaliyet</p>
           </div>
           <div class="live-badge"><span class="live-dot"></span> CANLI</div>
         </div>
 
         <div class="stats-row">
           <div class="stat-card">
-            <div class="stat-label">Aktif Ajan</div>
+            <div class="stat-label">Aktif İşçi</div>
             <div class="stat-value emerald" id="statAgents">{agent_count}</div>
           </div>
           <div class="stat-card">
@@ -860,10 +915,10 @@ def render_hub_dashboard(
         </div>
 
         <div class="agents-section-head">
-          <h3>Canlı Ajanlar</h3>
+          <h3>Canlı İşçileriniz</h3>
           <div style="display:flex;gap:0.5rem;align-items:center">
-            <span class="live-badge"><span class="live-dot"></span> <span id="liveDataLabel">{agent_count} düğüm</span></span>
-            {'<button type="button" class="btn-trigger" onclick="triggerLiveRun()">▶ Görev Tetikle</button>' if not demo_mode else ''}
+            <span class="live-badge"><span class="live-dot"></span> <span id="liveDataLabel">{agent_count} işçi</span></span>
+            {'<button type="button" class="btn-trigger" onclick="triggerLiveRun()">▶ İşçiye Görev Ver</button>' if not demo_mode else ''}
           </div>
         </div>
         <div class="grid" id="agentGrid">{card_html or '<p style="color:var(--muted)">Henüz ajan yok.</p>'}</div>
@@ -911,7 +966,7 @@ def render_hub_dashboard(
         landing.classList.add('hidden');
         market.classList.add('visible');
         document.getElementById('marketWelcome').textContent =
-          'Portföy · ' + shortAddr(w) + ' · canlı ajan operasyonları';
+          'İşçi portföyü · ' + shortAddr(w) + ' · sizin adınıza çalışıyorlar';
         if (sessionStorage.getItem('hub_just_connected')) {{
           sessionStorage.removeItem('hub_just_connected');
           showMarketSplash();
@@ -979,8 +1034,8 @@ def render_hub_dashboard(
       updateAgentCards(data.agents);
       const label = document.getElementById('liveDataLabel');
       if (label && data.network) {{
-        label.textContent = data.network.reachable_agents + ' çevrimiçi · ' +
-          (data.network.real_event_count || 0) + ' gerçek işlem';
+        label.textContent = data.network.reachable_agents + ' işçi çevrimiçi · ' +
+          (data.network.real_event_count || 0) + ' gerçek faaliyet';
       }}
     }}
 
@@ -989,7 +1044,7 @@ def render_hub_dashboard(
         const res = await fetch('/hub/trigger-run', {{ method: 'POST' }});
         const data = await res.json();
         if (res.ok) {{
-          showToast('Görev tamamlandı · ' + data.tasks + ' task');
+          showToast('İşçiniz görevi tamamladı · ' + data.tasks + ' adım');
           refreshLive();
         }} else {{
           showToast(data.detail || 'Görev başarısız', true);
@@ -1027,19 +1082,19 @@ def render_hub_dashboard(
     function updateActivityFeed(feed) {{
       const el = document.getElementById('activityFeed');
       if (!feed || !feed.length) {{
-        el.innerHTML = '<div class="feed-item"><span class="feed-meta">Ajanlar hazır — görev bekleniyor</span></div>';
+        el.innerHTML = '<div class="feed-item"><span class="feed-meta">İşçiler hazır — sizin adınıza görev bekliyorlar</span></div>';
         return;
       }}
       const isNew = feed.length > lastEventCount;
       lastEventCount = feed.length;
       el.innerHTML = feed.slice(0, 12).map((item, i) => {{
-        const name = agentNameMap[item.agent_id] || item.agent_id.split('.')[0];
+        const name = item.worker_name || agentNameMap[item.agent_id] || item.agent_id.split('.')[0];
         const cls = i === 0 && isNew ? 'feed-item new' : 'feed-item';
-        const sim = item.simulated ? ' · <span style="color:#fbbf24">DEMO</span>' : '';
-        const status = item.success ? '✓ görev tamamlandı' : '✗ hata';
+        const sim = item.simulated ? ' · <span style="color:#fbbf24">DEMO</span>' : ' · <span style="color:#6ee7b7">CANLI</span>';
+        const headline = item.message || (item.success ? name + ' görev tamamladı' : name + ' görev denedi');
         return `<div class="${{cls}}">
-          <span class="feed-agent">${{name}}</span> · ${{status}}${{sim}}
-          <div class="feed-meta">+$${{item.staking_usd?.toFixed(4) || item.gross_usd?.toFixed(4)}} staking · ${{Math.round(item.latency_ms)}}ms · ${{item.tx_hash?.slice(0,10)}}…</div>
+          <span class="feed-agent">${{headline}}</span>${{sim}}
+          <div class="feed-meta">+$${{item.staking_usd?.toFixed(4) || item.gross_usd?.toFixed(4)}} payınız · ${{Math.round(item.latency_ms)}}ms · ${{item.tx_hash?.slice(0,10)}}…</div>
         </div>`;
       }}).join('');
     }}
@@ -1054,10 +1109,10 @@ def render_hub_dashboard(
         const lat = card.querySelector('.status-latency');
         dot.className = 'status-dot ' + a.status;
         const labels = {{
-          active: a.reachable ? 'Çevrimiçi · endpoint yanıt veriyor' : 'Kayıtlı · endpoint kapalı',
-          standby: 'Kayıtlı · henüz görev yok',
+          active: a.reachable ? 'Çalışıyor · endpoint canlı' : 'Kayıtlı · endpoint kapalı',
+          standby: 'Hazır · görev bekliyor',
           degraded: 'Düşük performans',
-          offline: 'Çevrimdışı · ajan yanıt vermiyor',
+          offline: 'Çevrimdışı · yanıt vermiyor',
         }};
         text.textContent = labels[a.status] || a.status;
         lat.textContent = a.latency_ms > 0 ? Math.round(a.latency_ms) + 'ms' : '';
