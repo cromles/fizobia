@@ -29,7 +29,7 @@ Domain **zorunlu değil**. Sunucu IP adresi ile Hub çalışır.
 # Sunucuda
 git clone https://github.com/cromles/fizobia.git
 cd fizobia
-git checkout cursor/real-worker-x402-0b7c
+git checkout main
 
 bash scripts/deploy_server.sh
 nano .env.server   # OAM_PUBLIC_BASE_URL=http://SUNUCU_IP:8787

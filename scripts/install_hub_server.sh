@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Sunucuda root olarak çalıştırın: bash install_on_89.47.113.150.sh
+# Hub sunucusunda root olarak: HUB_IP=1.2.3.4 bash scripts/install_hub_server.sh
+# veya: bash scripts/install_hub_server.sh 1.2.3.4
 set -euo pipefail
 
-HUB_IP="89.47.113.150"
-HUB_PORT="8787"
-INSTALL_DIR="/opt/fizobia"
-REPO="https://github.com/cromles/fizobia.git"
-BRANCH="main"
+HUB_IP="${HUB_IP:-${1:-}}"
+HUB_PORT="${HUB_PORT:-8787}"
+INSTALL_DIR="${INSTALL_DIR:-/opt/fizobia}"
+REPO="${REPO:-https://github.com/cromles/fizobia.git}"
+BRANCH="${BRANCH:-main}"
+
+if [[ -z "${HUB_IP}" ]]; then
+  echo "Kullanım: HUB_IP=SUNUCU_IP bash scripts/install_hub_server.sh"
+  echo "   veya: bash scripts/install_hub_server.sh SUNUCU_IP"
+  exit 1
+fi
 
 echo ""
 echo "  OAM Hub kurulumu — ${HUB_IP}"
@@ -40,23 +47,20 @@ OAM_HUB_LIVE_INTERVAL=30
 OAM_X402_ENABLED=true
 OAM_X402_DEV_ACCEPT_PROOF=true
 OAM_X402_MARKET_PULSE_PRICE=0.05
-OAM_CORS_ORIGINS=http://${HUB_IP}:${HUB_PORT},http://127.0.0.1:${HUB_PORT}
-OAM_EMBED_FRAME_ORIGINS=http://${HUB_IP}:${HUB_PORT}
+OAM_CORS_ORIGINS=http://${HUB_IP}:${HUB_PORT},http://127.0.0.1:${HUB_PORT},https://zinesh.com
+OAM_EMBED_FRAME_ORIGINS=http://${HUB_IP}:${HUB_PORT},https://zinesh.com
 OAM_ONCHAIN_ENABLED=false
 EOF
 
 chmod +x scripts/*.sh
 
-# Firewall (ufw varsa)
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
   ufw allow "${HUB_PORT}/tcp" || true
   ufw allow 8101:8110/tcp || true
 fi
 
-# Eski süreçleri kapat
 lsof -ti ":${HUB_PORT}" 2>/dev/null | xargs -r kill -9 || true
 
-# systemd servisi
 cp deploy/oam-hub.service /etc/systemd/system/oam-hub.service
 sed -i "s|WorkingDirectory=.*|WorkingDirectory=${INSTALL_DIR}|" /etc/systemd/system/oam-hub.service
 sed -i "s|EnvironmentFile=.*|EnvironmentFile=${INSTALL_DIR}/.env.server|" /etc/systemd/system/oam-hub.service

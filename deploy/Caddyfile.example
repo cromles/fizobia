@@ -1,8 +1,6 @@
-# Caddy — otomatik HTTPS (.tr dahil tüm domainler)
-# Kurulum: sudo apt install caddy
-# Kopyala: sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
-# hub.sizindomain.tr → kendi subdomain'iniz
+# Caddy — otomatik HTTPS (.tr dahil)
+# sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
 
-hub.sizindomain.tr {
+axium.com.tr, www.axium.com.tr {
     reverse_proxy 127.0.0.1:8787
 }
