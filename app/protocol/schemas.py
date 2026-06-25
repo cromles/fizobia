@@ -65,3 +65,27 @@ class AdaptationResult(BaseModel):
     applied_mappings: Dict[str, str] = Field(default_factory=dict)
     mismatches: List[SchemaMismatch] = Field(default_factory=list)
     error: Optional[str] = None
+
+
+class ExecutionResult(BaseModel):
+    plan_id: str
+    task_results: Dict[str, Any] = Field(default_factory=dict)
+    proof_of_execution: Dict[str, bool] = Field(default_factory=dict)
+
+
+class RegisterAgentRequest(BaseModel):
+    manifest: AgentManifest
+
+
+class CompilePlanRequest(BaseModel):
+    user_goal: str
+    initial_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ExecutePlanRequest(BaseModel):
+    plan: ExecutionPlan
+
+
+class RunGoalRequest(BaseModel):
+    user_goal: str
+    initial_data: Dict[str, Any] = Field(default_factory=dict)

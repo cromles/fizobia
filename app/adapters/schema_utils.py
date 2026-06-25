@@ -152,3 +152,21 @@ def apply_schema_defaults(data: Dict[str, Any], target_schema: Dict[str, Any]) -
         if field not in result and "default" in field_schema:
             result[field] = field_schema["default"]
     return result
+
+
+def data_satisfies_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> bool:
+    """Verilen verinin şemanın zorunlu alanlarını karşılayıp karşılamadığını kontrol eder."""
+    if not schema:
+        return True
+    required = _required_fields(schema)
+    return all(field in data for field in required)
+
+
+def can_bridge_schemas(
+    source_schema: Dict[str, Any],
+    target_schema: Dict[str, Any],
+) -> bool:
+    compatible, _ = analyze_schema_compatibility(source_schema, target_schema)
+    if compatible:
+        return True
+    return bool(infer_field_mapping(source_schema, target_schema))

@@ -8,7 +8,17 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import httpx
 
 from app.adapters.layer import DataAdapterLayer
-from app.protocol.schemas import AgentCapability, AgentManifest, ExecutionPlan, TaskNode
+from app.matching.semantic_matcher import SemanticCapabilityMatcher
+from app.planning.plan_compiler import PlanCompiler
+from app.protocol.schemas import (
+    AgentCapability,
+    AgentManifest,
+    ExecutionPlan,
+    ExecutionResult,
+    TaskNode,
+)
+from app.registry.agent_registry import AgentRegistry, InMemoryAgentRegistry
+from app.validation.execution_validator import ExecutionValidator
 
 logger = logging.getLogger(__name__)
 
@@ -17,16 +27,22 @@ MAX_DAG_ITERATIONS_MULTIPLIER = 10
 
 
 class OpenAgentMeshRouter:
-    def __init__(self, adapter_layer: Optional[DataAdapterLayer] = None):
-        # Canlı sistemde bu hafıza Redis veya dağıtık bir DHT olacak
-        self.registry: Dict[str, AgentManifest] = {}
+    def __init__(
+        self,
+        registry: Optional[AgentRegistry] = None,
+        adapter_layer: Optional[DataAdapterLayer] = None,
+        matcher: Optional[SemanticCapabilityMatcher] = None,
+        plan_compiler: Optional[PlanCompiler] = None,
+        validator: Optional[ExecutionValidator] = None,
+    ):
+        self.registry = registry or InMemoryAgentRegistry()
         self.adapter_layer = adapter_layer or DataAdapterLayer()
+        self.matcher = matcher or SemanticCapabilityMatcher()
+        self.plan_compiler = plan_compiler or PlanCompiler(matcher=self.matcher)
+        self.validator = validator or ExecutionValidator()
 
     def register_agent(self, manifest: AgentManifest) -> bool:
-        if manifest.agent_id in self.registry:
-            return False
-        self.registry[manifest.agent_id] = manifest
-        return True
+        return self.registry.register(manifest)
 
     def get_capability(
         self, agent_id: str, capability_name: str
@@ -39,67 +55,38 @@ class OpenAgentMeshRouter:
                 return cap
         return None
 
+    def list_agents(self) -> List[AgentManifest]:
+        return self.registry.list_manifests()
+
     def _find_best_agent_for_need(
         self, need: str, current_input_shape: Dict[str, Any]
     ) -> TaskNode:
-        """
-        Gelişmiş eşleşme katmanı: İhtiyaca en uygun ajanı ve onun girdi şemasını doğrular.
-        """
-        best: Optional[Tuple[float, TaskNode]] = None
-
-        for agent_id, manifest in self.registry.items():
-            for cap in manifest.capabilities:
-                score = self._match_score(need, cap)
-                if score <= 0:
-                    continue
-
-                candidate = TaskNode(
-                    task_id=f"task_{uuid.uuid4().hex[:12]}",
-                    agent_id=agent_id,
-                    endpoint=manifest.endpoint,
-                    capability_name=cap.name,
-                    input_data=current_input_shape,
-                    input_schema=cap.input_schema,
-                    output_schema=cap.output_schema,
-                    depends_on=[],
-                )
-                if best is None or score > best[0]:
-                    best = (score, candidate)
-
-        if best is None:
+        capabilities = self.registry.list_capabilities()
+        match = self.matcher.find_best_capability(need, capabilities)
+        if match is None:
             raise ValueError(
                 f"Kritik Hata: '{need}' ihtiyacını karşılayacak hiçbir ajan ağda bulunamadı!"
             )
-        return best[1]
-
-    @staticmethod
-    def _match_score(need: str, capability: AgentCapability) -> float:
-        need_lower = need.lower()
-        if capability.name.lower() == need_lower:
-            return 1.0
-        if need_lower in capability.name.lower():
-            return 0.8
-        if need_lower in capability.description.lower():
-            return 0.6
-        return 0.0
+        item, _ = match
+        return TaskNode(
+            task_id=f"task_{uuid.uuid4().hex[:12]}",
+            agent_id=item.agent_id,
+            endpoint=item.endpoint,
+            capability_name=item.capability.name,
+            input_data=current_input_shape,
+            input_schema=item.capability.input_schema,
+            output_schema=item.capability.output_schema,
+            depends_on=[],
+        )
 
     async def compile_plan(
         self, user_goal: str, initial_data: Dict[str, Any]
     ) -> ExecutionPlan:
-        """
-        Doğal dil hedefini analiz eder ve ajanların yetenek matrisine göre DAG oluşturur.
-        """
-        execution_graph: List[TaskNode] = []
-
-        if "analiz" in user_goal.lower():
-            step1 = self._find_best_agent_for_need("data_fetcher", initial_data)
-            execution_graph.append(step1)
-
-            step2 = self._find_best_agent_for_need("synthesizer", {})
-            step2.depends_on.append(step1.task_id)
-            execution_graph.append(step2)
-
-        return ExecutionPlan(plan_id=f"plan_{uuid.uuid4().hex[:12]}", graph=execution_graph)
+        return await self.plan_compiler.compile_plan(
+            user_goal=user_goal,
+            initial_data=initial_data,
+            registry=self.registry,
+        )
 
     def _collect_ready_nodes(
         self, graph: List[TaskNode], completed_tasks: Set[str]
@@ -126,7 +113,8 @@ class OpenAgentMeshRouter:
             dep_output = results.get(dep_id, {})
 
             if not isinstance(dep_output, dict) or "error" in dep_output:
-                prepared_input.update(dep_output if isinstance(dep_output, dict) else {})
+                if isinstance(dep_output, dict):
+                    prepared_input.update(dep_output)
                 continue
 
             if dep_node and dep_node.output_schema and node.input_schema:
@@ -169,9 +157,9 @@ class OpenAgentMeshRouter:
                 json={"capability": node.capability_name, "data": prepared_input},
                 timeout=10.0,
             )
-            if response.status_code == 200:
-                return response.json()
-            return {"error": f"Agent HTTP {response.status_code}"}
+            if response.status_code != 200:
+                return {"error": f"Agent HTTP {response.status_code}"}
+            return response.json()
         except Exception as exc:
             return {"error": f"Bağlantı hatası: {str(exc)}"}
 
@@ -179,15 +167,45 @@ class OpenAgentMeshRouter:
         manifest = self.registry.get(agent_id)
         if manifest is None:
             return
-        manifest.reliability_score = max(
-            0.0, manifest.reliability_score - RELIABILITY_PENALTY
-        )
+        new_score = max(0.0, manifest.reliability_score - RELIABILITY_PENALTY)
+        self.registry.update_reliability(agent_id, new_score)
 
     async def execute_plan(self, plan: ExecutionPlan) -> Dict[str, Any]:
-        """
-        Oluşturulan görev ağacını (DAG) asenkron olarak ve bağımlılık sırasına göre yürütür.
-        Hazır düğümler paralel tetiklenir; adaptör katmanı bağımlılık çıktılarını dönüştürür.
-        """
+        raw = await self._execute_plan_internal(plan)
+        return raw
+
+    async def execute_plan_verified(self, plan: ExecutionPlan) -> ExecutionResult:
+        task_results = await self._execute_plan_internal(plan)
+        validated: Dict[str, Any] = {}
+        proofs: Dict[str, bool] = {}
+
+        node_index = {node.task_id: node for node in plan.graph}
+        for task_id, output in task_results.items():
+            node = node_index[task_id]
+            valid, mismatches = self.validator.validate_output(
+                output if isinstance(output, dict) else {"error": "invalid_output"},
+                node.output_schema,
+            )
+            proofs[task_id] = valid
+            if not valid and isinstance(output, dict) and "error" not in output:
+                validated[task_id] = {
+                    "error": "proof_of_execution_failed",
+                    "mismatches": [m.model_dump() for m in mismatches],
+                    "raw_output": output,
+                }
+                self._penalize_reliability(node.agent_id)
+            else:
+                validated[task_id] = output
+                if isinstance(output, dict) and "error" in output:
+                    self._penalize_reliability(node.agent_id)
+
+        return ExecutionResult(
+            plan_id=plan.plan_id,
+            task_results=validated,
+            proof_of_execution=proofs,
+        )
+
+    async def _execute_plan_internal(self, plan: ExecutionPlan) -> Dict[str, Any]:
         if not plan.graph:
             return {}
 
@@ -234,3 +252,9 @@ class OpenAgentMeshRouter:
                         self._penalize_reliability(node.agent_id)
 
         return results
+
+    async def run_goal(
+        self, user_goal: str, initial_data: Dict[str, Any]
+    ) -> ExecutionResult:
+        plan = await self.compile_plan(user_goal, initial_data)
+        return await self.execute_plan_verified(plan)
