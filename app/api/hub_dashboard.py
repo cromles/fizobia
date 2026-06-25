@@ -113,13 +113,13 @@ def _render_agent_card(card: AgentIdentityCard, index: int) -> str:
         <label class="field-label">Cüzdan</label>
         <input type="text" class="wallet field" placeholder="0x…" autocomplete="off" />
         <label class="field-label">Miktar (USDC)</label>
-        <div class="stake-actions">
-          <input type="number" class="amount field" placeholder="100" min="1" step="1" />
-          <button class="btn-primary" onclick="stake('{agent_id}', this)">
+        <input type="number" class="amount field field-inline" placeholder="100" min="1" step="1" />
+        <div class="stake-buttons">
+          <button type="button" class="btn-primary" onclick="stake('{agent_id}', this)">
             <span class="btn-text">Stake</span>
             <span class="btn-loader"></span>
           </button>
-          <button class="btn-ghost" onclick="claim('{agent_id}', this)">Ödül Al</button>
+          <button type="button" class="btn-ghost" onclick="claim('{agent_id}', this)">Ödül Al</button>
         </div>
         <p class="stake-hint">Bonding curve · {_esc(p.token_symbol)} dinamik fiyatlandırma</p>
       </div>
@@ -205,11 +205,14 @@ def render_hub_dashboard(cards: List[AgentIdentityCard], split: RevenueSplitConf
       to {{ transform: translate(40px, 30px) scale(1.08); }}
     }}
 
-    /* Hero */
+    /* Hero sticky */
     .hero {{
-      position: relative; z-index: 1;
-      padding: 3rem 2.5rem 2rem;
-      max-width: 1440px; margin: 0 auto;
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(20px);
+      background: rgba(5, 5, 8, 0.82);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 2.5rem 2.5rem 1.5rem;
+      max-width: 100%;
     }}
     .hero-top {{
       display: flex; justify-content: space-between; align-items: flex-start;
@@ -286,7 +289,7 @@ def render_hub_dashboard(cards: List[AgentIdentityCard], split: RevenueSplitConf
     }}
     .grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
       gap: 1.75rem;
     }}
 
@@ -505,11 +508,19 @@ def render_hub_dashboard(cards: List[AgentIdentityCard], split: RevenueSplitConf
       background: rgba(0,0,0,0.5);
     }}
     .field::placeholder {{ color: rgba(240,236,228,0.2); }}
-    .stake-actions {{ display: flex; gap: 0.5rem; }}
+    .field-inline {{ margin-bottom: 0.65rem; }}
+    .stake-buttons {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem;
+    }}
     .btn-primary, .btn-ghost {{
-      flex: 1; padding: 0.7rem 1rem; border-radius: 10px;
-      font-family: inherit; font-size: 0.8rem; font-weight: 600;
-      letter-spacing: 0.05em; cursor: pointer;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-family: inherit; font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.04em; cursor: pointer;
+      white-space: nowrap;
       transition: transform 0.3s var(--ease-spring), box-shadow 0.3s, opacity 0.3s;
       position: relative; overflow: hidden;
     }}
