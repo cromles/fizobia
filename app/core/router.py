@@ -8,7 +8,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import httpx
 
 from app.adapters.layer import DataAdapterLayer
-from app.matching.factory import create_matcher, matcher_backend_name
+from app.matching.factory import create_matcher
+from app.network.factory import create_nat_coordinator, create_sandbox_executor
+from app.network.nat import NATTraversalCoordinator
+from app.sandbox.executor import SandboxExecutor
 from app.planning.factory import create_decomposer
 from app.planning.plan_compiler import PlanCompiler
 from app.protocol.schemas import (
@@ -32,9 +35,11 @@ class OpenAgentMeshRouter:
         self,
         registry: Optional[AgentRegistry] = None,
         adapter_layer: Optional[DataAdapterLayer] = None,
-        matcher: Optional[SemanticCapabilityMatcher] = None,
+        matcher: Optional[Any] = None,
         plan_compiler: Optional[PlanCompiler] = None,
         validator: Optional[ExecutionValidator] = None,
+        nat_coordinator: Optional[NATTraversalCoordinator] = None,
+        sandbox: Optional[SandboxExecutor] = None,
     ):
         self.registry = registry or InMemoryAgentRegistry()
         self.adapter_layer = adapter_layer or DataAdapterLayer()
@@ -44,6 +49,8 @@ class OpenAgentMeshRouter:
             decomposer=create_decomposer(),
         )
         self.validator = validator or ExecutionValidator()
+        self.nat_coordinator = nat_coordinator or create_nat_coordinator()
+        self.sandbox = sandbox or create_sandbox_executor()
 
     def register_agent(self, manifest: AgentManifest) -> bool:
         return self.registry.register(manifest)
@@ -125,12 +132,18 @@ class OpenAgentMeshRouter:
                 continue
 
             if dep_node and dep_node.output_schema and node.input_schema:
+                source_cap = self.get_capability(
+                    dep_node.agent_id, dep_node.capability_name
+                )
+                target_cap = self.get_capability(node.agent_id, node.capability_name)
                 adaptation = await self.adapter_layer.bridge(
                     source_data=dep_output,
                     source_output_schema=dep_node.output_schema,
                     target_input_schema=node.input_schema,
                     source_capability=dep_node.capability_name,
                     target_capability=node.capability_name,
+                    source_cap=source_cap,
+                    target_cap=target_cap,
                 )
                 if adaptation.success:
                     prepared_input.update(adaptation.data)
@@ -153,20 +166,24 @@ class OpenAgentMeshRouter:
         node: TaskNode,
         prepared_input: Dict[str, Any],
     ) -> Dict[str, Any]:
+        manifest = self.registry.get(node.agent_id)
+        endpoint = node.endpoint
+        if manifest and self.nat_coordinator:
+            endpoint = self.nat_coordinator.resolve_execution_endpoint(manifest)
+
         logger.info(
-            "[OAM] %s tetikleniyor -> Yetenek: %s",
+            "[OAM] %s tetikleniyor -> %s Yetenek: %s",
             node.agent_id,
+            endpoint,
             node.capability_name,
         )
         try:
-            response = await client.post(
-                f"{node.endpoint.rstrip('/')}/execute",
-                json={"capability": node.capability_name, "data": prepared_input},
+            return await self.sandbox.execute(
+                endpoint=endpoint,
+                capability=node.capability_name,
+                data=prepared_input,
                 timeout=10.0,
             )
-            if response.status_code != 200:
-                return {"error": f"Agent HTTP {response.status_code}"}
-            return response.json()
         except Exception as exc:
             return {"error": f"Bağlantı hatası: {str(exc)}"}
 

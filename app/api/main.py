@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.agents.bootstrap import bootstrap_default_agents
@@ -17,13 +17,19 @@ from app.protocol.schemas import (
     RegisterAgentRequest,
     RunGoalRequest,
 )
+from app.config import settings
 from app.matching.factory import matcher_backend_name
+from app.network.factory import create_nat_coordinator, get_public_discovery, get_signaling_hub
+from app.network.schemas import PublicAnnounceRequest, StunConfigResponse
 from app.planning.factory import planner_backend_name
 from app.registry.factory import create_registry, registry_backend_name
 
 router_mesh = OpenAgentMeshRouter()
 peer_discovery = create_discovery()
 discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
+nat_coordinator = create_nat_coordinator()
+signaling_hub = get_signaling_hub()
+public_discovery = get_public_discovery()
 
 
 @asynccontextmanager
@@ -63,6 +69,10 @@ async def health() -> Dict[str, Any]:
         "discovery": discovery_backend_name(peer_discovery),
         "planner": planner_backend_name(router_mesh.plan_compiler.decomposer),
         "matcher": matcher_backend_name(router_mesh.matcher),
+        "sandbox": getattr(router_mesh.sandbox, "backend_name", "unknown"),
+        "network": "OAM-NAT-v1",
+        "signaling_peers": len(signaling_hub.connected_peers),
+        "public_peers": len(public_discovery.list_network_records()),
     }
     ping = getattr(router_mesh.registry, "ping", None)
     if callable(ping):
@@ -109,7 +119,8 @@ async def dashboard() -> str:
   <p>Registry: <strong>{len(agents)}</strong> ajan · DHT: <strong>{len(peers)}</strong> peer</p>
   <p>
     <a href="/agents">/agents</a> (JSON) ·
-    <a href="/discovery/peers">/discovery/peers</a> ·
+    <a href="/network/stun">/network/stun</a> ·
+    <a href="/network/peers">/network/peers</a> ·
     <a href="/health">/health</a> ·
     <a href="/docs">/docs</a>
   </p>
@@ -164,6 +175,37 @@ async def list_discovered_peers(
 async def sync_discovery() -> Dict[str, Any]:
     count = discovery_sync.sync_once()
     return {"synced": count}
+
+
+@app.get("/network/stun", response_model=StunConfigResponse)
+async def network_stun_config() -> StunConfigResponse:
+    config = nat_coordinator.stun_config()
+    return StunConfigResponse(**config)
+
+
+@app.post("/network/announce")
+async def network_public_announce(request: PublicAnnounceRequest) -> Dict[str, Any]:
+    record = nat_coordinator.register_public_peer(request)
+    router_mesh.upsert_agent(record.manifest)
+    peer_discovery.announce(record.manifest, ttl=request.ttl)
+    return {
+        "announced": True,
+        "agent_id": record.agent_id,
+        "local_endpoint": record.local_endpoint,
+        "public_endpoint": record.public_endpoint,
+        "reachable_endpoint": record.manifest.endpoint,
+    }
+
+
+@app.get("/network/peers")
+async def network_public_peers() -> JSONResponse:
+    records = public_discovery.list_network_records()
+    return JSONResponse([r.model_dump() for r in records])
+
+
+@app.websocket("/network/signal/{peer_id}")
+async def network_signal(websocket: WebSocket, peer_id: str) -> None:
+    await signaling_hub.listen(peer_id, websocket)
 
 
 @app.post("/plans/compile", response_model=ExecutionPlan)

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from app.protocol.schemas import AgentCapability
 
+from app.adapters.shapeshifter import ManifestShapeshifter
 from app.adapters.schema_utils import (
     analyze_schema_compatibility,
     apply_field_mapping,
@@ -25,8 +26,8 @@ class DataAdapterLayer:
     """
 
     def __init__(self, custom_mappings: Optional[Dict[str, Dict[str, str]]] = None):
-        # capability_pair -> {source_field: target_field}
         self._custom_mappings = custom_mappings or {}
+        self._shapeshifter = ManifestShapeshifter()
 
     def register_mapping(
         self,
@@ -48,6 +49,8 @@ class DataAdapterLayer:
         target_input_schema: Dict[str, Any],
         source_capability: str = "",
         target_capability: str = "",
+        source_cap: Optional[AgentCapability] = None,
+        target_cap: Optional[AgentCapability] = None,
     ) -> AdaptationResult:
         compatible, mismatches = analyze_schema_compatibility(
             source_output_schema,
@@ -64,10 +67,13 @@ class DataAdapterLayer:
             )
 
         pair_key = self._pair_key(source_capability, target_capability)
-        mapping = self._custom_mappings.get(pair_key) or infer_field_mapping(
-            source_output_schema,
-            target_input_schema,
-        )
+        mapping = self._custom_mappings.get(pair_key)
+        if not mapping and source_cap is not None and target_cap is not None:
+            mapping = self._shapeshifter.infer_mapping_from_manifests(
+                source_cap, target_cap
+            )
+        if not mapping:
+            mapping = infer_field_mapping(source_output_schema, target_input_schema)
 
         if not mapping:
             return AdaptationResult(

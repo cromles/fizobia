@@ -138,6 +138,32 @@ class MeshClient:
             {"manifest": manifest.model_dump(), "ttl": ttl},
         )
 
+    async def announce_public(
+        self,
+        manifest: AgentManifest,
+        local_endpoint: str,
+        public_endpoint: str | None = None,
+        ice_candidates: list[str] | None = None,
+        ttl: int = 120,
+    ) -> Dict[str, Any]:
+        """NAT arkasından küresel DHT havuzuna duyuru."""
+        return await self._post(
+            "/network/announce",
+            {
+                "manifest": manifest.model_dump(),
+                "local_endpoint": local_endpoint,
+                "public_endpoint": public_endpoint,
+                "ice_candidates": ice_candidates or [],
+                "ttl": ttl,
+            },
+        )
+
+    async def fetch_stun_config(self) -> Dict[str, Any]:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(f"{self.gateway_url}/network/stun")
+            response.raise_for_status()
+            return response.json()
+
     async def heartbeat_loop(
         self,
         manifest: AgentManifest,
