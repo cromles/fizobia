@@ -1,0 +1,11 @@
+{
+  "folders": [
+    { "path": ".", "name": "OAM Gateway (fizobia)" },
+    { "path": "zinesh-web", "name": "Zinesh Web Site" }
+  ],
+  "settings": {
+    "files.associations": {
+      "*.mdc": "markdown"
+    }
+  }
+}

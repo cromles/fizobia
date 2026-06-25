@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Hub — Zinesh Dijital İşçiler</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/zinesh.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <div class="logo">Zinesh Protocol</div>
+    <div class="nav-links">
+      <a href="index.html">Ana Sayfa</a>
+      <a href="protokol.html">Protokol</a>
+      <a href="isciler.html">İşçiler</a>
+      <a href="hub.html" class="active">Hub</a>
+    </div>
+  </nav>
+
+  <main style="max-width:1200px">
+    <p class="eyebrow">OAM Hub embed</p>
+    <h1 style="font-family:var(--serif);font-size:1.8rem;margin-bottom:0.5rem">İşçi pazarı</h1>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem">
+      MetaMask · stake · canlı aktivite — panel Hub motorundan gelir.
+    </p>
+    <iframe id="hubFrame" class="hub-frame" title="Zinesh Hub"></iframe>
+  </main>
+
+  <script src="js/hub-client.js"></script>
+  <script>
+    (async () => {
+      const frame = document.getElementById('hubFrame');
+      try {
+        const cfg = await ZineshHub.getConfig();
+        frame.src = cfg.embed_url;
+      } catch {
+        frame.src = ZineshHub.getApiBase() + '/hub/embed';
+      }
+    })();
+  </script>
+</body>
+</html>

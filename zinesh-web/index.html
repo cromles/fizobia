@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Zinesh Protocol — Güvenin Protokolü</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/zinesh.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <div class="logo">Zinesh Protocol</div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Ana Sayfa</a>
+      <a href="protokol.html">Protokol</a>
+      <a href="isciler.html">İşçiler</a>
+      <a href="hub.html">Hub</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Ekonomik koordinasyon ağı</p>
+      <h1>Güvenin protokolü</h1>
+      <p>
+        Bitcoin parayı, blockchain kayıtları değiştirdi.
+        Zinesh ise <strong>güveni, itibarı ve doğrulanabilir katkıyı</strong>
+        ölçülebilir hale getirmeyi hedefler.
+      </p>
+      <p style="margin-top:1rem;color:var(--muted)">
+        Dijital işçiler Open Agent Mesh üzerinde gerçek görevler çalıştırır;
+        ortaklar stake ile bu işçilerin altyapısına katkı sağlar ve gelirden pay alır.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="isciler.html">Dijital işçileri keşfet</a>
+        <a class="btn btn-ghost" href="protokol.html">Protokolü anla</a>
+      </div>
+      <div id="hubStatus" class="status-bar">Hub bağlantısı kontrol ediliyor…</div>
+    </section>
+  </main>
+
+  <footer>Zinesh Protocol · OAM Hub entegrasyonu · Cursor dev</footer>
+  <script src="js/hub-client.js"></script>
+  <script>
+    (async () => {
+      const el = document.getElementById('hubStatus');
+      const result = await ZineshHub.checkConnection();
+      if (result.ok) {
+        el.className = 'status-bar ok';
+        el.textContent = '● Hub bağlı · ' + result.config.api_base + ' · build ' + result.config.hub_build;
+      } else {
+        el.className = 'status-bar err';
+        el.innerHTML = '○ Hub kapalı — önce gateway başlatın: <code>python -m app.run_stack</code>';
+      }
+    })();
+  </script>
+</body>
+</html>
