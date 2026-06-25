@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
 
 from app.api.hub_dashboard import render_hub_dashboard
 from app.config import settings
@@ -31,9 +32,22 @@ from app.investment.schemas import (
     X402RevenueRequest,
 )
 from app.investment.x402 import parse_x402_payment, verify_webhook_secret
+from app.investment.x402_gateway import (
+    PaymentRequiredError,
+    build_payment_required,
+    list_x402_services,
+    market_pulse_price_usd,
+    parse_payment_proof,
+)
 from app.protocol.schemas import AgentManifest
+from app.workers.market_pulse import AGENT_ID, fetch_market_snapshot_async
 
-HUB_BUILD = "2026.06.25-nebula-ui"
+
+class MarketPulseAnalyzeRequest(BaseModel):
+    symbol: str = Field(default="bitcoin", description="btc, eth, sol, bitcoin, ...")
+
+
+HUB_BUILD = "2026.06.25-hub-pulse-v4"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -53,6 +67,8 @@ def _hub_html_response(html: str, *, embed: bool = False) -> HTMLResponse:
     headers = {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
         "Pragma": "no-cache",
+        "Expires": "0",
+        "Surrogate-Control": "no-store",
         "X-Hub-Build": HUB_BUILD,
     }
     if embed:
@@ -127,6 +143,8 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "discovery": f"{base}/hub/discovery",
             "partnership_stake": f"{base}/hub/partnership/stake",
             "x402_revenue": f"{base}/hub/revenue/x402",
+            "x402_services": f"{base}/hub/x402/services",
+            "x402_market_pulse": f"{base}/hub/x402/market-pulse/analyze",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -288,6 +306,94 @@ async def ingest_x402_revenue(
         "staking_usd": event.staking_usd,
         "source": event.source.value,
         "tx_hash": event.tx_hash,
+    }
+
+
+@router.get("/x402/services")
+async def x402_services_catalog() -> Dict[str, Any]:
+    """x402 ödenebilir hizmet kataloğu."""
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+    return list_x402_services()
+
+
+@router.get("/x402/market-pulse")
+async def x402_market_pulse_discover(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Market-Pulse x402 keşif — ödeme gereksinimleri."""
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+    return {
+        "service": "market-pulse",
+        "agent_id": AGENT_ID,
+        "real_data": True,
+        "data_source": "coingecko",
+        "price_usdc": market_pulse_price_usd(),
+        "symbol": symbol,
+        "payment_required": build_payment_required(symbol),
+        "analyze": {
+            "method": "POST",
+            "url": f"{settings.public_base_url.rstrip('/')}/hub/x402/market-pulse/analyze",
+            "headers_without_payment": "402 Payment Required",
+            "headers_with_payment": "X-Payment-Proof veya X-PAYMENT",
+        },
+    }
+
+
+@router.post("/x402/market-pulse/analyze")
+async def x402_market_pulse_analyze(
+    request: MarketPulseAnalyzeRequest,
+    x_payment: str | None = Header(default=None, alias="X-PAYMENT"),
+    x_payment_proof: str | None = Header(default=None, alias="X-Payment-Proof"),
+) -> Any:
+    """
+    Gerçek Market-Pulse analizi — x402 ödeme zorunlu.
+    Ödeme yoksa HTTP 402 + accepts döner.
+    """
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+
+    symbol = request.symbol
+    proof_header = x_payment_proof if settings.x402_dev_accept_proof else None
+
+    try:
+        proof = parse_payment_proof(x_payment, proof_header)
+    except PaymentRequiredError:
+        return JSONResponse(status_code=402, content=build_payment_required(symbol))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    mesh = _mesh()
+    manifest = mesh.registry.get(AGENT_ID)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="Market-Pulse kayıtlı değil")
+
+    try:
+        result = await fetch_market_snapshot_async(symbol)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"CoinGecko hatası: {exc}") from exc
+
+    hub = get_investment_hub()
+    task_id = f"x402_{proof['payment_id']}"
+    hub.record_external_revenue(
+        manifest,
+        task_id,
+        proof["amount_usdc"],
+        tx_hash=proof.get("tx_hash"),
+        payer=proof.get("payer"),
+    )
+    event = hub.revenue.list_events(agent_id=AGENT_ID, limit=1)[-1]
+
+    return {
+        "paid": True,
+        "payment": proof,
+        "analysis": result,
+        "revenue": {
+            "gross_usd": event.gross_usd,
+            "staking_usd": event.staking_usd,
+            "source": event.source.value,
+            "task_id": task_id,
+        },
+        "message": "Gerçek CoinGecko verisi — x402 ödeme kaydedildi, staking havuzuna aktarıldı",
     }
 
 

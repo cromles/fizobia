@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 from typing import Dict, List, Optional
 
-from app.api.hub_ui.cards import render_worker_card
+from app.api.hub_ui.cards import render_featured_worker_card, render_worker_card
 from app.api.hub_ui.helpers import esc
 from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
+from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
 
-HUB_UI_BUILD = "2026.06.25-nebula-ui"
+HUB_UI_BUILD = "2026.06.25-hub-pulse-v4"
 
 
 def render_hub_dashboard(
@@ -26,19 +27,31 @@ def render_hub_dashboard(
 ) -> str:
     manifests = manifests or {}
     agent_count = len(cards)
+
+    featured_card = next((c for c in cards if c.profile.agent_id == MARKET_PULSE_ID), None)
+    other_cards = [c for c in cards if c.profile.agent_id != MARKET_PULSE_ID]
+
+    featured_html = ""
+    if featured_card:
+        featured_html = render_featured_worker_card(
+            featured_card,
+            manifests.get(MARKET_PULSE_ID),
+        )
+
+    pool_html = "".join(
+        render_worker_card(c, i, manifests.get(c.profile.agent_id), compact=True)
+        for i, c in enumerate(other_cards)
+    )
+    pool_count = len(other_cards)
+
     staking_pct = split.staking_share * 100
     platform_pct = split.platform_share * 100
     operator_pct = split.operator_share * 100
 
-    workers_html = "".join(
-        render_worker_card(c, i, manifests.get(c.profile.agent_id))
-        for i, c in enumerate(cards)
-    )
-
     banner = (
         '<div class="top-banner banner-demo">⚠ Demo modu — gerçek veri için <code>python3 -m app.run_stack</code></div>'
         if demo_mode
-        else '<div class="top-banner banner-live">● Pasif ortaklık aktif — mesh 7/24 çalışıyor · gelirin %65\'i size</div>'
+        else '<div class="top-banner banner-live" id="topBanner">● Pasif ortaklık — x402 ile gerçek ödeme açık</div>'
     )
     body_class = "has-banner" + (" embed-mode" if embed_mode else "")
     onchain_json = json.dumps(onchain or {"enabled": False, "ready": False})
@@ -56,6 +69,9 @@ def render_hub_dashboard(
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#020204"/>
   <meta name="hub-build" content="{esc(build)}"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>{esc(brand_title)} — Pasif Dijital İşçi Ortaklığı</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -185,27 +201,38 @@ def render_hub_dashboard(
         </header>
 
         <div class="stats-grid">
-          <div class="stat" style="--i:0"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">{agent_count}</span></div>
+          <div class="stat" style="--i:0"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">0 / {agent_count}</span></div>
           <div class="stat" style="--i:1"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
           <div class="stat" style="--i:2"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
           <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
         </div>
 
+        <div class="setup-alert hidden" id="setupAlert">
+          <div class="setup-alert-copy">
+            <strong>Mesh henüz çalışmıyor</strong>
+            <p>Gateway açık ama işçi süreçleri kapalı — bu yüzden ağ <em>degraded</em> görünür ve görevler başarısız olur.</p>
+          </div>
+          <code class="setup-cmd">python3 -m app.run_stack</code>
+        </div>
+
         <div class="toolbar">
           <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterWorkers('all', this)">Tümü</button>
-            <button class="filter-tab" onclick="filterWorkers('fetcher', this)">Veri</button>
-            <button class="filter-tab" onclick="filterWorkers('analyst', this)">Analist</button>
-            <button class="filter-tab" onclick="filterWorkers('synthesizer', this)">Sentez</button>
-            <button class="filter-tab" onclick="filterWorkers('validator', this)">Doğrulama</button>
-            <button class="filter-tab" onclick="filterWorkers('orchestrator', this)">Orkestrasyon</button>
+            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçi</button>
+            <button class="filter-tab" onclick="filterWorkers('pool', this)">Havuz ({pool_count})</button>
           </div>
           {trigger_btn}
         </div>
 
-        <div class="workers-grid" id="workersGrid">
-          {workers_html or '<p style="color:var(--dim)">Henüz işçi yok.</p>'}
+        <div class="featured-slot" id="featuredSlot">
+          {featured_html}
         </div>
+
+        <details class="worker-pool" id="workerPool">
+          <summary>Diğer işçiler · tam mesh ile aktif olur ({pool_count})</summary>
+          <div class="workers-grid compact-grid" id="workersGrid">
+            {pool_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
+          </div>
+        </details>
       </div>
     </div>
   </section>

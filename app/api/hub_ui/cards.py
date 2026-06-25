@@ -10,14 +10,66 @@ from app.api.hub_ui.helpers import (
     format_num,
     risk_label,
 )
+from app.config import settings
 from app.investment.schemas import AgentIdentityCard
 from app.protocol.schemas import AgentManifest
+
+
+from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
+
+
+def render_featured_worker_card(
+    card: AgentIdentityCard,
+    manifest: Optional[AgentManifest],
+) -> str:
+    p = card.profile
+    h = card.health
+    f = card.finance
+    agent_id = esc(p.agent_id)
+    return f"""
+<section class="featured-worker" data-agent="{agent_id}">
+  <div class="featured-glow" aria-hidden="true"></div>
+  <div class="featured-badge"><span class="pulse-dot"></span> Canlı işçi · x402 ödeme hazır</div>
+  <div class="featured-body">
+    <div class="featured-copy">
+      <span class="featured-kicker">İlk gerçek API</span>
+      <h3>{esc(p.display_name)}</h3>
+      <p>{esc(p.mission)}</p>
+      <div class="featured-tags">
+        <span class="tag real-api">CoinGecko</span>
+        <span class="tag class">{class_label(p.agent_class.value)}</span>
+        <span class="tag risk-{esc(p.risk_level)}">{risk_label(p.risk_level)} risk</span>
+      </div>
+      <div class="featured-metrics">
+        <div><span>Başarı</span><strong>{h.success_rate * 100:.0f}%</strong></div>
+        <div><span>24s hacim</span><strong>${format_num(f.volume_24h_usd)}</strong></div>
+        <div><span>Gelir</span><strong>${f.total_revenue_usd:.2f}</strong></div>
+      </div>
+    </div>
+    <div class="featured-actions">
+      <div class="featured-status">
+        <span class="status-dot standby"></span>
+        <span class="status-label">Bağlanıyor</span>
+      </div>
+      <div class="featured-task" data-live-task>
+        <span class="task-pulse"></span>
+        <span class="task-text">Piyasa verisi hazır — x402 ile dene</span>
+      </div>
+      <button type="button" class="btn-x402 featured-x402" onclick="tryX402MarketPulse('{agent_id}', this)">
+        x402 ile dene · ${settings.x402_market_pulse_price_usd:.2f}
+      </button>
+      <p class="featured-hint">Ödeme kanıtı gönder → gerçek BTC analizi → gelirin %65'i havuza</p>
+    </div>
+  </div>
+</section>"""
 
 
 def render_worker_card(
     card: AgentIdentityCard,
     index: int,
     manifest: Optional[AgentManifest],
+    *,
+    compact: bool = False,
 ) -> str:
     p = card.profile
     h = card.health
@@ -28,6 +80,35 @@ def render_worker_card(
     contract = esc(pool.contract_address or "")
     caps = capabilities_list(manifest)
     cost = manifest.cost_per_token if manifest else 0
+    real_badge = (
+        '<span class="tag real-api">GERÇEK API · CoinGecko</span>'
+        if p.agent_id == MARKET_PULSE_ID
+        else ""
+    )
+    x402_demo = (
+        f'''<button type="button" class="btn-x402" onclick="tryX402MarketPulse('{agent_id}', this)">
+        x402 ile dene · ${settings.x402_market_pulse_price_usd:.2f}</button>'''
+        if p.agent_id == MARKET_PULSE_ID
+        else ""
+    )
+
+    if compact:
+        return f"""
+<article class="worker-card compact" style="--i:{index};--delay:{delay}s"
+  data-agent="{agent_id}"
+  data-class="{esc(p.agent_class.value)}">
+  <div class="wc-compact-main">
+    <div class="wc-avatar class-{esc(p.agent_class.value)}"><span class="wc-icon">{class_icon(p.agent_class.value)}</span></div>
+    <div class="wc-compact-copy">
+      <h3>{esc(p.display_name)}</h3>
+      <p>{esc(p.mission)}</p>
+    </div>
+    <div class="wc-compact-meta">
+      <span class="tag class">{class_label(p.agent_class.value)}</span>
+      <span class="wc-compact-soon">Tam mesh ile aktif</span>
+    </div>
+  </div>
+</article>"""
 
     return f"""
 <article class="worker-card" style="--i:{index};--delay:{delay}s"
@@ -48,6 +129,7 @@ def render_worker_card(
       <div class="wc-tags">
         <span class="tag class">{class_label(p.agent_class.value)}</span>
         <span class="tag risk-{esc(p.risk_level)}">{risk_label(p.risk_level)} risk</span>
+        {real_badge}
       </div>
     </div>
     <div class="wc-status">
@@ -96,6 +178,7 @@ def render_worker_card(
       </button>
       <button type="button" class="btn-claim" onclick="claim('{agent_id}', this)">Ödül Al</button>
     </div>
+    {x402_demo}
   </div>
 
   <button type="button" class="wc-expand" onclick="toggleWorkerDetail(this)" aria-expanded="false">
