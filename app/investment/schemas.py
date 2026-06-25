@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+
+class AgentClass(str, Enum):
+    FETCHER = "fetcher"
+    TRANSFORMER = "transformer"
+    SYNTHESIZER = "synthesizer"
+    ANALYST = "analyst"
+    VALIDATOR = "validator"
+    ORCHESTRATOR = "orchestrator"
+
+
+class RevenueSplitConfig(BaseModel):
+    """Gelir dağılımı — toplam %100."""
+
+    staking_share: float = Field(default=0.65, ge=0.0, le=1.0, description="Staking ve altyapı havuzu")
+    platform_share: float = Field(default=0.10, ge=0.0, le=1.0, description="Veridag platform payı")
+    operator_share: float = Field(default=0.25, ge=0.0, le=1.0, description="Ajan operatörü")
+
+    def validate_total(self) -> None:
+        total = self.staking_share + self.platform_share + self.operator_share
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"Gelir payları toplamı %100 olmalı, mevcut: {total * 100:.2f}%")
+
+
+class BondingCurveParams(BaseModel):
+    base_price: float = Field(default=0.01, gt=0, description="İlk token fiyatı (USDC)")
+    slope: float = Field(default=0.000001, ge=0, description="Arz arttıkça fiyat eğimi")
+
+
+class AgentInvestmentProfile(BaseModel):
+    agent_id: str
+    display_name: str
+    agent_class: AgentClass
+    mission: str
+    token_symbol: str
+    contract_address: Optional[str] = None
+
+
+class AgentHealthMetrics(BaseModel):
+    success_rate: float = Field(default=1.0, ge=0.0, le=1.0)
+    avg_latency_ms: float = Field(default=0.0, ge=0.0)
+    total_calls: int = Field(default=0, ge=0)
+    successful_calls: int = Field(default=0, ge=0)
+
+
+class FinancialReport(BaseModel):
+    total_revenue_usd: float = Field(default=0.0, ge=0.0)
+    volume_24h_usd: float = Field(default=0.0, ge=0.0)
+    estimated_apy: float = Field(default=0.0, description="Yıllık tahmini getiri (%)")
+    staking_pool_tvl_usd: float = Field(default=0.0, ge=0.0)
+    token_price_usdc: float = Field(default=0.01, gt=0)
+
+
+class StakingPool(BaseModel):
+    agent_id: str
+    token_symbol: str
+    total_staked_usdc: float = Field(default=0.0, ge=0.0)
+    total_supply: float = Field(default=0.0, ge=0.0)
+    reserve_usdc: float = Field(default=0.0, ge=0.0)
+    rewards_accrued_usdc: float = Field(default=0.0, ge=0.0)
+    curve: BondingCurveParams = Field(default_factory=BondingCurveParams)
+    contract_address: Optional[str] = None
+
+
+class StakePosition(BaseModel):
+    investor_id: str = Field(..., description="Cüzdan adresi veya yatırımcı kimliği")
+    agent_id: str
+    shares: float = Field(default=0.0, ge=0.0)
+    staked_usdc: float = Field(default=0.0, ge=0.0)
+    rewards_claimed_usdc: float = Field(default=0.0, ge=0.0)
+    rewards_pending_usdc: float = Field(default=0.0, ge=0.0)
+
+
+class RevenueEvent(BaseModel):
+    event_id: str
+    agent_id: str
+    task_id: str
+    gross_usd: float
+    staking_usd: float
+    platform_usd: float
+    operator_usd: float
+    latency_ms: float
+    success: bool
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    tx_hash: Optional[str] = None
+
+
+class LedgerEntry(BaseModel):
+    entry_id: str
+    agent_id: str
+    investor_id: Optional[str] = None
+    action: str
+    amount_usdc: float
+    shares_delta: float = 0.0
+    tx_hash: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AgentIdentityCard(BaseModel):
+    """The Hub yatırımcı paneli — ajan kimlik kartı."""
+
+    profile: AgentInvestmentProfile
+    health: AgentHealthMetrics
+    finance: FinancialReport
+    pool: StakingPool
+
+
+class StakeRequest(BaseModel):
+    investor_id: str
+    agent_id: str
+    amount_usdc: float = Field(..., gt=0)
+    asset: str = Field(default="USDC", description="USDC | USDT | OAM")
+
+
+class UnstakeRequest(BaseModel):
+    investor_id: str
+    agent_id: str
+    shares: float = Field(..., gt=0)
+
+
+class ClaimRewardsRequest(BaseModel):
+    investor_id: str
+    agent_id: str
