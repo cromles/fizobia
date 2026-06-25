@@ -1,0 +1,43 @@
+---
+description: Zinesh Protocol + OAM Hub monorepo bağlamı — site ve gateway birlikte geliştirilir
+globs:
+  - zinesh-web/**
+  - app/api/hub*
+  - app/investment/**
+  - docs/zinesh*
+alwaysApply: true
+---
+
+# Zinesh × OAM (Cursor)
+
+## Repo yapısı
+- `zinesh-web/` — Zinesh marketing sitesi (statik HTML, port 3000)
+- `app/` — OAM gateway + Hub API (port 8787)
+- Hub embed: `GET /hub/embed` (Zinesh markalı panel)
+- SDK: `GET /hub/sdk/config`
+
+## Geliştirme
+```bash
+# Terminal 1 — Hub motoru
+python -m app.run_stack
+
+# Terminal 2 — Zinesh sitesi
+cd zinesh-web && python3 -m http.server 3000
+```
+
+Tarayıcı: http://127.0.0.1:3000 → site, http://127.0.0.1:8787/hub → API
+
+## Bağlantı mantığı
+- `zinesh-web/js/hub-client.js` → `ZineshHub.getConfig()` ile API haritası
+- CORS: `OAM_CORS_ORIGINS` içinde `http://127.0.0.1:3000` varsayılan açık
+- iframe: `hub.html` → `/hub/embed`
+
+## Mesaj dili
+- Zinesh = güven protokolü (site)
+- Hub = dijital işçi ortaklığı (ürün)
+- Demo kapalı: `OAM_HUB_DEMO=false`
+
+## Değişiklik yaparken
+- Site metinleri → `zinesh-web/`
+- Stake/API/ajanlar → `app/investment/`, `app/api/hub_routes.py`
+- Embed markası → `render_hub_dashboard(brand_title="Zinesh Protocol")`

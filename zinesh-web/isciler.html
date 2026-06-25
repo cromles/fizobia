@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dijital İşçiler — Zinesh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/zinesh.css"/>
+</head>
+<body>
+  <nav class="nav">
+    <div class="logo">Zinesh Protocol</div>
+    <div class="nav-links">
+      <a href="index.html">Ana Sayfa</a>
+      <a href="protokol.html">Protokol</a>
+      <a href="isciler.html" class="active">İşçiler</a>
+      <a href="hub.html">Hub</a>
+    </div>
+  </nav>
+
+  <main>
+    <p class="eyebrow">Yeni dünyanın işçileri</p>
+    <h1 style="font-family:var(--serif);font-size:2.2rem;margin-bottom:0.5rem">Canlı dijital işçiler</h1>
+    <p style="color:var(--muted);margin-bottom:1.5rem">Veri Hub API'den çekilir — simülasyon değil.</p>
+
+    <div class="grid" id="stats">
+      <div class="card"><div class="meta">Çevrimiçi işçi</div><div class="stat-value" id="statActive">—</div></div>
+      <div class="card"><div class="meta">Toplam çağrı</div><div class="stat-value" id="statCalls">—</div></div>
+      <div class="card"><div class="meta">Gerçek faaliyet</div><div class="stat-value" id="statReal">—</div></div>
+    </div>
+
+    <div class="grid" id="agents" style="margin-top:2rem"></div>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="hub.html">İşçilerime ortak ol →</a>
+    </div>
+  </main>
+
+  <footer>Zinesh Protocol · <span id="apiLabel"></span></footer>
+  <script src="js/hub-client.js"></script>
+  <script>
+    document.getElementById('apiLabel').textContent = ZineshHub.getApiBase();
+
+    async function load() {
+      try {
+        const [live, agents] = await Promise.all([
+          ZineshHub.getLive(),
+          ZineshHub.getAgents(),
+        ]);
+        const net = live.network || {};
+        document.getElementById('statActive').textContent =
+          (net.reachable_agents || 0) + ' / ' + (net.total_agents || 0);
+        document.getElementById('statCalls').textContent = net.total_calls || 0;
+        document.getElementById('statReal').textContent = net.real_event_count || 0;
+
+        const grid = document.getElementById('agents');
+        grid.innerHTML = agents.map(a => `
+          <div class="card">
+            <h3>${a.profile.display_name}</h3>
+            <p class="meta">${a.profile.token_symbol} · ${a.profile.agent_class}</p>
+            <p class="meta" style="margin-top:0.5rem">${a.profile.mission}</p>
+            <p class="meta" style="margin-top:0.5rem">TVL $${(a.finance.staking_pool_tvl_usd || 0).toFixed(0)} · APY %${(a.finance.estimated_apy || 0).toFixed(1)}</p>
+          </div>
+        `).join('');
+      } catch (e) {
+        document.getElementById('agents').innerHTML =
+          '<div class="card"><p class="meta">Hub bağlantısı yok. Gateway başlatın: python -m app.run_stack</p></div>';
+      }
+    }
+    load();
+    setInterval(load, 15000);
+  </script>
+</body>
+</html>
