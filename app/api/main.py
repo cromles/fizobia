@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.agents.bootstrap import bootstrap_default_agents
 from app.core.router import OpenAgentMeshRouter
@@ -70,6 +71,59 @@ async def health() -> Dict[str, Any]:
     return payload
 
 
+@app.get("/", response_class=HTMLResponse)
+async def dashboard() -> str:
+    agents = router_mesh.list_agents()
+    peers = peer_discovery.list_peers()
+    rows = ""
+    for agent in agents:
+        caps = ", ".join(c.name for c in agent.capabilities)
+        rows += f"""
+        <tr>
+          <td><code>{agent.agent_id}</code></td>
+          <td><a href="{agent.endpoint}">{agent.endpoint}</a></td>
+          <td>{caps}</td>
+          <td>{agent.reliability_score:.2f}</td>
+        </tr>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"/>
+  <title>Open Agent Mesh</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 2rem; background: #0f172a; color: #e2e8f0; }}
+    h1 {{ color: #38bdf8; }}
+  a {{ color: #7dd3fc; }}
+    table {{ border-collapse: collapse; width: 100%; margin-top: 1rem; }}
+    th, td {{ border: 1px solid #334155; padding: 0.6rem; text-align: left; }}
+    th {{ background: #1e293b; }}
+    .badge {{ background: #065f46; padding: 0.2rem 0.5rem; border-radius: 4px; }}
+    code {{ background: #1e293b; padding: 0.1rem 0.3rem; border-radius: 3px; }}
+  </style>
+</head>
+<body>
+  <h1>Open Agent Mesh <span class="badge">OAM</span></h1>
+  <p>Registry: <strong>{len(agents)}</strong> ajan · DHT: <strong>{len(peers)}</strong> peer</p>
+  <p>
+    <a href="/agents">/agents</a> (JSON) ·
+    <a href="/discovery/peers">/discovery/peers</a> ·
+    <a href="/health">/health</a> ·
+    <a href="/docs">/docs</a>
+  </p>
+  <table>
+    <thead><tr><th>Ajan ID</th><th>Endpoint</th><th>Yetenekler</th><th>Güven</th></tr></thead>
+    <tbody>{rows or '<tr><td colspan="4">Henüz ajan yok</td></tr>'}</tbody>
+  </table>
+</body>
+</html>"""
+
+
+@app.get("/agents")
+async def list_agents() -> JSONResponse:
+    return JSONResponse([a.model_dump() for a in router_mesh.list_agents()])
+
+
 @app.post("/agents/register", response_model=Dict[str, Any])
 async def register_agent(
     request: RegisterAgentRequest,
@@ -82,11 +136,6 @@ async def register_agent(
     if not accepted:
         raise HTTPException(status_code=409, detail="Agent already registered")
     return {"agent_id": request.manifest.agent_id, "registered": True}
-
-
-@app.get("/agents", response_model=list[AgentManifest])
-async def list_agents() -> list[AgentManifest]:
-    return router_mesh.list_agents()
 
 
 @app.post("/discovery/announce")
