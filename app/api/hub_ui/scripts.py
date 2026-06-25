@@ -1,3 +1,6 @@
+from app.config import settings
+
+
 def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str) -> str:
     demo = "true" if demo_mode else "false"
     embed = "true" if embed_mode else "false"
@@ -459,24 +462,95 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.triggerLiveRun = triggerLiveRun;
 
-  window.tryX402MarketPulse = async function(agentId, btn) {{
+  window.runMeshProof = async function(btn) {{
     btn.classList.add('loading');
-    const symbol = 'bitcoin';
+    const resultEl = $('meshProofResult');
+    if (resultEl) {{
+      resultEl.className = 'mesh-proof-result';
+      resultEl.textContent = '3 işçi çalışıyor…';
+    }}
     const proof = JSON.stringify({{
-      amount_usdc: 0.05,
+      amount_usdc: {settings.x402_mesh_proof_price_usd},
       payer: getWallet() || '0x' + 'a'.repeat(40),
-      payment_id: 'ui_' + Date.now(),
+      payment_id: 'mesh_' + Date.now(),
       network: 'x402-demo',
       asset: 'USDC',
     }});
     try {{
-      const res = await fetch('/hub/x402/market-pulse/analyze', {{
+      const res = await fetch('/hub/proof/mesh/run', {{
         method: 'POST',
         headers: {{
           'Content-Type': 'application/json',
           'X-Payment-Proof': proof,
         }},
-        body: JSON.stringify({{ symbol }}),
+        body: JSON.stringify({{ symbol: 'bitcoin' }}),
+      }});
+      const data = await res.json();
+      if (res.status === 402) {{
+        if (resultEl) resultEl.textContent = 'Ödeme gerekli — tekrar deneyin';
+        showToast('x402 ödeme gerekli', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      if (!res.ok) {{
+        if (resultEl) resultEl.textContent = data.detail || 'Hata';
+        showToast(data.detail || 'Mesh kanıt hatası', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
+      const share = data.share || {{}};
+      if (resultEl) {{
+        resultEl.className = 'mesh-proof-result success';
+        resultEl.textContent = '✓ ' + verdict;
+        if (share.card) {{
+          resultEl.innerHTML = '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>';
+        }}
+      }}
+      showToast('Mesh kanıtı OK · paylaşım linki hazır');
+      refreshLive();
+      refreshHeroStats();
+    }} catch (err) {{
+      if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
+      showToast(err.message || 'Bağlantı hatası', true);
+    }}
+    btn.classList.remove('loading');
+  }};
+
+  window.tryX402MarketPulse = async function(agentId, btn) {{
+    return tryX402Service('market-pulse', agentId, btn, {{ symbol: 'bitcoin' }});
+  }};
+
+  window.tryX402SentimentRadar = async function(agentId, btn) {{
+    return tryX402Service(
+      'sentiment-radar',
+      agentId,
+      btn,
+      {{ text: 'Bitcoin ETF inflows rise while macro risk stays elevated' }},
+    );
+  }};
+
+  async function tryX402Service(serviceId, agentId, btn, body) {{
+    const prices = {{
+      'market-pulse': {settings.x402_market_pulse_price_usd},
+      'sentiment-radar': {settings.x402_sentiment_radar_price_usd},
+    }};
+    btn.classList.add('loading');
+    const proof = JSON.stringify({{
+      amount_usdc: prices[serviceId] || 0.05,
+      payer: getWallet() || '0x' + 'a'.repeat(40),
+      payment_id: 'ui_' + serviceId + '_' + Date.now(),
+      network: 'x402-demo',
+      asset: 'USDC',
+    }});
+    try {{
+      const res = await fetch('/hub/x402/' + serviceId + '/analyze', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'X-Payment-Proof': proof,
+        }},
+        body: JSON.stringify(body),
       }});
       const data = await res.json();
       if (res.status === 402) {{
@@ -490,10 +564,10 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         return;
       }}
       const a = data.analysis || {{}};
-      showToast('x402 ödeme OK · ' + (a.analysis || a.symbol || 'analiz'));
+      showToast('x402 OK · ' + (a.analysis || a.sentiment || a.symbol || 'tamamlandı'));
       const card = btn.closest('.featured-worker') || btn.closest('.worker-card');
       const taskEl = card?.querySelector('.task-text');
-      if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || 'tamamlandı');
+      if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || a.sentiment || 'tamamlandı');
       refreshLive();
     }} catch (err) {{
       showToast(err.message || 'Bağlantı hatası', true);
@@ -522,8 +596,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }} catch (_) {{}}
   }}
 
+  async function refreshHeroStats() {{
+    try {{
+      const res = await fetch('/hub/stats?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const s = await res.json();
+      const el = $('heroProofStats');
+      if (!el) return;
+      const proofs = s.mesh_proofs?.proofs_recorded || 0;
+      const rev = s.total_revenue_usd || 0;
+      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 3) + ' gerçek API</span>';
+      const badge = $('heroLiveBadge');
+      if (badge) badge.textContent = (s.live_workers || 3) + ' canlı API · mesh kanıtı';
+    }} catch (_) {{}}
+  }}
+
   initMeshCanvas();
   ensureLatestBuild();
+  refreshHeroStats();
   updateWalletUI();
   if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
   console.info('[Hub] build:', '{build}');

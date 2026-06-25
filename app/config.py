@@ -37,9 +37,13 @@ class OAMSettings:
     x402_enabled: bool
     x402_webhook_secret: str
     x402_market_pulse_price_usd: float
+    x402_sentiment_radar_price_usd: float
+    x402_mesh_proof_price_usd: float
     x402_network: str
     x402_payee_address: str
     x402_dev_accept_proof: bool
+    x402_rpc_url: str
+    x402_usdc_contract: str
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -70,12 +74,22 @@ class OAMSettings:
         x402_enabled = os.getenv("OAM_X402_ENABLED", "true").lower() in ("1", "true", "yes")
         x402_webhook_secret = os.getenv("OAM_X402_WEBHOOK_SECRET", "")
         x402_market_pulse_price_usd = float(os.getenv("OAM_X402_MARKET_PULSE_PRICE", "0.05"))
+        x402_sentiment_radar_price_usd = float(os.getenv("OAM_X402_SENTIMENT_PRICE", "0.04"))
+        x402_mesh_proof_price_usd = float(os.getenv("OAM_X402_MESH_PROOF_PRICE", "0.10"))
         x402_network = os.getenv("OAM_X402_NETWORK", "base-sepolia")
         x402_payee_address = os.getenv("OAM_X402_PAYEE_ADDRESS", "")
         x402_dev_accept_proof = os.getenv("OAM_X402_DEV_ACCEPT_PROOF", "true").lower() in (
             "1",
             "true",
             "yes",
+        )
+        x402_rpc_url = os.getenv(
+            "OAM_X402_RPC_URL",
+            os.getenv("OAM_ONCHAIN_RPC_URL", "https://sepolia.base.org"),
+        )
+        x402_usdc_contract = os.getenv(
+            "OAM_X402_USDC_CONTRACT",
+            "0x036CbD53842c5426634e7929541eC2318f3dCF7e",  # Base Sepolia USDC
         )
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
@@ -107,9 +121,13 @@ class OAMSettings:
             x402_enabled=x402_enabled,
             x402_webhook_secret=x402_webhook_secret,
             x402_market_pulse_price_usd=x402_market_pulse_price_usd,
+            x402_sentiment_radar_price_usd=x402_sentiment_radar_price_usd,
+            x402_mesh_proof_price_usd=x402_mesh_proof_price_usd,
             x402_network=x402_network,
             x402_payee_address=x402_payee_address,
             x402_dev_accept_proof=x402_dev_accept_proof,
+            x402_rpc_url=x402_rpc_url,
+            x402_usdc_contract=x402_usdc_contract,
         )
 
     @property

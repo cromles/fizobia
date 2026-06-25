@@ -3,15 +3,16 @@ from __future__ import annotations
 import json
 from typing import Dict, List, Optional
 
+from app.config import settings
 from app.api.hub_ui.cards import render_featured_worker_card, render_worker_card
 from app.api.hub_ui.helpers import esc
 from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
+from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-hub-pulse-v4"
+HUB_UI_BUILD = "2026.06.25-proof-share-v7"
 
 
 def render_hub_dashboard(
@@ -28,15 +29,18 @@ def render_hub_dashboard(
     manifests = manifests or {}
     agent_count = len(cards)
 
-    featured_card = next((c for c in cards if c.profile.agent_id == MARKET_PULSE_ID), None)
-    other_cards = [c for c in cards if c.profile.agent_id != MARKET_PULSE_ID]
+    featured_cards = [c for c in cards if c.profile.agent_id in LIVE_WORKER_IDS]
+    other_cards = [c for c in cards if c.profile.agent_id not in LIVE_WORKER_IDS]
 
-    featured_html = ""
-    if featured_card:
-        featured_html = render_featured_worker_card(
-            featured_card,
-            manifests.get(MARKET_PULSE_ID),
+    featured_html = "".join(
+        render_featured_worker_card(
+            card,
+            manifests.get(card.profile.agent_id),
+            LIVE_WORKERS[card.profile.agent_id],
         )
+        for card in featured_cards
+        if card.profile.agent_id in LIVE_WORKERS
+    )
 
     pool_html = "".join(
         render_worker_card(c, i, manifests.get(c.profile.agent_id), compact=True)
@@ -101,7 +105,7 @@ def render_hub_dashboard(
   <!-- ═══ LANDING ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> {agent_count} dijital işçi · canlı mesh</div>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{len(featured_cards)} canlı API · mesh kanıtı</span></div>
       <h1>Uyurken<br/><span class="gradient">kazan</span></h1>
       <p class="hero-sub">
         AI işçilerine ortak ol. Sen çalıştırma — mesh 7/24 çalışsın.
@@ -109,7 +113,10 @@ def render_hub_dashboard(
       </p>
       <div class="hero-cta">
         <button class="btn-hero primary" onclick="openWalletModal()">Hemen Başla</button>
-        <button class="btn-hero ghost" onclick="document.getElementById('steps').scrollIntoView({{behavior:'smooth'}})">Nasıl çalışır?</button>
+        <button class="btn-hero ghost" onclick="document.getElementById('meshProofHero')?.scrollIntoView({{behavior:'smooth'}})">Mesh kanıtını gör</button>
+      </div>
+      <div class="hero-proof-stats" id="heroProofStats">
+        <span>— kanıt</span><span>— gelir</span><span>3 gerçek API</span>
       </div>
     </section>
 
@@ -217,13 +224,34 @@ def render_hub_dashboard(
 
         <div class="toolbar">
           <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçi</button>
+            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçiler ({len(featured_cards)})</button>
             <button class="filter-tab" onclick="filterWorkers('pool', this)">Havuz ({pool_count})</button>
           </div>
           {trigger_btn}
         </div>
 
-        <div class="featured-slot" id="featuredSlot">
+        <div class="mesh-proof-hero" id="meshProofHero">
+          <div class="mesh-proof-copy">
+            <span class="mesh-proof-kicker">Skeptiklere cevap</span>
+            <h3>Mesh Kanıtı</h3>
+            <p>3 gerçek dijital işçi ardışık çalışır — <strong>mock yok</strong>, simülasyon yok.</p>
+            <ol class="mesh-proof-steps">
+              <li>Web-Crawler → canlı haber çeker</li>
+              <li>Sentiment-Radar → Fear &amp; Greed + NLP</li>
+              <li>Market-Pulse → CoinGecko fiyat</li>
+            </ol>
+          </div>
+          <div class="mesh-proof-action">
+            <div class="mesh-proof-price">x402 · ${settings.x402_mesh_proof_price_usd:.2f}</div>
+            <button type="button" class="btn-mesh-proof" id="btnMeshProof" onclick="runMeshProof(this)">
+              <span class="btn-text">Mesh Kanıtını Çalıştır</span>
+              <span class="btn-loader"></span>
+            </button>
+            <p class="mesh-proof-result" id="meshProofResult">Tek tıkla kanıt üret — gelirin %65'i havuza</p>
+          </div>
+        </div>
+
+        <div class="featured-slot featured-grid" id="featuredSlot">
           {featured_html}
         </div>
 

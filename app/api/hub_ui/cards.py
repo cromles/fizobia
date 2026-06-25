@@ -13,30 +13,38 @@ from app.api.hub_ui.helpers import (
 from app.config import settings
 from app.investment.schemas import AgentIdentityCard
 from app.protocol.schemas import AgentManifest
+from app.workers.registry import LIVE_WORKERS, LiveWorkerSpec
 
 
-from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
+def _x402_price(spec: LiveWorkerSpec) -> float:
+    if spec.service_id == "market-pulse":
+        return settings.x402_market_pulse_price_usd
+    if spec.service_id == "sentiment-radar":
+        return settings.x402_sentiment_radar_price_usd
+    return 0.05
 
 
 def render_featured_worker_card(
     card: AgentIdentityCard,
     manifest: Optional[AgentManifest],
+    spec: LiveWorkerSpec,
 ) -> str:
     p = card.profile
     h = card.health
     f = card.finance
     agent_id = esc(p.agent_id)
+    price = _x402_price(spec)
     return f"""
-<section class="featured-worker" data-agent="{agent_id}">
+<section class="featured-worker" data-agent="{agent_id}" data-service="{esc(spec.service_id)}">
   <div class="featured-glow" aria-hidden="true"></div>
-  <div class="featured-badge"><span class="pulse-dot"></span> Canlı işçi · x402 ödeme hazır</div>
+  <div class="featured-badge"><span class="pulse-dot"></span> Canlı işçi · x402</div>
   <div class="featured-body">
     <div class="featured-copy">
-      <span class="featured-kicker">İlk gerçek API</span>
+      <span class="featured-kicker">Gerçek API · {esc(spec.api_tag)}</span>
       <h3>{esc(p.display_name)}</h3>
       <p>{esc(p.mission)}</p>
       <div class="featured-tags">
-        <span class="tag real-api">CoinGecko</span>
+        <span class="tag real-api">{esc(spec.api_tag)}</span>
         <span class="tag class">{class_label(p.agent_class.value)}</span>
         <span class="tag risk-{esc(p.risk_level)}">{risk_label(p.risk_level)} risk</span>
       </div>
@@ -53,12 +61,12 @@ def render_featured_worker_card(
       </div>
       <div class="featured-task" data-live-task>
         <span class="task-pulse"></span>
-        <span class="task-text">Piyasa verisi hazır — x402 ile dene</span>
+        <span class="task-text">{esc(spec.task_hint)}</span>
       </div>
-      <button type="button" class="btn-x402 featured-x402" onclick="tryX402MarketPulse('{agent_id}', this)">
-        x402 ile dene · ${settings.x402_market_pulse_price_usd:.2f}
+      <button type="button" class="btn-x402 featured-x402" onclick="{spec.x402_js_handler}('{agent_id}', this)">
+        x402 ile dene · ${price:.2f}
       </button>
-      <p class="featured-hint">Ödeme kanıtı gönder → gerçek BTC analizi → gelirin %65'i havuza</p>
+      <p class="featured-hint">{esc(spec.payment_hint)}</p>
     </div>
   </div>
 </section>"""
@@ -79,22 +87,22 @@ def render_worker_card(
     agent_id = esc(p.agent_id)
     contract = esc(pool.contract_address or "")
     caps = capabilities_list(manifest)
-    cost = manifest.cost_per_token if manifest else 0
+    spec = LIVE_WORKERS.get(p.agent_id)
     real_badge = (
-        '<span class="tag real-api">GERÇEK API · CoinGecko</span>'
-        if p.agent_id == MARKET_PULSE_ID
-        else ""
+        f'<span class="tag real-api">GERÇEK API · {esc(spec.api_tag)}</span>' if spec else ""
     )
-    x402_demo = (
-        f'''<button type="button" class="btn-x402" onclick="tryX402MarketPulse('{agent_id}', this)">
-        x402 ile dene · ${settings.x402_market_pulse_price_usd:.2f}</button>'''
-        if p.agent_id == MARKET_PULSE_ID
-        else ""
-    )
+    x402_demo = ""
+    if spec:
+        price = _x402_price(spec)
+        x402_demo = (
+            f'''<button type="button" class="btn-x402" onclick="{spec.x402_js_handler}('{agent_id}', this)">
+        x402 ile dene · ${price:.2f}</button>'''
+        )
 
     if compact:
+        soon = "Canlı · x402" if spec else "Tam mesh ile aktif"
         return f"""
-<article class="worker-card compact" style="--i:{index};--delay:{delay}s"
+<article class="worker-card compact{' is-live-worker' if spec else ''}" style="--i:{index};--delay:{delay}s"
   data-agent="{agent_id}"
   data-class="{esc(p.agent_class.value)}">
   <div class="wc-compact-main">
@@ -105,7 +113,7 @@ def render_worker_card(
     </div>
     <div class="wc-compact-meta">
       <span class="tag class">{class_label(p.agent_class.value)}</span>
-      <span class="wc-compact-soon">Tam mesh ile aktif</span>
+      <span class="wc-compact-soon">{soon}</span>
     </div>
   </div>
 </article>"""

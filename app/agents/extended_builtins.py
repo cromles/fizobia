@@ -34,8 +34,13 @@ def _orchestrator_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _web_fetch_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    url = data.get("url", data.get("query", ""))
-    return {"raw_text": f"Web içeriği: {url}", "source_url": url or "https://mesh.oam"}
+    from app.workers.web_crawler import fetch_web_snapshot
+
+    url = data.get("url") or data.get("query")
+    try:
+        return fetch_web_snapshot(str(url) if url else None)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.fetcher.web.local"}
 
 
 def _report_handler(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,8 +49,13 @@ def _report_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _sentiment_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    text = data.get("text", "")
-    return {"sentiment": "neutral", "score": 0.12, "summary": text[:100]}
+    from app.workers.sentiment_radar import fetch_sentiment_snapshot
+
+    text = str(data.get("text") or data.get("query") or data.get("headline") or "")
+    try:
+        return fetch_sentiment_snapshot(text)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.sentiment.local"}
 
 
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
