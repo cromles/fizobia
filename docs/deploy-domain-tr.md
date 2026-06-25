@@ -1,24 +1,16 @@
-# .tr domain ile Hub kurulumu (axium.com.tr)
+# .tr domain ile Hub kurulumu — axium.com.tr
 
-`.tr` domain **sorun değil** — Let's Encrypt ve MetaMask ile uyumludur.
+`.tr` domain Let's Encrypt ve MetaMask ile uyumludur.
 
-## Zinesh vs Hub — karışmaz
-
-| Bileşen | Domain | Sunucu |
-|---------|--------|--------|
-| **Zinesh** (vitrin, protokol) | `zinesh.com` | Zinesh’in kendi sunucusu |
-| **OAM Hub** (fizobia) | `axium.com.tr` | **Hub için ayrı sunucu / VPS** |
-
-Zinesh sunucusuna Hub kurmayın. `axium.com.tr` DNS A kaydı **Hub sunucusunun IP’sine** gider. Zinesh sitesi Hub’ı iframe/API ile çağırır (`OAM_EMBED_FRAME_ORIGINS` içinde `zinesh.com`).
+**Axium Hub, Zinesh’ten bağımsızdır.** Ayrı domain, ayrı marka, ayrı sunucu önerilir.
 
 ## 1. DNS (Turhost — axium.com.tr)
 
 | Kayıt | Tip | Değer |
 |-------|-----|-------|
-| `@` | **A** | `HUB_SUNUCU_IP` (Hub VPS — Zinesh IP’si değil) |
-| `www` | CNAME | `axium.com.tr` (zaten varsa dokunma) |
+| `@` | **A** | Hub sunucu IP (Zinesh sunucusu değil) |
+| `www` | CNAME | `axium.com.tr` |
 
-Doğrula:
 ```bash
 dig +short axium.com.tr
 ```
@@ -26,13 +18,12 @@ dig +short axium.com.tr
 ## 2. Hub sunucusunda kurulum
 
 ```bash
-git clone https://github.com/cromles/fizobia.git
+git clone https://github.com/cromles/fizobia.git /opt/fizobia
 cd fizobia
 git checkout main
 bash scripts/deploy_server.sh
 
 cp .env.domain.example .env.server
-nano .env.server
 bash scripts/start_production.sh
 ```
 
@@ -53,29 +44,17 @@ EOF
 sudo systemctl enable --now caddy
 ```
 
-`.env.server`:
-```
-OAM_PUBLIC_BASE_URL=https://axium.com.tr
-```
-
 Hub: **https://axium.com.tr/hub**
 
-## 4. Zinesh embed
-
-`zinesh.com` sitesinde:
-```html
-<iframe src="https://axium.com.tr/hub/embed" ...></iframe>
-```
-
-## Firewall
+## 4. Firewall
 
 ```bash
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 ```
 
-## Hub sunucusu yoksa
+## Önemli
 
-- Turhost / başka sağlayıcıdan **küçük bir VPS** al (1 GB RAM yeterli başlangıç için)
-- `axium.com.tr` A kaydını o VPS IP’sine yönlendir
-- Zinesh sunucusuna dokunma
+- `axium.com.tr` → **sadece Axium Hub**
+- Zinesh domain’i, CORS’u veya embed’i **eklemeyin**
+- Mümkünse Hub için **ayrı VPS** kullanın (Zinesh IP’sine DNS bağlamayın)
