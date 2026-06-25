@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import List
 
 
 @dataclass(frozen=True)
@@ -21,12 +22,21 @@ class OAMSettings:
     gateway_host: str
     public_base_url: str
     sandbox_backend: str
+    extra_stun_servers: List[str]
+    turn_servers: List[str]
 
     @classmethod
     def from_env(cls) -> OAMSettings:
         port = int(os.getenv("OAM_GATEWAY_PORT", "8787"))
         host = os.getenv("OAM_GATEWAY_HOST", "0.0.0.0")
         public_base = os.getenv("OAM_PUBLIC_BASE_URL", f"http://127.0.0.1:{port}")
+        extra_stun = [
+            item.strip()
+            for item in os.getenv("OAM_EXTRA_STUN_SERVERS", "").split(",")
+            if item.strip()
+        ]
+        turn_raw = os.getenv("OAM_TURN_SERVERS", "")
+        turn_servers = [item.strip() for item in turn_raw.split(",") if item.strip()]
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -42,6 +52,8 @@ class OAMSettings:
             gateway_host=host,
             public_base_url=public_base,
             sandbox_backend=os.getenv("OAM_SANDBOX_BACKEND", "local").lower(),
+            extra_stun_servers=extra_stun,
+            turn_servers=turn_servers,
         )
 
     @property

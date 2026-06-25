@@ -10,6 +10,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 
 from oam_agent.schemas import AgentCapability, AgentManifest, ExecuteRequest
+from oam_agent.tunnel import MeshTunnelClient
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,53 @@ class OAMAgent:
             if not isinstance(result, dict):
                 raise HTTPException(status_code=500, detail="Handler must return dict")
             return result
+
+    async def join_mesh_global(
+        self,
+        gateway_url: str,
+        local_endpoint: str,
+        *,
+        use_tunnel: bool = True,
+        heartbeat_interval: Optional[float] = 30.0,
+    ) -> None:
+        """
+        NAT arkasından küresel ağa katılım.
+        use_tunnel=True ise ters WebSocket tüneli açar (modem arkasından çalışır).
+        """
+        client = MeshClient(gateway_url)
+        stun = await client.fetch_stun_config()
+        logger.info("OAM ağ config: %s", stun.get("protocol"))
+
+        await client.register(self.manifest, upsert=True)
+
+        if use_tunnel:
+            tunnel = MeshTunnelClient(gateway_url, self.manifest.agent_id)
+            for cap in self.manifest.capabilities:
+                handler = self._handlers.get(cap.name)
+                if handler:
+                    tunnel.register_handler(cap.name, handler)
+            asyncio.create_task(
+                tunnel.connect_and_serve(self.manifest, local_endpoint)
+            )
+            await client.announce_public(
+                self.manifest,
+                local_endpoint=local_endpoint,
+                public_endpoint=None,
+            )
+        else:
+            await client.announce_public(
+                self.manifest,
+                local_endpoint=local_endpoint,
+            )
+
+        if heartbeat_interval and heartbeat_interval > 0:
+            asyncio.create_task(
+                client.heartbeat_loop(
+                    self.manifest,
+                    interval=heartbeat_interval,
+                    announce=True,
+                )
+            )
 
     async def join_mesh(
         self,

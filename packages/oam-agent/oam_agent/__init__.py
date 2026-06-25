@@ -2,6 +2,13 @@
 
 from oam_agent.agent import MeshClient, OAMAgent
 from oam_agent.schemas import AgentCapability, AgentManifest
+from oam_agent.tunnel import MeshTunnelClient
 
 __version__ = "0.1.0"
-__all__ = ["AgentCapability", "AgentManifest", "MeshClient", "OAMAgent"]
+__all__ = [
+    "AgentCapability",
+    "AgentManifest",
+    "MeshClient",
+    "MeshTunnelClient",
+    "OAMAgent",
+]

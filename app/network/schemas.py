@@ -13,6 +13,7 @@ class SignalType(str, Enum):
     ANSWER = "answer"
     ICE_CANDIDATE = "ice_candidate"
     PING = "ping"
+    REGISTER = "register"
 
 
 class SignalMessage(BaseModel):
@@ -46,4 +47,6 @@ class StunConfigResponse(BaseModel):
     stun_servers: List[str]
     signaling_url: str
     turn_servers: List[str] = Field(default_factory=list)
-    protocol: str = "OAM-NAT-v1"
+    protocol: str = "OAM-NAT-v2"
+    tunnel_url: Optional[str] = None
+    webrtc_available: bool = False

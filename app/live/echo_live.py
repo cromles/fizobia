@@ -50,20 +50,28 @@ def _run_server() -> None:
     uvicorn.run(agent.app, host=HOST, port=PORT, log_level="info")
 
 
-async def _join_mesh(gateway_url: str) -> None:
-    logger.info("Gateway'e bağlanılıyor: %s", gateway_url)
-    await agent.join_mesh(gateway_url, announce=True, heartbeat_interval=30.0)
+async def _join_mesh(gateway_url: str, use_tunnel: bool = False) -> None:
+    logger.info("Gateway'e bağlanılıyor: %s (tunnel=%s)", gateway_url, use_tunnel)
+    if use_tunnel:
+        await agent.join_mesh_global(
+            gateway_url,
+            local_endpoint=f"http://{HOST}:{PORT}",
+            use_tunnel=True,
+        )
+    else:
+        await agent.join_mesh(gateway_url, announce=True, heartbeat_interval=30.0)
     logger.info("Echo ajanı canlı bağlandı: %s", agent.manifest.agent_id)
 
 
 def main() -> None:
     gateway_url = (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GATEWAY).rstrip("/")
+    use_tunnel = "--tunnel" in sys.argv
 
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
     time.sleep(1.5)
 
-    asyncio.run(_join_mesh(gateway_url))
+    asyncio.run(_join_mesh(gateway_url, use_tunnel=use_tunnel))
 
     logger.info("Echo ajanı dinliyor: http://%s:%s", HOST, PORT)
     try:

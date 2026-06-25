@@ -9,8 +9,12 @@ import httpx
 
 from app.adapters.layer import DataAdapterLayer
 from app.matching.factory import create_matcher
-from app.network.factory import create_nat_coordinator, create_sandbox_executor
-from app.network.nat import NATTraversalCoordinator
+from app.network.factory import (
+    create_nat_coordinator,
+    create_sandbox_executor,
+    get_global_mesh,
+)
+from app.network.mesh import GlobalNetworkMesh
 from app.sandbox.executor import SandboxExecutor
 from app.planning.factory import create_decomposer
 from app.planning.plan_compiler import PlanCompiler
@@ -38,7 +42,8 @@ class OpenAgentMeshRouter:
         matcher: Optional[Any] = None,
         plan_compiler: Optional[PlanCompiler] = None,
         validator: Optional[ExecutionValidator] = None,
-        nat_coordinator: Optional[NATTraversalCoordinator] = None,
+        nat_coordinator: Optional[Any] = None,
+        global_mesh: Optional[GlobalNetworkMesh] = None,
         sandbox: Optional[SandboxExecutor] = None,
     ):
         self.registry = registry or InMemoryAgentRegistry()
@@ -49,6 +54,7 @@ class OpenAgentMeshRouter:
             decomposer=create_decomposer(),
         )
         self.validator = validator or ExecutionValidator()
+        self.global_mesh = global_mesh or get_global_mesh()
         self.nat_coordinator = nat_coordinator or create_nat_coordinator()
         self.sandbox = sandbox or create_sandbox_executor()
 
@@ -167,21 +173,24 @@ class OpenAgentMeshRouter:
         prepared_input: Dict[str, Any],
     ) -> Dict[str, Any]:
         manifest = self.registry.get(node.agent_id)
-        endpoint = node.endpoint
-        if manifest and self.nat_coordinator:
-            endpoint = self.nat_coordinator.resolve_execution_endpoint(manifest)
+        if manifest is None:
+            manifest = AgentManifest(
+                agent_id=node.agent_id,
+                endpoint=node.endpoint,
+                capabilities=[],
+            )
 
         logger.info(
-            "[OAM] %s tetikleniyor -> %s Yetenek: %s",
+            "[OAM] %s tetikleniyor -> Yetenek: %s",
             node.agent_id,
-            endpoint,
             node.capability_name,
         )
         try:
-            return await self.sandbox.execute(
-                endpoint=endpoint,
+            return await self.global_mesh.execute(
+                manifest=manifest,
                 capability=node.capability_name,
                 data=prepared_input,
+                http_executor=self.sandbox.execute,
                 timeout=10.0,
             )
         except Exception as exc:

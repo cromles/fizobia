@@ -19,16 +19,22 @@ from app.protocol.schemas import (
 )
 from app.config import settings
 from app.matching.factory import matcher_backend_name
-from app.network.factory import create_nat_coordinator, get_public_discovery, get_signaling_hub
-from app.network.schemas import PublicAnnounceRequest, StunConfigResponse
+from app.network.factory import (
+    get_global_mesh,
+    get_public_discovery,
+    get_signaling_hub,
+    get_tunnel_hub,
+)
+from app.network.schemas import PublicAnnounceRequest, SignalMessage, StunConfigResponse
 from app.planning.factory import planner_backend_name
 from app.registry.factory import create_registry, registry_backend_name
 
 router_mesh = OpenAgentMeshRouter()
 peer_discovery = create_discovery()
 discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
-nat_coordinator = create_nat_coordinator()
+global_mesh = get_global_mesh()
 signaling_hub = get_signaling_hub()
+tunnel_hub = get_tunnel_hub()
 public_discovery = get_public_discovery()
 
 
@@ -70,9 +76,11 @@ async def health() -> Dict[str, Any]:
         "planner": planner_backend_name(router_mesh.plan_compiler.decomposer),
         "matcher": matcher_backend_name(router_mesh.matcher),
         "sandbox": getattr(router_mesh.sandbox, "backend_name", "unknown"),
-        "network": "OAM-NAT-v1",
+        "network": global_mesh.stun_config().get("protocol", "OAM-NAT-v2"),
         "signaling_peers": len(signaling_hub.connected_peers),
+        "tunnel_peers": len(tunnel_hub.connected_peers),
         "public_peers": len(public_discovery.list_network_records()),
+        "webrtc": global_mesh.webrtc.available,
     }
     ping = getattr(router_mesh.registry, "ping", None)
     if callable(ping):
@@ -179,13 +187,13 @@ async def sync_discovery() -> Dict[str, Any]:
 
 @app.get("/network/stun", response_model=StunConfigResponse)
 async def network_stun_config() -> StunConfigResponse:
-    config = nat_coordinator.stun_config()
+    config = global_mesh.stun_config()
     return StunConfigResponse(**config)
 
 
 @app.post("/network/announce")
 async def network_public_announce(request: PublicAnnounceRequest) -> Dict[str, Any]:
-    record = nat_coordinator.register_public_peer(request)
+    record = global_mesh.register_public_peer(request)
     router_mesh.upsert_agent(record.manifest)
     peer_discovery.announce(record.manifest, ttl=request.ttl)
     return {
@@ -194,6 +202,7 @@ async def network_public_announce(request: PublicAnnounceRequest) -> Dict[str, A
         "local_endpoint": record.local_endpoint,
         "public_endpoint": record.public_endpoint,
         "reachable_endpoint": record.manifest.endpoint,
+        "tunnel_active": tunnel_hub.is_connected(record.agent_id),
     }
 
 
@@ -205,7 +214,53 @@ async def network_public_peers() -> JSONResponse:
 
 @app.websocket("/network/signal/{peer_id}")
 async def network_signal(websocket: WebSocket, peer_id: str) -> None:
-    await signaling_hub.listen(peer_id, websocket)
+    await signaling_hub.connect(peer_id, websocket)
+    try:
+        while True:
+            raw = await websocket.receive_json()
+            message = SignalMessage.model_validate(raw)
+            if message.type.value == "ping":
+                await websocket.send_json(
+                    SignalMessage(
+                        type=message.type,
+                        from_peer="gateway",
+                        to_peer=peer_id,
+                        payload={"status": "ok"},
+                    ).model_dump()
+                )
+                continue
+            result = await global_mesh.handle_incoming_signal(message)
+            if result is not None:
+                await websocket.send_json({"type": "signal_result", "payload": result})
+            await signaling_hub.relay(message)
+    except Exception:
+        await signaling_hub.disconnect(peer_id)
+
+
+@app.websocket("/network/tunnel/{peer_id}")
+async def network_tunnel(websocket: WebSocket, peer_id: str) -> None:
+    async def on_register(agent_id: str, message: Dict[str, Any]) -> None:
+        manifest_data = message.get("manifest")
+        if not manifest_data:
+            return
+        manifest = AgentManifest.model_validate(manifest_data)
+        record = global_mesh.register_tunnel_peer(
+            agent_id=agent_id,
+            local_endpoint=message.get("local_endpoint", manifest.endpoint),
+            manifest=manifest,
+        )
+        router_mesh.upsert_agent(record.manifest)
+        peer_discovery.announce(record.manifest, ttl=300)
+
+    await tunnel_hub.listen(peer_id, websocket, on_register=on_register)
+
+
+@app.post("/network/webrtc/handshake/{peer_id}")
+async def network_webrtc_handshake(peer_id: str) -> Dict[str, Any]:
+    offer = await global_mesh.initiate_webrtc_handshake(peer_id)
+    if "error" in offer:
+        raise HTTPException(status_code=503, detail=offer["error"])
+    return offer
 
 
 @app.post("/plans/compile", response_model=ExecutionPlan)
