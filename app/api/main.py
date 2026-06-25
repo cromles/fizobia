@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict
 
 from fastapi import FastAPI, HTTPException
@@ -12,18 +13,39 @@ from app.protocol.schemas import (
     RegisterAgentRequest,
     RunGoalRequest,
 )
+from app.registry.factory import create_registry, registry_backend_name
 
 router_mesh = OpenAgentMeshRouter()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    router_mesh.registry = create_registry()
+    yield
+    registry = router_mesh.registry
+    if hasattr(registry, "close"):
+        registry.close()
+
+
 app = FastAPI(
     title="Open Agent Mesh",
     description="Dağıtık yapay zeka ajanları için TCP/IP benzeri orkestrasyon protokolü",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
 @app.get("/health")
-async def health() -> Dict[str, str]:
-    return {"status": "ok", "protocol": "OAM"}
+async def health() -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "status": "ok",
+        "protocol": "OAM",
+        "registry": registry_backend_name(router_mesh.registry),
+    }
+    ping = getattr(router_mesh.registry, "ping", None)
+    if callable(ping):
+        payload["registry_alive"] = ping()
+    return payload
 
 
 @app.post("/agents/register", response_model=Dict[str, Any])

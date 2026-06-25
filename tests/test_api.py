@@ -3,11 +3,12 @@ from fastapi.testclient import TestClient
 
 from app.api.main import app, router_mesh
 from app.agents.builtins import FETCHER_MANIFEST, SYNTHESIZER_MANIFEST
+from app.registry.agent_registry import InMemoryAgentRegistry
 
 
 @pytest.fixture(autouse=True)
 def clean_registry():
-    router_mesh.registry = type(router_mesh.registry)()
+    router_mesh.registry = InMemoryAgentRegistry()
     yield
 
 
@@ -16,6 +17,7 @@ def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["protocol"] == "OAM"
+    assert response.json()["registry"] == "memory"
 
 
 def test_register_and_compile_plan():

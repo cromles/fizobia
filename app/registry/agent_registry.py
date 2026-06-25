@@ -28,7 +28,9 @@ class AgentRegistry(Protocol):
 
 
 class InMemoryAgentRegistry:
-    """Canlı sistemde Redis veya dağıtık DHT ile değiştirilecek registry implementasyonu."""
+    """Geliştirme ve tek düğümlü gateway için bellek içi registry."""
+
+    backend_name = "memory"
 
     def __init__(self) -> None:
         self._manifests: Dict[str, AgentManifest] = {}

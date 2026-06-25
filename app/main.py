@@ -9,9 +9,11 @@ from app.agents.builtins import (
     TRANSFORMER_MANIFEST,
 )
 from app.api.main import app, create_mock_agent_app, router_mesh
+from app.registry.factory import create_registry
 
 
 def bootstrap_default_mesh() -> None:
+    router_mesh.registry = create_registry()
     for manifest in (FETCHER_MANIFEST, SYNTHESIZER_MANIFEST, TRANSFORMER_MANIFEST):
         router_mesh.register_agent(manifest)
 
