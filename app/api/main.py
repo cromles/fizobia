@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 
+from app.agents.bootstrap import bootstrap_default_agents
 from app.core.router import OpenAgentMeshRouter
 from app.discovery.factory import create_discovery, create_discovery_sync, discovery_backend_name
 from app.protocol.schemas import (
@@ -30,6 +31,7 @@ async def lifespan(_: FastAPI):
     global peer_discovery, discovery_sync
     peer_discovery = create_discovery()
     discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
+    bootstrap_default_agents(router_mesh, peer_discovery)
     discovery_sync.sync_once()
     await discovery_sync.start()
     yield
