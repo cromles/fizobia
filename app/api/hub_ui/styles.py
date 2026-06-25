@@ -356,6 +356,11 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .net-degraded {{ color: var(--danger) !important; text-transform: capitalize; }}
 
 .featured-slot {{ margin-bottom: 1.25rem; }}
+.featured-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}}
 .featured-worker {{
   position: relative; overflow: hidden; border-radius: calc(var(--radius) + 4px);
   border: 1px solid var(--border-bright);

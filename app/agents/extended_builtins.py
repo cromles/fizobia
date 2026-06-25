@@ -44,8 +44,13 @@ def _report_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _sentiment_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    text = data.get("text", "")
-    return {"sentiment": "neutral", "score": 0.12, "summary": text[:100]}
+    from app.workers.sentiment_radar import fetch_sentiment_snapshot
+
+    text = str(data.get("text") or data.get("query") or data.get("headline") or "")
+    try:
+        return fetch_sentiment_snapshot(text)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.sentiment.local"}
 
 
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {

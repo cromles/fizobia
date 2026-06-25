@@ -38,16 +38,25 @@ from app.investment.x402_gateway import (
     list_x402_services,
     market_pulse_price_usd,
     parse_payment_proof,
+    sentiment_radar_price_usd,
 )
 from app.protocol.schemas import AgentManifest
-from app.workers.market_pulse import AGENT_ID, fetch_market_snapshot_async
+from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
+from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_RADAR_AGENT_ID, fetch_sentiment_snapshot_async
 
 
 class MarketPulseAnalyzeRequest(BaseModel):
     symbol: str = Field(default="bitcoin", description="btc, eth, sol, bitcoin, ...")
 
 
-HUB_BUILD = "2026.06.25-hub-pulse-v4"
+class SentimentRadarAnalyzeRequest(BaseModel):
+    text: str = Field(
+        default="Bitcoin ETF inflows rise while macro risk stays elevated",
+        description="Analiz edilecek haber veya metin",
+    )
+
+
+HUB_BUILD = "2026.06.25-hardcore-v5"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -145,6 +154,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "x402_revenue": f"{base}/hub/revenue/x402",
             "x402_services": f"{base}/hub/x402/services",
             "x402_market_pulse": f"{base}/hub/x402/market-pulse/analyze",
+            "x402_sentiment_radar": f"{base}/hub/x402/sentiment-radar/analyze",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -324,12 +334,12 @@ async def x402_market_pulse_discover(symbol: str = Query(default="bitcoin")) -> 
         raise HTTPException(status_code=503, detail="x402 kapalı")
     return {
         "service": "market-pulse",
-        "agent_id": AGENT_ID,
+        "agent_id": MARKET_PULSE_AGENT_ID,
         "real_data": True,
         "data_source": "coingecko",
         "price_usdc": market_pulse_price_usd(),
         "symbol": symbol,
-        "payment_required": build_payment_required(symbol),
+        "payment_required": build_payment_required("market-pulse", context_label=symbol),
         "analyze": {
             "method": "POST",
             "url": f"{settings.public_base_url.rstrip('/')}/hub/x402/market-pulse/analyze",
@@ -356,14 +366,21 @@ async def x402_market_pulse_analyze(
     proof_header = x_payment_proof if settings.x402_dev_accept_proof else None
 
     try:
-        proof = parse_payment_proof(x_payment, proof_header)
+        proof = parse_payment_proof(
+            x_payment,
+            proof_header,
+            required_usd=market_pulse_price_usd(),
+        )
     except PaymentRequiredError:
-        return JSONResponse(status_code=402, content=build_payment_required(symbol))
+        return JSONResponse(
+            status_code=402,
+            content=build_payment_required("market-pulse", context_label=symbol),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     mesh = _mesh()
-    manifest = mesh.registry.get(AGENT_ID)
+    manifest = mesh.registry.get(MARKET_PULSE_AGENT_ID)
     if manifest is None:
         raise HTTPException(status_code=404, detail="Market-Pulse kayıtlı değil")
 
@@ -381,7 +398,7 @@ async def x402_market_pulse_analyze(
         tx_hash=proof.get("tx_hash"),
         payer=proof.get("payer"),
     )
-    event = hub.revenue.list_events(agent_id=AGENT_ID, limit=1)[-1]
+    event = hub.revenue.list_events(agent_id=MARKET_PULSE_AGENT_ID, limit=1)[-1]
 
     return {
         "paid": True,
@@ -394,6 +411,91 @@ async def x402_market_pulse_analyze(
             "task_id": task_id,
         },
         "message": "Gerçek CoinGecko verisi — x402 ödeme kaydedildi, staking havuzuna aktarıldı",
+    }
+
+
+@router.get("/x402/sentiment-radar")
+async def x402_sentiment_radar_discover(
+    text: str = Query(default="Bitcoin ETF inflows rise while macro risk stays elevated"),
+) -> Dict[str, Any]:
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+    preview = text.strip()[:120]
+    return {
+        "service": "sentiment-radar",
+        "agent_id": SENTIMENT_RADAR_AGENT_ID,
+        "real_data": True,
+        "data_source": "alternative.me+fng+lexicon",
+        "price_usdc": sentiment_radar_price_usd(),
+        "text_preview": preview,
+        "payment_required": build_payment_required("sentiment-radar", context_label=preview[:40]),
+        "analyze": {
+            "method": "POST",
+            "url": f"{settings.public_base_url.rstrip('/')}/hub/x402/sentiment-radar/analyze",
+            "headers_without_payment": "402 Payment Required",
+            "headers_with_payment": "X-Payment-Proof veya X-PAYMENT",
+        },
+    }
+
+
+@router.post("/x402/sentiment-radar/analyze")
+async def x402_sentiment_radar_analyze(
+    request: SentimentRadarAnalyzeRequest,
+    x_payment: str | None = Header(default=None, alias="X-PAYMENT"),
+    x_payment_proof: str | None = Header(default=None, alias="X-Payment-Proof"),
+) -> Any:
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 kapalı")
+
+    text = request.text.strip()
+    proof_header = x_payment_proof if settings.x402_dev_accept_proof else None
+
+    try:
+        proof = parse_payment_proof(
+            x_payment,
+            proof_header,
+            required_usd=sentiment_radar_price_usd(),
+        )
+    except PaymentRequiredError:
+        return JSONResponse(
+            status_code=402,
+            content=build_payment_required("sentiment-radar", context_label=text[:40]),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    mesh = _mesh()
+    manifest = mesh.registry.get(SENTIMENT_RADAR_AGENT_ID)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="Sentiment-Radar kayıtlı değil")
+
+    try:
+        result = await fetch_sentiment_snapshot_async(text)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sentiment API hatası: {exc}") from exc
+
+    hub = get_investment_hub()
+    task_id = f"x402_{proof['payment_id']}"
+    hub.record_external_revenue(
+        manifest,
+        task_id,
+        proof["amount_usdc"],
+        tx_hash=proof.get("tx_hash"),
+        payer=proof.get("payer"),
+    )
+    event = hub.revenue.list_events(agent_id=SENTIMENT_RADAR_AGENT_ID, limit=1)[-1]
+
+    return {
+        "paid": True,
+        "payment": proof,
+        "analysis": result,
+        "revenue": {
+            "gross_usd": event.gross_usd,
+            "staking_usd": event.staking_usd,
+            "source": event.source.value,
+            "task_id": task_id,
+        },
+        "message": "Gerçek Fear&Greed + metin sentiment — x402 ödeme kaydedildi",
     }
 
 

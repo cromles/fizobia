@@ -1,3 +1,6 @@
+from app.config import settings
+
+
 def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str) -> str:
     demo = "true" if demo_mode else "false"
     embed = "true" if embed_mode else "false"
@@ -460,23 +463,39 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   window.triggerLiveRun = triggerLiveRun;
 
   window.tryX402MarketPulse = async function(agentId, btn) {{
+    return tryX402Service('market-pulse', agentId, btn, {{ symbol: 'bitcoin' }});
+  }};
+
+  window.tryX402SentimentRadar = async function(agentId, btn) {{
+    return tryX402Service(
+      'sentiment-radar',
+      agentId,
+      btn,
+      {{ text: 'Bitcoin ETF inflows rise while macro risk stays elevated' }},
+    );
+  }};
+
+  async function tryX402Service(serviceId, agentId, btn, body) {{
+    const prices = {{
+      'market-pulse': {settings.x402_market_pulse_price_usd},
+      'sentiment-radar': {settings.x402_sentiment_radar_price_usd},
+    }};
     btn.classList.add('loading');
-    const symbol = 'bitcoin';
     const proof = JSON.stringify({{
-      amount_usdc: 0.05,
+      amount_usdc: prices[serviceId] || 0.05,
       payer: getWallet() || '0x' + 'a'.repeat(40),
-      payment_id: 'ui_' + Date.now(),
+      payment_id: 'ui_' + serviceId + '_' + Date.now(),
       network: 'x402-demo',
       asset: 'USDC',
     }});
     try {{
-      const res = await fetch('/hub/x402/market-pulse/analyze', {{
+      const res = await fetch('/hub/x402/' + serviceId + '/analyze', {{
         method: 'POST',
         headers: {{
           'Content-Type': 'application/json',
           'X-Payment-Proof': proof,
         }},
-        body: JSON.stringify({{ symbol }}),
+        body: JSON.stringify(body),
       }});
       const data = await res.json();
       if (res.status === 402) {{
@@ -490,10 +509,10 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         return;
       }}
       const a = data.analysis || {{}};
-      showToast('x402 ödeme OK · ' + (a.analysis || a.symbol || 'analiz'));
+      showToast('x402 OK · ' + (a.analysis || a.sentiment || a.symbol || 'tamamlandı'));
       const card = btn.closest('.featured-worker') || btn.closest('.worker-card');
       const taskEl = card?.querySelector('.task-text');
-      if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || 'tamamlandı');
+      if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || a.sentiment || 'tamamlandı');
       refreshLive();
     }} catch (err) {{
       showToast(err.message || 'Bağlantı hatası', true);

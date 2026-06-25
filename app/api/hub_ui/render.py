@@ -9,9 +9,9 @@ from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
+from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-hub-pulse-v4"
+HUB_UI_BUILD = "2026.06.25-hardcore-v5"
 
 
 def render_hub_dashboard(
@@ -28,15 +28,18 @@ def render_hub_dashboard(
     manifests = manifests or {}
     agent_count = len(cards)
 
-    featured_card = next((c for c in cards if c.profile.agent_id == MARKET_PULSE_ID), None)
-    other_cards = [c for c in cards if c.profile.agent_id != MARKET_PULSE_ID]
+    featured_cards = [c for c in cards if c.profile.agent_id in LIVE_WORKER_IDS]
+    other_cards = [c for c in cards if c.profile.agent_id not in LIVE_WORKER_IDS]
 
-    featured_html = ""
-    if featured_card:
-        featured_html = render_featured_worker_card(
-            featured_card,
-            manifests.get(MARKET_PULSE_ID),
+    featured_html = "".join(
+        render_featured_worker_card(
+            card,
+            manifests.get(card.profile.agent_id),
+            LIVE_WORKERS[card.profile.agent_id],
         )
+        for card in featured_cards
+        if card.profile.agent_id in LIVE_WORKERS
+    )
 
     pool_html = "".join(
         render_worker_card(c, i, manifests.get(c.profile.agent_id), compact=True)
@@ -217,13 +220,13 @@ def render_hub_dashboard(
 
         <div class="toolbar">
           <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçi</button>
+            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçiler ({len(featured_cards)})</button>
             <button class="filter-tab" onclick="filterWorkers('pool', this)">Havuz ({pool_count})</button>
           </div>
           {trigger_btn}
         </div>
 
-        <div class="featured-slot" id="featuredSlot">
+        <div class="featured-slot featured-grid" id="featuredSlot">
           {featured_html}
         </div>
 
