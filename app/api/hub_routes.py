@@ -33,7 +33,7 @@ from app.investment.schemas import (
 from app.investment.x402 import parse_x402_payment, verify_webhook_secret
 from app.protocol.schemas import AgentManifest
 
-HUB_BUILD = "2026.06.25-market-gap-fill"
+HUB_BUILD = "2026.06.25-nebula-ui"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 

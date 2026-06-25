@@ -120,7 +120,9 @@ def test_hub_api_endpoints():
 
     html = client.get("/hub")
     assert html.status_code == 200
-    assert "The Hub" in html.text
+    assert "Uyurken" in html.text or "kazan" in html.text
+    assert "mesh-canvas" in html.text
+    assert "worker-card" in html.text
 
     live = client.get("/hub/live")
     assert live.status_code == 200
