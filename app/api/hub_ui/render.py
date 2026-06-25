@@ -71,7 +71,7 @@ def render_hub_dashboard(
   <nav class="nav">
     <div class="nav-brand">
       <span class="nav-logo">{esc(brand_title)}</span>
-      <span class="nav-sub">{esc(brand_sub)}</span>
+      <span class="nav-sub">{esc(brand_sub)} · {esc(build)}</span>
     </div>
     <div class="nav-actions">
       <div class="wallet-pill" id="walletPill">
