@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_dashboard import render_hub_dashboard
@@ -11,6 +11,11 @@ from app.config import settings
 from app.core.router import OpenAgentMeshRouter
 from app.investment.factory import get_investment_hub
 from app.investment.live import build_live_snapshot
+from app.investment.discovery_export import (
+    build_discovery_catalog,
+    build_mpp_descriptor,
+    build_platform_agent_card,
+)
 from app.investment.onchain import (
     build_public_config,
     is_onchain_ready,
@@ -19,13 +24,16 @@ from app.investment.onchain import (
 )
 from app.investment.schemas import (
     ClaimRewardsRequest,
+    PassiveStakeRequest,
     RevenueSplitConfig,
     StakeRequest,
     UnstakeRequest,
+    X402RevenueRequest,
 )
+from app.investment.x402 import parse_x402_payment, verify_webhook_secret
 from app.protocol.schemas import AgentManifest
 
-HUB_BUILD = "2026.06.25-metamask-onchain"
+HUB_BUILD = "2026.06.25-market-gap-fill"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -116,6 +124,10 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "revenue_config": f"{base}/hub/revenue/config",
             "onchain_config": f"{base}/hub/onchain/config",
             "version": f"{base}/hub/version",
+            "discovery": f"{base}/hub/discovery",
+            "partnership_stake": f"{base}/hub/partnership/stake",
+            "x402_revenue": f"{base}/hub/revenue/x402",
+            "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
         "frame_origins": settings.embed_frame_origins,
@@ -187,6 +199,96 @@ async def get_agent_card(agent_id: str) -> JSONResponse:
     if card is None:
         raise HTTPException(status_code=404, detail="Ajan bulunamadı")
     return JSONResponse(card.model_dump())
+
+
+@router.get("/discovery")
+async def hub_discovery_catalog() -> Dict[str, Any]:
+    """A2A / x402 Bazaar / Agentic.Market keşif kataloğu."""
+    hub = get_investment_hub()
+    agents = _mesh().list_agents()
+    return build_discovery_catalog(hub, agents)
+
+
+@router.get("/partnership/info")
+async def partnership_info() -> Dict[str, Any]:
+    """Pasif ortaklık modeli — rakiplerden fark."""
+    return {
+        "mode": "passive_partnership",
+        "tagline": "Dijital işçiye ortak ol — sen çalıştırma, mesh 7/24 çalışsın",
+        "revenue_split": get_investment_hub().split.model_dump(),
+        "differentiators": {
+            "vs_virtuals": "Gelir iş çıktısından; token spekülasyonu değil",
+            "vs_olas_pearl": "Agent'ı siz çalıştırmazsınız — pasif USDC stake",
+            "vs_agentbazaar": "Yatırımcı katmanı + %65 gelir havuzu",
+            "vs_bittensor": "Subnet alpha bahsi değil; görev geliri payı",
+        },
+        "how_it_works": [
+            "USDC ile işçi havuzuna stake edin",
+            "Mesh orchestrator agent'ı 7/24 çalıştırır",
+            "Her görev geliri %65 staking havuzuna akar",
+            "Payınıza düşen ödülü claim edin",
+        ],
+    }
+
+
+@router.post("/partnership/stake")
+async def passive_partnership_stake(request: PassiveStakeRequest) -> Dict[str, Any]:
+    """Pasif ortaklık stake — Olas Pearl'den fark: agent çalıştırma gerekmez."""
+    result = await stake(
+        StakeRequest(
+            investor_id=request.investor_id,
+            agent_id=request.agent_id,
+            amount_usdc=request.amount_usdc,
+            asset=request.asset,
+            tx_hash=request.tx_hash,
+        )
+    )
+    result["partnership_mode"] = request.partnership_mode.value
+    result["message"] = (
+        "Pasif ortaklık aktif — mesh işçiniz sizin adınıza çalışıyor. "
+        "Gelir payı görev tamamlandıkça havuza akar."
+    )
+    return result
+
+
+@router.post("/revenue/x402")
+async def ingest_x402_revenue(
+    request: X402RevenueRequest,
+    x_hub_signature: str | None = Header(default=None, alias="X-Hub-Signature"),
+) -> Dict[str, Any]:
+    """x402 / harici USDC ödemelerini gelir defterine işler."""
+    if not settings.x402_enabled:
+        raise HTTPException(status_code=503, detail="x402 gelir kanalı kapalı")
+    if not verify_webhook_secret(x_hub_signature):
+        raise HTTPException(status_code=401, detail="Geçersiz webhook imzası")
+
+    try:
+        payment = parse_x402_payment(request.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    mesh = _mesh()
+    manifest = mesh.registry.get(payment["agent_id"])
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="Ajan kayıtlı değil")
+
+    hub = get_investment_hub()
+    hub.record_external_revenue(
+        manifest,
+        payment["task_id"],
+        payment["amount_usdc"],
+        tx_hash=payment.get("tx_hash"),
+        payer=payment.get("payer"),
+    )
+    event = hub.revenue.list_events(agent_id=payment["agent_id"], limit=1)[-1]
+    return {
+        "recorded": True,
+        "agent_id": payment["agent_id"],
+        "gross_usd": event.gross_usd,
+        "staking_usd": event.staking_usd,
+        "source": event.source.value,
+        "tx_hash": event.tx_hash,
+    }
 
 
 @router.get("/revenue/config")

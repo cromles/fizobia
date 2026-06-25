@@ -77,6 +77,11 @@ def build_live_snapshot(
     for event in reversed(events[-20:]):
         is_demo = event.task_id.startswith("demo_")
         worker_name = name_by_id.get(event.agent_id, event.agent_id)
+        source_label = {
+            "mesh_task": "görev",
+            "x402": "x402 ödeme",
+            "external": "harici gelir",
+        }.get(event.source.value if hasattr(event.source, "value") else str(event.source), "gelir")
         feed.append(
             {
                 "type": "revenue",
@@ -88,10 +93,11 @@ def build_live_snapshot(
                 "success": event.success,
                 "latency_ms": event.latency_ms,
                 "tx_hash": event.tx_hash,
+                "source": event.source.value if hasattr(event.source, "value") else str(event.source),
                 "time": event.created_at.isoformat() if event.created_at else "",
                 "simulated": is_demo,
                 "message": (
-                    f"{worker_name} sizin adınıza görev tamamladı"
+                    f"{worker_name} · {source_label} · ${event.gross_usd:.4f} gelir (sizin payınız havuza aktı)"
                     if event.success and not is_demo
                     else (
                         f"{worker_name} görev denedi (başarısız)"
@@ -113,7 +119,8 @@ def build_live_snapshot(
             if settings.hub_demo_mode
             else (
                 "Her kayıt gerçek ajan faaliyetinden gelir — dijital işçileriniz "
-                "ağda görev alır, çalışır ve kazancın payını size aktarır."
+                "ağda görev alır, çalışır ve kazancın %65'i staking havuzuna aktarılır. "
+                "Pasif ortaklık: siz çalıştırmazsınız, mesh 7/24 çalışır."
             )
         ),
         "network": {

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Dict, List, Tuple
 
@@ -13,6 +12,13 @@ _LIVE_GOALS: List[Tuple[str, Dict[str, Any]]] = [
     ("BioMed literatür taraması yap", {"query": "kardiyovasküler RCT meta-analizi"}),
     ("finansal risk özeti sentezle", {"query": "ETH volatilite ve likidite"}),
     ("ham veriyi normalize et", {"raw_text": "OAM ağı canlı iş akışı — şema dönüşümü"}),
+    ("piyasa momentum analizi yap", {"query": "BTC dominance ve altcoin rotasyonu"}),
+    ("haber sentiment skoru üret", {"text": "Fed faiz kararı piyasa etkisi"}),
+    ("web kaynağından veri çek", {"url": "https://mesh.oam/market-data"}),
+    ("yatırımcı raporu sentezle", {"topic": "Q2 dijital varlık portföy özeti"}),
+    ("uyumluluk kontrolü çalıştır", {"payload": "transaction_batch_8842"}),
+    ("çok adımlı pipeline planla", {"goal": "fetch-analyze-report pipeline"}),
+    ("çıktı kalitesini doğrula", {"text": "pipeline output checksum"}),
 ]
 
 
@@ -24,7 +30,7 @@ class HubActivityWorker:
 
     def __init__(self, router: OpenAgentMeshRouter) -> None:
         self.router = router
-        self._task: asyncio.Task[None] | None = None
+        self._task: Any = None
         self._running = False
         self._goal_index = 0
 
@@ -36,10 +42,13 @@ class HubActivityWorker:
             logger.info("Hub activity worker: interval=0 — kapalı")
             return
         self._running = True
+        import asyncio
+
         self._task = asyncio.create_task(self._run_loop())
         logger.info(
-            "Hub activity worker başladı (her %ss gerçek görev)",
+            "Hub activity worker başladı (her %ss gerçek görev, %d hedef)",
             settings.hub_live_interval,
+            len(_LIVE_GOALS),
         )
 
     async def stop(self) -> None:
@@ -48,7 +57,7 @@ class HubActivityWorker:
             self._task.cancel()
             try:
                 await self._task
-            except asyncio.CancelledError:
+            except Exception:
                 pass
             self._task = None
 
@@ -65,6 +74,8 @@ class HubActivityWorker:
         }
 
     async def _run_loop(self) -> None:
+        import asyncio
+
         await asyncio.sleep(8.0)
         while self._running:
             try:

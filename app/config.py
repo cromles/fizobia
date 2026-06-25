@@ -34,6 +34,8 @@ class OAMSettings:
     onchain_operator_key: str
     cors_origins: List[str]
     embed_frame_origins: List[str]
+    x402_enabled: bool
+    x402_webhook_secret: str
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -61,6 +63,8 @@ class OAMSettings:
             "https://zinesh.com,https://www.zinesh.com,http://localhost:3000,http://127.0.0.1:3000",
         )
         embed_frame_origins = [o.strip() for o in embed_raw.split(",") if o.strip()]
+        x402_enabled = os.getenv("OAM_X402_ENABLED", "true").lower() in ("1", "true", "yes")
+        x402_webhook_secret = os.getenv("OAM_X402_WEBHOOK_SECRET", "")
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -88,6 +92,8 @@ class OAMSettings:
             onchain_operator_key=os.getenv("OAM_ONCHAIN_OPERATOR_KEY", ""),
             cors_origins=cors_origins,
             embed_frame_origins=embed_frame_origins,
+            x402_enabled=x402_enabled,
+            x402_webhook_secret=x402_webhook_secret,
         )
 
     @property

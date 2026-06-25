@@ -1,5 +1,7 @@
 """OAM örnek ajanları ve mesh gateway başlatıcıları."""
 
+from typing import Any, Dict
+
 import uvicorn
 
 from app.agents.bootstrap import bootstrap_default_agents
@@ -57,6 +59,24 @@ def run_mock_transformer() -> None:
         host="127.0.0.1",
         port=8103,
     )
+
+
+def run_extended_agent(agent_id: str, port: int, handlers: Dict[str, Any]) -> None:
+    uvicorn.run(
+        create_mock_agent_app(agent_id, handlers),
+        host="127.0.0.1",
+        port=port,
+    )
+
+
+def run_extended_agents() -> None:
+    """Tek process'te tüm genişletilmiş ajanları başlatır (geliştirme kısayolu)."""
+    from app.agents.extended_builtins import EXTENDED_HANDLERS, EXTENDED_MANIFESTS
+
+    manifest = EXTENDED_MANIFESTS[0]
+    port = int(manifest.endpoint.rsplit(":", 1)[-1])
+    handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
+    run_extended_agent(manifest.agent_id, port, handlers)
 
 
 if __name__ == "__main__":

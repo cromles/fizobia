@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.investment.schemas import AgentClass, AgentInvestmentProfile
+from app.investment.schemas import AgentClass, AgentInvestmentProfile, PartnershipMode
 
 DEFAULT_PROFILES: dict[str, AgentInvestmentProfile] = {
     "oam.fetcher.local": AgentInvestmentProfile(
@@ -110,5 +110,100 @@ DEFAULT_PROFILES: dict[str, AgentInvestmentProfile] = {
         risk_level="düşük",
         token_symbol="ECHO-TKN",
         contract_address="0xecho1a2b3c4d5e6f7890abcdef1234567890abcd",
+    ),
+    "oam.analyst.market.local": AgentInvestmentProfile(
+        agent_id="oam.analyst.market.local",
+        display_name="Market-Pulse",
+        agent_class=AgentClass.ANALYST,
+        mission="Kripto ve geleneksel piyasa verisini gerçek zamanlı analiz eder.",
+        long_description=(
+            "Market-Pulse, çoklu borsa ve makro veri akışlarını tek risk panelinde "
+            "birleştirir. Mesh orchestrator tarafından 7/24 çalıştırılır — pasif ortaklar "
+            "işçinin ürettiği gelirden pay alır."
+        ),
+        investment_thesis="Yüksek birim fiyatlı analiz görevleri — portföy yöneticileri için kritik katman.",
+        use_cases=["Volatilite uyarıları", "Likidite analizi", "Makro risk özeti"],
+        staking_covers="Gerçek zamanlı veri feed'leri, analiz GPU döngüleri.",
+        risk_level="orta",
+        token_symbol="MP-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.validator.compliance.local": AgentInvestmentProfile(
+        agent_id="oam.validator.compliance.local",
+        display_name="Compliance-Guard",
+        agent_class=AgentClass.VALIDATOR,
+        mission="Regülasyon ve uyumluluk kontrollerini otomatik doğrular.",
+        long_description="Compliance-Guard, finans ve sağlık pipeline'larında çıktı bütünlüğünü denetler.",
+        investment_thesis="Düşük volatilite, yüksek tekrar — SLA tabanlı sabit talep potansiyeli.",
+        use_cases=["KYC/AML kontrol", "Veri şema doğrulama", "Audit trail"],
+        staking_covers="Denetim log depolama, compliance API kotası.",
+        risk_level="düşük",
+        token_symbol="CG-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.analyst.sentiment.local": AgentInvestmentProfile(
+        agent_id="oam.analyst.sentiment.local",
+        display_name="Sentiment-Radar",
+        agent_class=AgentClass.ANALYST,
+        mission="Haber ve sosyal medya sentiment sinyallerini yapılandırılmış skorlara dönüştürür.",
+        long_description="Sentiment-Radar, yatırım kararları öncesi narrative riskini ölçer.",
+        investment_thesis="Medya yoğun dönemlerde çağrı hacmi patlar — gelir dalgalanması yüksek ama upside büyük.",
+        use_cases=["Haber sentiment", "Sosyal trend tespiti", "Kriz erken uyarı"],
+        staking_covers="NLP API, streaming veri abonelikleri.",
+        risk_level="orta",
+        token_symbol="SR-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.fetcher.web.local": AgentInvestmentProfile(
+        agent_id="oam.fetcher.web.local",
+        display_name="Web-Crawler-Pro",
+        agent_class=AgentClass.FETCHER,
+        mission="Web kaynaklarından yapılandırılmış veri çeker ve normalize eder.",
+        long_description="Web-Crawler-Pro, açık web ve API kaynaklarından yüksek hacimli veri toplar.",
+        investment_thesis="Hacim oyunu — düşük marj, yüksek frekans, istikrarlı nakit akışı.",
+        use_cases=["Competitive intelligence", "Fiyat tarama", "İçerik agregasyonu"],
+        staking_covers="Proxy rotasyonu, crawl altyapısı.",
+        risk_level="düşük",
+        token_symbol="WCP-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.synthesizer.report.local": AgentInvestmentProfile(
+        agent_id="oam.synthesizer.report.local",
+        display_name="Report-Forge",
+        agent_class=AgentClass.SYNTHESIZER,
+        mission="Çok kaynaklı veriyi yatırımcı raporlarına dönüştürür.",
+        long_description="Report-Forge, ham veriyi PDF-ready yapılandırılmış raporlara çevirir.",
+        investment_thesis="Kurumsal müşteriler görev başına en yüksek ödemeyi yapar.",
+        use_cases=["Due diligence raporu", "Haftalık portföy özeti", "Yönetim kurulu brifi"],
+        staking_covers="LLM inference, rapor şablon motoru.",
+        risk_level="orta",
+        token_symbol="RF-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.orchestrator.pipeline.local": AgentInvestmentProfile(
+        agent_id="oam.orchestrator.pipeline.local",
+        display_name="Pipeline-Master",
+        agent_class=AgentClass.ORCHESTRATOR,
+        mission="Çok adımlı iş akışlarını planlar ve diğer işçileri koordine eder.",
+        long_description="Pipeline-Master, mesh'in beyni — DAG planlama ve görev dağıtımı yapar.",
+        investment_thesis="Orkestratör ajanlar ağ büyüdükçe değer kazanır — kompound etki.",
+        use_cases=["Multi-agent pipeline", "Batch işlem", "SLA orkestrasyonu"],
+        staking_covers="Planlama compute, queue altyapısı.",
+        risk_level="yüksek",
+        token_symbol="PM-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
+    ),
+    "oam.validator.quality.local": AgentInvestmentProfile(
+        agent_id="oam.validator.quality.local",
+        display_name="Quality-Shield",
+        agent_class=AgentClass.VALIDATOR,
+        mission="Ajan çıktılarının kalite ve şema uyumunu doğrular.",
+        long_description="Quality-Shield, proof-of-execution zincirinin son halkasıdır.",
+        investment_thesis="Her başarılı pipeline bu ajandan geçer — pasif ama sürekli gelir.",
+        use_cases=["Output QA", "Halüsinasyon filtresi", "Şema validasyonu"],
+        staking_covers="Doğrulama compute, test fixture depolama.",
+        risk_level="düşük",
+        token_symbol="QS-TKN",
+        partnership_mode=PartnershipMode.PASSIVE,
     ),
 }

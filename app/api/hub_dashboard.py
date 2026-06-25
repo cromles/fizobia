@@ -158,7 +158,7 @@ def _render_agent_card(
         <input type="number" class="amount field" placeholder="100" min="1" step="1" />
         <div class="stake-buttons">
           <button type="button" class="btn-primary" onclick="stake('{agent_id}', this)">
-            <span class="btn-text">Stake · {_esc(p.token_symbol)}</span>
+            <span class="btn-text">Pasif Ortak Ol · {_esc(p.token_symbol)}</span>
             <span class="btn-loader"></span>
           </button>
           <button type="button" class="btn-ghost" onclick="claim('{agent_id}', this)">Ödül Al</button>
@@ -192,7 +192,7 @@ def render_hub_dashboard(
         '<div class="demo-banner">⚠ DEMO MODU — TVL, çağrı sayısı ve aktivite akışının çoğu simüle veridir. '
         "Gerçek mod: <code>python -m app.run_stack</code></div>"
         if demo_mode
-        else '<div class="live-banner">● CANLI İŞÇİLER — Gerçek ajanlar ağda çalışıyor, gerçek görevler gerçek gelir üretiyor</div>'
+        else '<div class="live-banner">● PASİF ORTAKLIK — Mesh 7/24 işçilerinizi çalıştırır; görev gelirinin %65\'i havuza akar · x402 destekli</div>'
     )
     class_attr = ' class="has-banner"'
     onchain_json = json.dumps(onchain or {"enabled": False, "ready": False})
@@ -1320,7 +1320,7 @@ def render_hub_dashboard(
           showToast('MetaMask onayı bekleniyor…');
           txHash = await onchainStake(agentId, amount, poolAddress);
         }}
-        const res = await fetch('/hub/stake', {{
+        const res = await fetch('/hub/partnership/stake', {{
           method: 'POST',
           headers: {{'Content-Type':'application/json'}},
           body: JSON.stringify({{
@@ -1328,12 +1328,13 @@ def render_hub_dashboard(
             agent_id: agentId,
             amount_usdc: amount,
             tx_hash: txHash,
+            partnership_mode: 'passive',
           }})
         }});
         const data = await res.json();
         if (res.ok) {{
           const chainNote = data.onchain ? ' · on-chain' : '';
-          showToast('Stake başarılı · ' + data.shares?.toFixed(2) + ' pay' + chainNote);
+          showToast((data.message || 'Pasif ortaklık aktif') + chainNote);
           setTimeout(() => location.reload(), 1800);
         }} else {{
           showToast(data.detail || 'Hata', true);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+from app.agents.extended_builtins import EXTENDED_MANIFESTS
 from app.protocol.schemas import AgentCapability, AgentManifest
 
 
@@ -95,7 +96,7 @@ TRANSFORMER_MANIFEST = AgentManifest(
     ],
 )
 
-DEFAULT_MANIFESTS = [FETCHER_MANIFEST, SYNTHESIZER_MANIFEST, TRANSFORMER_MANIFEST]
+DEFAULT_MANIFESTS = [FETCHER_MANIFEST, SYNTHESIZER_MANIFEST, TRANSFORMER_MANIFEST] + EXTENDED_MANIFESTS
 
 MOCK_HANDLERS = {
     "data_fetcher": data_fetcher_handler,

@@ -80,6 +80,20 @@ if settings.cors_origins:
 app.include_router(hub_router)
 
 
+@app.get("/.well-known/agent.json")
+async def well_known_agent() -> Dict[str, Any]:
+    from app.investment.discovery_export import build_platform_agent_card
+
+    return build_platform_agent_card()
+
+
+@app.get("/.well-known/mpp.json")
+async def well_known_mpp() -> Dict[str, Any]:
+    from app.investment.discovery_export import build_mpp_descriptor
+
+    return build_mpp_descriptor()
+
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     payload: Dict[str, Any] = {
@@ -320,6 +334,10 @@ def create_mock_agent_app(
 ) -> FastAPI:
     """Tekil ajan endpoint'i — OAM protokolüne uygun /execute yüzeyi."""
     agent_app = FastAPI(title=f"OAM Agent: {agent_id}")
+
+    @agent_app.get("/health")
+    async def health() -> Dict[str, str]:
+        return {"status": "ok", "agent_id": agent_id}
 
     @agent_app.post("/execute")
     async def execute(payload: Dict[str, Any]) -> Dict[str, Any]:

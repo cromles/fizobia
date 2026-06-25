@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import time
 from typing import Dict, List, Optional
 
-from app.investment.metrics import MetricsCollector
+from app.investment.metrics import MetricsCollector, _RevenuePoint
 from app.investment.revenue import RevenueLedger
 from app.investment.schemas import (
     AgentClass,
@@ -10,6 +11,7 @@ from app.investment.schemas import (
     AgentIdentityCard,
     AgentInvestmentProfile,
     FinancialReport,
+    RevenueSource,
     RevenueSplitConfig,
     StakingPool,
 )
@@ -94,6 +96,42 @@ class InvestmentHub:
                 except Exception:
                     pass
 
+    def record_external_revenue(
+        self,
+        manifest: AgentManifest,
+        task_id: str,
+        gross_usd: float,
+        *,
+        source: RevenueSource = RevenueSource.X402,
+        tx_hash: str | None = None,
+        payer: str | None = None,
+    ) -> None:
+        """x402 veya harici ödeme kanalından gelen gerçek USDC geliri."""
+        profile = self.ensure_agent(manifest)
+        event = self.revenue.record_external_revenue(
+            profile.agent_id,
+            task_id,
+            gross_usd,
+            source=source,
+            tx_hash=tx_hash,
+            payer=payer,
+        )
+        self.metrics.record_execution(
+            profile.agent_id,
+            success=True,
+            latency_ms=0.0,
+            revenue_usd=gross_usd,
+        )
+        if event.staking_usd > 0:
+            self.pools.distribute_staking_rewards(profile.agent_id, event.staking_usd)
+            if settings.onchain_enabled:
+                from app.investment.onchain import fund_pool_rewards
+
+                try:
+                    fund_pool_rewards(profile.agent_id, event.staking_usd)
+                except Exception:
+                    pass
+
     def build_identity_card(
         self,
         agent_id: str,
@@ -112,7 +150,11 @@ class InvestmentHub:
 
         apy = 0.0
         if staking_tvl > 0:
-            daily_staking = self.revenue.staking_revenue(agent_id)
+            daily_staking = self.revenue.staking_revenue_24h(agent_id)
+            if daily_staking <= 0:
+                daily_staking = self.revenue.staking_revenue(agent_id) / max(
+                    len(self.revenue.list_events(agent_id=agent_id)), 1
+                )
             apy = (daily_staking * 365 / staking_tvl) * 100
 
         finance = FinancialReport(
@@ -174,7 +216,13 @@ class InvestmentHub:
             runtime.total_calls = calls
             runtime.successful_calls = int(calls * 0.994)
             runtime.total_latency_ms = calls * latency
-            runtime.revenue_events = [vol_24h / max(calls // 1000, 1)] * min(calls // 1000, 100)
+            runtime.revenue_points = [
+                _RevenuePoint(
+                    amount_usd=vol_24h / max(calls // 1000, 1),
+                    timestamp=time.time(),
+                )
+                for _ in range(min(calls // 1000, 100))
+            ]
             for i in range(min(50, calls // 10000 or 1)):
                 self.revenue.record_task_revenue(
                     agent_id=agent_id,

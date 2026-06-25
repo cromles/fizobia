@@ -7,6 +7,17 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class RevenueSource(str, Enum):
+    MESH_TASK = "mesh_task"
+    X402 = "x402"
+    EXTERNAL = "external"
+
+
+class PartnershipMode(str, Enum):
+    PASSIVE = "passive"
+    OPERATOR = "operator"
+
+
 class AgentClass(str, Enum):
     FETCHER = "fetcher"
     TRANSFORMER = "transformer"
@@ -54,6 +65,10 @@ class AgentInvestmentProfile(BaseModel):
         default="GPU/sunucu kirası, LLM API token maliyetleri ve ağ bant genişliği.",
     )
     risk_level: str = Field(default="orta", description="düşük | orta | yüksek")
+    partnership_mode: PartnershipMode = Field(
+        default=PartnershipMode.PASSIVE,
+        description="passive = mesh sizin adınıza çalışır; operator = kendi agent'ınızı çalıştırırsınız",
+    )
 
 
 class AgentHealthMetrics(BaseModel):
@@ -103,6 +118,8 @@ class RevenueEvent(BaseModel):
     success: bool
     created_at: datetime = Field(default_factory=datetime.utcnow)
     tx_hash: Optional[str] = None
+    source: RevenueSource = Field(default=RevenueSource.MESH_TASK)
+    payer: Optional[str] = Field(default=None, description="x402 ödeyen cüzdan")
 
 
 class LedgerEntry(BaseModel):
@@ -143,3 +160,20 @@ class ClaimRewardsRequest(BaseModel):
     investor_id: str
     agent_id: str
     tx_hash: Optional[str] = Field(default=None, description="On-chain claim işlem hash'i")
+
+
+class PassiveStakeRequest(StakeRequest):
+    """Pasif ortaklık — Olas'tan fark: agent'ı siz çalıştırmazsınız, mesh 7/24 çalışır."""
+
+    partnership_mode: PartnershipMode = Field(default=PartnershipMode.PASSIVE)
+
+
+class X402RevenueRequest(BaseModel):
+    agent_id: str
+    amount_usdc: float = Field(..., gt=0)
+    payer: Optional[str] = None
+    tx_hash: Optional[str] = None
+    task_id: Optional[str] = None
+    network: str = Field(default="x402")
+    asset: str = Field(default="USDC")
+    payment_protocol: str = Field(default="x402")

@@ -3,9 +3,15 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from app.investment.schemas import AgentHealthMetrics
+
+
+@dataclass
+class _RevenuePoint:
+    amount_usd: float
+    timestamp: float
 
 
 @dataclass
@@ -13,15 +19,16 @@ class _AgentRuntime:
     total_calls: int = 0
     successful_calls: int = 0
     total_latency_ms: float = 0.0
-    revenue_events: List[float] = field(default_factory=list)
+    revenue_points: List[_RevenuePoint] = field(default_factory=list)
 
 
 class MetricsCollector:
     """Ağ sağlık metrikleri — başarı oranı, gecikme, çağrı sayısı."""
 
+    WINDOW_24H = 86400.0
+
     def __init__(self) -> None:
         self._agents: Dict[str, _AgentRuntime] = defaultdict(_AgentRuntime)
-        self._window_start = time.time()
 
     def record_execution(
         self,
@@ -37,7 +44,9 @@ class MetricsCollector:
             runtime.successful_calls += 1
         runtime.total_latency_ms += latency_ms
         if revenue_usd > 0:
-            runtime.revenue_events.append(revenue_usd)
+            runtime.revenue_points.append(
+                _RevenuePoint(amount_usd=revenue_usd, timestamp=time.time())
+            )
 
     def get_health(self, agent_id: str, reliability_score: float = 1.0) -> AgentHealthMetrics:
         runtime = self._agents.get(agent_id)
@@ -63,4 +72,12 @@ class MetricsCollector:
         runtime = self._agents.get(agent_id)
         if runtime is None:
             return 0.0
-        return sum(runtime.revenue_events)
+        cutoff = time.time() - self.WINDOW_24H
+        return sum(p.amount_usd for p in runtime.revenue_points if p.timestamp >= cutoff)
+
+    def prune_old_points(self, max_age_seconds: float = WINDOW_24H * 2) -> None:
+        cutoff = time.time() - max_age_seconds
+        for runtime in self._agents.values():
+            runtime.revenue_points = [
+                p for p in runtime.revenue_points if p.timestamp >= cutoff
+            ]

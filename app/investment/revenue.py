@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List
 
-from app.investment.schemas import RevenueEvent, RevenueSplitConfig
+from app.investment.schemas import RevenueEvent, RevenueSource, RevenueSplitConfig
 
 
 class RevenueLedger:
@@ -25,6 +25,53 @@ class RevenueLedger:
         *,
         latency_ms: float = 0.0,
         success: bool = True,
+        source: RevenueSource = RevenueSource.MESH_TASK,
+        tx_hash: str | None = None,
+        payer: str | None = None,
+    ) -> RevenueEvent:
+        return self._record(
+            agent_id=agent_id,
+            task_id=task_id,
+            gross_usd=gross_usd,
+            latency_ms=latency_ms,
+            success=success,
+            source=source,
+            tx_hash=tx_hash,
+            payer=payer,
+        )
+
+    def record_external_revenue(
+        self,
+        agent_id: str,
+        task_id: str,
+        gross_usd: float,
+        *,
+        source: RevenueSource = RevenueSource.X402,
+        tx_hash: str | None = None,
+        payer: str | None = None,
+    ) -> RevenueEvent:
+        return self._record(
+            agent_id=agent_id,
+            task_id=task_id,
+            gross_usd=gross_usd,
+            latency_ms=0.0,
+            success=True,
+            source=source,
+            tx_hash=tx_hash,
+            payer=payer,
+        )
+
+    def _record(
+        self,
+        agent_id: str,
+        task_id: str,
+        gross_usd: float,
+        *,
+        latency_ms: float,
+        success: bool,
+        source: RevenueSource,
+        tx_hash: str | None,
+        payer: str | None,
     ) -> RevenueEvent:
         if gross_usd < 0:
             gross_usd = 0.0
@@ -44,7 +91,9 @@ class RevenueLedger:
             latency_ms=latency_ms,
             success=success,
             created_at=datetime.utcnow(),
-            tx_hash=f"0x{uuid.uuid4().hex}",
+            tx_hash=tx_hash or f"0x{uuid.uuid4().hex}",
+            source=source,
+            payer=payer,
         )
         self._events.append(event)
         self._platform_total += platform
@@ -65,3 +114,21 @@ class RevenueLedger:
 
     def staking_revenue(self, agent_id: str) -> float:
         return sum(e.staking_usd for e in self._events if e.agent_id == agent_id)
+
+    def staking_revenue_24h(self, agent_id: str) -> float:
+        cutoff = datetime.utcnow().timestamp() - 86400
+        return sum(
+            e.staking_usd
+            for e in self._events
+            if e.agent_id == agent_id and e.created_at.timestamp() >= cutoff
+        )
+
+    def external_revenue_total(self, agent_id: str | None = None) -> float:
+        events = self._events
+        if agent_id:
+            events = [e for e in events if e.agent_id == agent_id]
+        return sum(
+            e.gross_usd
+            for e in events
+            if e.source in (RevenueSource.X402, RevenueSource.EXTERNAL)
+        )
