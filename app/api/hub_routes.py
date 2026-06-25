@@ -47,7 +47,7 @@ class MarketPulseAnalyzeRequest(BaseModel):
     symbol: str = Field(default="bitcoin", description="btc, eth, sol, bitcoin, ...")
 
 
-HUB_BUILD = "2026.06.25-hub-pulse-v3"
+HUB_BUILD = "2026.06.25-hub-pulse-v4"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -67,6 +67,8 @@ def _hub_html_response(html: str, *, embed: bool = False) -> HTMLResponse:
     headers = {
         "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
         "Pragma": "no-cache",
+        "Expires": "0",
+        "Surrogate-Control": "no-store",
         "X-Hub-Build": HUB_BUILD,
     }
     if embed:

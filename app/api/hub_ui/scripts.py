@@ -501,7 +501,29 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     btn.classList.remove('loading');
   }};
 
+  async function ensureLatestBuild() {{
+    try {{
+      const res = await fetch('/hub/version?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const serverBuild = data.hub_build;
+      const metaBuild = document.querySelector('meta[name="hub-build"]')?.content;
+      const hasNewUi = !!document.getElementById('setupAlert');
+      const qs = new URLSearchParams(location.search);
+      if (serverBuild && metaBuild && serverBuild !== metaBuild) {{
+        qs.set('v', serverBuild);
+        location.replace(location.pathname + '?' + qs.toString());
+        return;
+      }}
+      if (serverBuild && !hasNewUi && serverBuild.indexOf('hub-pulse-v') !== -1) {{
+        qs.set('v', serverBuild);
+        location.replace(location.pathname + '?' + qs.toString());
+      }}
+    }} catch (_) {{}}
+  }}
+
   initMeshCanvas();
+  ensureLatestBuild();
   updateWalletUI();
   if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
   console.info('[Hub] build:', '{build}');

@@ -10,10 +10,10 @@ echo "  http://127.0.0.1:${PORT}/hub"
 echo ""
 
 if command -v lsof >/dev/null 2>&1; then
-  OLD_PID=$(lsof -ti ":${PORT}" 2>/dev/null | head -1 || true)
-  if [[ -n "${OLD_PID}" ]]; then
-    echo "  Eski gateway kapatılıyor (PID ${OLD_PID})…"
-    kill "${OLD_PID}" 2>/dev/null || true
+  mapfile -t OLD_PIDS < <(lsof -ti ":${PORT}" 2>/dev/null | sort -u || true)
+  if ((${#OLD_PIDS[@]})); then
+    echo "  Eski gateway kapatılıyor: ${OLD_PIDS[*]}"
+    kill -9 "${OLD_PIDS[@]}" 2>/dev/null || true
     sleep 1
   fi
 fi

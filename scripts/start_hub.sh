@@ -9,14 +9,19 @@ echo "  The Hub (Nebula UI) — http://127.0.0.1:${PORT}/hub"
 echo "  Not: Sadece gateway — mesh için: bash scripts/start_full_stack.sh"
 echo ""
 
-# Eski gateway sürecini kapat (eski arayüz cache'i değil, eski process)
+# Porttaki TÜM eski süreçleri kapat (tek PID yetmez — eski arayüz kalır)
 if command -v lsof >/dev/null 2>&1; then
-  OLD_PID=$(lsof -ti ":${PORT}" 2>/dev/null | head -1 || true)
-  if [[ -n "${OLD_PID}" ]]; then
-    echo "  Eski süreç kapatılıyor (PID ${OLD_PID})…"
-    kill "${OLD_PID}" 2>/dev/null || true
+  mapfile -t OLD_PIDS < <(lsof -ti ":${PORT}" 2>/dev/null | sort -u || true)
+  if ((${#OLD_PIDS[@]})); then
+    echo "  Eski süreç(ler) kapatılıyor: ${OLD_PIDS[*]}"
+    kill -9 "${OLD_PIDS[@]}" 2>/dev/null || true
     sleep 1
   fi
+fi
+if lsof -ti ":${PORT}" >/dev/null 2>&1; then
+  echo "  HATA: Port ${PORT} hâlâ dolu. Elle kapatın:"
+  echo "    lsof -ti :${PORT} | xargs kill -9"
+  exit 1
 fi
 
 export OAM_HUB_DEMO="${OAM_HUB_DEMO:-false}"

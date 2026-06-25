@@ -11,7 +11,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_ID
 
-HUB_UI_BUILD = "2026.06.25-hub-pulse-v3"
+HUB_UI_BUILD = "2026.06.25-hub-pulse-v4"
 
 
 def render_hub_dashboard(
@@ -69,6 +69,9 @@ def render_hub_dashboard(
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#020204"/>
   <meta name="hub-build" content="{esc(build)}"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>{esc(brand_title)} — Pasif Dijital İşçi Ortaklığı</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
