@@ -1,0 +1,15 @@
+[Unit]
+Description=OAM The Hub Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/fizobia
+EnvironmentFile=/opt/fizobia/.env.server
+ExecStart=/usr/bin/python3 -m app.main
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

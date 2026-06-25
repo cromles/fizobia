@@ -2,11 +2,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+ENV_FILE="${OAM_ENV_FILE:-.env.server}"
 PORT="${OAM_GATEWAY_PORT:-8787}"
+
+if [[ -f "${ENV_FILE}" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+fi
 
 echo ""
 echo "  The Hub — TAM STACK (10 işçi + gateway)"
-echo "  http://127.0.0.1:${PORT}/hub"
+echo "  ${OAM_PUBLIC_BASE_URL:-http://127.0.0.1:${PORT}}/hub"
 echo ""
 
 if command -v lsof >/dev/null 2>&1; then
