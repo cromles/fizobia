@@ -48,3 +48,30 @@ def test_hub_onchain_config_endpoint():
     body = response.json()
     assert "enabled" in body
     assert "chain_id" in body
+
+
+def test_hub_sdk_config_endpoint():
+    from fastapi.testclient import TestClient
+
+    from app.api.main import app
+
+    client = TestClient(app)
+    response = client.get("/hub/sdk/config")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["protocol"] == "OAM-Hub-SDK"
+    assert "embed_url" in body
+    assert "endpoints" in body
+    assert "agents" in body["endpoints"]
+
+
+def test_hub_embed_page():
+    from fastapi.testclient import TestClient
+
+    from app.api.main import app
+
+    client = TestClient(app)
+    response = client.get("/hub/embed")
+    assert response.status_code == 200
+    assert "Zinesh Protocol" in response.text
+    assert "frame-ancestors" in response.headers.get("content-security-policy", "")

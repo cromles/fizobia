@@ -36,9 +36,28 @@ def _mesh() -> OpenAgentMeshRouter:
     return router_mesh
 
 
-@router.get("", response_class=HTMLResponse)
-@router.get("/", response_class=HTMLResponse)
-async def hub_dashboard() -> HTMLResponse:
+def _embed_frame_header() -> str:
+    origins = " ".join(settings.embed_frame_origins)
+    return f"frame-ancestors 'self' {origins}"
+
+
+def _hub_html_response(html: str, *, embed: bool = False) -> HTMLResponse:
+    headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "X-Hub-Build": HUB_BUILD,
+    }
+    if embed:
+        headers["Content-Security-Policy"] = _embed_frame_header()
+    return HTMLResponse(content=html, headers=headers)
+
+
+def _render_hub(
+    *,
+    embed_mode: bool = False,
+    brand_title: str = "The Hub",
+    brand_sub: str = "Veridag",
+) -> HTMLResponse:
     hub = get_investment_hub()
     mesh = _mesh()
     agents = mesh.list_agents()
@@ -51,15 +70,56 @@ async def hub_dashboard() -> HTMLResponse:
         build=HUB_BUILD,
         demo_mode=settings.hub_demo_mode,
         onchain=build_public_config(),
+        embed_mode=embed_mode,
+        brand_title=brand_title,
+        brand_sub=brand_sub,
     )
-    return HTMLResponse(
-        content=html,
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "X-Hub-Build": HUB_BUILD,
+    return _hub_html_response(html, embed=embed_mode)
+
+
+@router.get("", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
+async def hub_dashboard() -> HTMLResponse:
+    return _render_hub()
+
+
+@router.get("/embed", response_class=HTMLResponse)
+async def hub_embed_dashboard() -> HTMLResponse:
+    """Zinesh.com iframe embed — protokol markası, landing kapalı."""
+    return _render_hub(
+        embed_mode=True,
+        brand_title="Zinesh Protocol",
+        brand_sub="Dijital İşçiler",
+    )
+
+
+@router.get("/sdk/config")
+async def hub_sdk_config() -> Dict[str, Any]:
+    """Zinesh web sitesi frontend entegrasyonu için public API haritası."""
+    base = settings.public_base_url.rstrip("/")
+    return {
+        "protocol": "OAM-Hub-SDK",
+        "version": "1.0",
+        "hub_build": HUB_BUILD,
+        "api_base": base,
+        "embed_url": f"{base}/hub/embed",
+        "demo_mode": settings.hub_demo_mode,
+        "onchain": build_public_config(),
+        "endpoints": {
+            "agents": f"{base}/hub/agents",
+            "agent": f"{base}/hub/agents/{{agent_id}}",
+            "live": f"{base}/hub/live",
+            "live_ws": base.replace("https://", "wss://").replace("http://", "ws://") + "/hub/ws/live",
+            "stake": f"{base}/hub/stake",
+            "claim": f"{base}/hub/claim",
+            "positions": f"{base}/hub/positions/{{investor_id}}",
+            "revenue_config": f"{base}/hub/revenue/config",
+            "onchain_config": f"{base}/hub/onchain/config",
+            "version": f"{base}/hub/version",
         },
-    )
+        "cors_origins": settings.cors_origins,
+        "frame_origins": settings.embed_frame_origins,
+    }
 
 
 @router.get("/onchain/config")

@@ -32,6 +32,8 @@ class OAMSettings:
     onchain_chain_id: int
     onchain_deployment_file: str
     onchain_operator_key: str
+    cors_origins: List[str]
+    embed_frame_origins: List[str]
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -49,6 +51,16 @@ class OAMSettings:
         live_interval = float(os.getenv("OAM_HUB_LIVE_INTERVAL", "30" if not demo_mode else "0"))
         onchain_enabled = os.getenv("OAM_ONCHAIN_ENABLED", "false").lower() in ("1", "true", "yes")
         onchain_require_tx = os.getenv("OAM_ONCHAIN_REQUIRE_TX", "true").lower() in ("1", "true", "yes")
+        cors_raw = os.getenv(
+            "OAM_CORS_ORIGINS",
+            "https://zinesh.com,https://www.zinesh.com,http://localhost:3000,http://127.0.0.1:3000",
+        )
+        cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
+        embed_raw = os.getenv(
+            "OAM_EMBED_FRAME_ORIGINS",
+            "https://zinesh.com,https://www.zinesh.com,http://localhost:3000,http://127.0.0.1:3000",
+        )
+        embed_frame_origins = [o.strip() for o in embed_raw.split(",") if o.strip()]
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -74,6 +86,8 @@ class OAMSettings:
             onchain_chain_id=int(os.getenv("OAM_ONCHAIN_CHAIN_ID", "31337")),
             onchain_deployment_file=os.getenv("OAM_ONCHAIN_DEPLOYMENT", "deployments/local.json"),
             onchain_operator_key=os.getenv("OAM_ONCHAIN_OPERATOR_KEY", ""),
+            cors_origins=cors_origins,
+            embed_frame_origins=embed_frame_origins,
         )
 
     @property

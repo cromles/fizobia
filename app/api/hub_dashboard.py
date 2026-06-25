@@ -174,6 +174,9 @@ def render_hub_dashboard(
     build: str = "dev",
     demo_mode: bool = True,
     onchain: Optional[Dict[str, object]] = None,
+    embed_mode: bool = False,
+    brand_title: str = "The Hub",
+    brand_sub: str = "Veridag",
 ) -> str:
     manifests = manifests or {}
     card_html = "".join(
@@ -193,6 +196,8 @@ def render_hub_dashboard(
     )
     class_attr = ' class="has-banner"'
     onchain_json = json.dumps(onchain or {"enabled": False, "ready": False})
+    embed_class = ' class="embed-mode"' if embed_mode else ""
+    landing_hidden = " hidden" if embed_mode else ""
     onchain_badge = (
         '<span class="onchain-badge">⛓ On-Chain Staking</span>'
         if (onchain or {}).get("ready")
@@ -713,14 +718,17 @@ def render_hub_dashboard(
       background: rgba(110,207,255,0.08); margin-left: 0.5rem;
     }}
     #landing.hidden {{ display: none; }}
+    body.embed-mode .site-nav {{ padding: 0.65rem 1.25rem; }}
+    body.embed-mode #landing {{ display: none !important; }}
+    body.embed-mode #market {{ padding-top: 4.5rem; }}
   </style>
 </head>
-<body{class_attr}>
+<body{class_attr}{embed_class}>
   {demo_banner}
   <div class="ambient"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
   <nav class="site-nav">
-    <div class="logo">The Hub <span>· Veridag</span>{onchain_badge}<span class="build-badge">{_esc(build)}</span></div>
+    <div class="logo">{_esc(brand_title)} <span>· {_esc(brand_sub)}</span>{onchain_badge}<span class="build-badge">{_esc(build)}</span></div>
     <div class="wallet-bar">
       <div class="wallet-connected" id="walletConnected">
         <span id="walletShort">0x…</span>
@@ -731,7 +739,7 @@ def render_hub_dashboard(
   </nav>
 
   <!-- LANDING -->
-  <div id="landing">
+  <div id="landing"{landing_hidden}>
     <section class="hero-landing">
       <p class="eyebrow">Yeni Dünyanın Dijital İşçileri</p>
       <h1>Siz dinlenirken<br/>işçileriniz çalışsın</h1>
@@ -981,6 +989,7 @@ def render_hub_dashboard(
     }}
 
     const DEMO_MODE = {'true' if demo_mode else 'false'};
+    const EMBED_MODE = {'true' if embed_mode else 'false'};
 
     function updateWalletUI() {{
       const w = getWallet();
@@ -1361,6 +1370,9 @@ def render_hub_dashboard(
     }}
 
     updateWalletUI();
+    if (EMBED_MODE && !getWallet()) {{
+      setTimeout(() => openWalletModal(), 400);
+    }}
     console.info('[The Hub] build:', '{_esc(build)}');
   </script>
 </body>
