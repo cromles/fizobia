@@ -39,6 +39,13 @@ class RedisAgentRegistry:
         logger.info("Ajan Redis'e kaydedildi: %s", manifest.agent_id)
         return True
 
+    def upsert(self, manifest: AgentManifest) -> None:
+        key = self._agent_key(manifest.agent_id)
+        pipeline = self._client.pipeline()
+        pipeline.set(key, manifest.model_dump_json())
+        pipeline.sadd(self.INDEX_KEY, manifest.agent_id)
+        pipeline.execute()
+
     def get(self, agent_id: str) -> Optional[AgentManifest]:
         raw = self._client.get(self._agent_key(agent_id))
         if raw is None:

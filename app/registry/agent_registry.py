@@ -18,6 +18,8 @@ class RegisteredCapability:
 class AgentRegistry(Protocol):
     def register(self, manifest: AgentManifest) -> bool: ...
 
+    def upsert(self, manifest: AgentManifest) -> None: ...
+
     def get(self, agent_id: str) -> Optional[AgentManifest]: ...
 
     def list_manifests(self) -> List[AgentManifest]: ...
@@ -40,6 +42,9 @@ class InMemoryAgentRegistry:
             return False
         self._manifests[manifest.agent_id] = manifest
         return True
+
+    def upsert(self, manifest: AgentManifest) -> None:
+        self._manifests[manifest.agent_id] = manifest
 
     def get(self, agent_id: str) -> Optional[AgentManifest]:
         return self._manifests.get(agent_id)

@@ -48,6 +48,9 @@ class OpenAgentMeshRouter:
     def register_agent(self, manifest: AgentManifest) -> bool:
         return self.registry.register(manifest)
 
+    def upsert_agent(self, manifest: AgentManifest) -> None:
+        self.registry.upsert(manifest)
+
     def get_capability(
         self, agent_id: str, capability_name: str
     ) -> Optional[AgentCapability]:

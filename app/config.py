@@ -15,6 +15,9 @@ class OAMSettings:
     llm_model: str
     embedding_model: str
 
+    discovery_backend: str
+    discovery_sync_interval: float
+
     @classmethod
     def from_env(cls) -> OAMSettings:
         return cls(
@@ -26,6 +29,8 @@ class OAMSettings:
             llm_base_url=os.getenv("OAM_LLM_BASE_URL", "https://api.openai.com/v1"),
             llm_model=os.getenv("OAM_LLM_MODEL", "gpt-4o-mini"),
             embedding_model=os.getenv("OAM_EMBEDDING_MODEL", "text-embedding-3-small"),
+            discovery_backend=os.getenv("OAM_DISCOVERY_BACKEND", "memory").lower(),
+            discovery_sync_interval=float(os.getenv("OAM_DISCOVERY_SYNC_INTERVAL", "30")),
         )
 
     @property

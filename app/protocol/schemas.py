@@ -89,3 +89,8 @@ class ExecutePlanRequest(BaseModel):
 class RunGoalRequest(BaseModel):
     user_goal: str
     initial_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AnnounceRequest(BaseModel):
+    manifest: AgentManifest
+    ttl: int = Field(default=60, ge=10, le=3600)
