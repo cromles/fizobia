@@ -18,6 +18,8 @@ def test_health_endpoint():
     assert response.status_code == 200
     assert response.json()["protocol"] == "OAM"
     assert response.json()["registry"] == "memory"
+    assert "planner" in response.json()
+    assert "matcher" in response.json()
 
 
 def test_register_and_compile_plan():

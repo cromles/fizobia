@@ -13,6 +13,8 @@ from app.protocol.schemas import (
     RegisterAgentRequest,
     RunGoalRequest,
 )
+from app.matching.factory import matcher_backend_name
+from app.planning.factory import planner_backend_name
 from app.registry.factory import create_registry, registry_backend_name
 
 router_mesh = OpenAgentMeshRouter()
@@ -41,6 +43,8 @@ async def health() -> Dict[str, Any]:
         "status": "ok",
         "protocol": "OAM",
         "registry": registry_backend_name(router_mesh.registry),
+        "planner": planner_backend_name(router_mesh.plan_compiler.decomposer),
+        "matcher": matcher_backend_name(router_mesh.matcher),
     }
     ping = getattr(router_mesh.registry, "ping", None)
     if callable(ping):

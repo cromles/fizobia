@@ -8,7 +8,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import httpx
 
 from app.adapters.layer import DataAdapterLayer
-from app.matching.semantic_matcher import SemanticCapabilityMatcher
+from app.matching.factory import create_matcher, matcher_backend_name
+from app.planning.factory import create_decomposer
 from app.planning.plan_compiler import PlanCompiler
 from app.protocol.schemas import (
     AgentCapability,
@@ -37,8 +38,11 @@ class OpenAgentMeshRouter:
     ):
         self.registry = registry or InMemoryAgentRegistry()
         self.adapter_layer = adapter_layer or DataAdapterLayer()
-        self.matcher = matcher or SemanticCapabilityMatcher()
-        self.plan_compiler = plan_compiler or PlanCompiler(matcher=self.matcher)
+        self.matcher = matcher or create_matcher()
+        self.plan_compiler = plan_compiler or PlanCompiler(
+            matcher=self.matcher,
+            decomposer=create_decomposer(),
+        )
         self.validator = validator or ExecutionValidator()
 
     def register_agent(self, manifest: AgentManifest) -> bool:
