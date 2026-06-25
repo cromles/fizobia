@@ -130,6 +130,7 @@ class StakeRequest(BaseModel):
     agent_id: str
     amount_usdc: float = Field(..., gt=0)
     asset: str = Field(default="USDC", description="USDC | USDT | OAM")
+    tx_hash: Optional[str] = Field(default=None, description="On-chain stake işlem hash'i")
 
 
 class UnstakeRequest(BaseModel):
@@ -141,3 +142,4 @@ class UnstakeRequest(BaseModel):
 class ClaimRewardsRequest(BaseModel):
     investor_id: str
     agent_id: str
+    tx_hash: Optional[str] = Field(default=None, description="On-chain claim işlem hash'i")

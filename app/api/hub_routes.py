@@ -11,6 +11,12 @@ from app.config import settings
 from app.core.router import OpenAgentMeshRouter
 from app.investment.factory import get_investment_hub
 from app.investment.live import build_live_snapshot
+from app.investment.onchain import (
+    build_public_config,
+    is_onchain_ready,
+    verify_claim_tx,
+    verify_stake_tx,
+)
 from app.investment.schemas import (
     ClaimRewardsRequest,
     RevenueSplitConfig,
@@ -19,7 +25,7 @@ from app.investment.schemas import (
 )
 from app.protocol.schemas import AgentManifest
 
-HUB_BUILD = "2026.06.25-digital-workers"
+HUB_BUILD = "2026.06.25-metamask-onchain"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -30,25 +36,95 @@ def _mesh() -> OpenAgentMeshRouter:
     return router_mesh
 
 
-@router.get("", response_class=HTMLResponse)
-@router.get("/", response_class=HTMLResponse)
-async def hub_dashboard() -> HTMLResponse:
+def _embed_frame_header() -> str:
+    origins = " ".join(settings.embed_frame_origins)
+    return f"frame-ancestors 'self' {origins}"
+
+
+def _hub_html_response(html: str, *, embed: bool = False) -> HTMLResponse:
+    headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "X-Hub-Build": HUB_BUILD,
+    }
+    if embed:
+        headers["Content-Security-Policy"] = _embed_frame_header()
+    return HTMLResponse(content=html, headers=headers)
+
+
+def _render_hub(
+    *,
+    embed_mode: bool = False,
+    brand_title: str = "The Hub",
+    brand_sub: str = "Veridag",
+) -> HTMLResponse:
     hub = get_investment_hub()
     mesh = _mesh()
     agents = mesh.list_agents()
     cards = hub.list_identity_cards(agents)
     manifests = {m.agent_id: m for m in agents}
     html = render_hub_dashboard(
-        cards, hub.split, manifests, build=HUB_BUILD, demo_mode=settings.hub_demo_mode
+        cards,
+        hub.split,
+        manifests,
+        build=HUB_BUILD,
+        demo_mode=settings.hub_demo_mode,
+        onchain=build_public_config(),
+        embed_mode=embed_mode,
+        brand_title=brand_title,
+        brand_sub=brand_sub,
     )
-    return HTMLResponse(
-        content=html,
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "X-Hub-Build": HUB_BUILD,
+    return _hub_html_response(html, embed=embed_mode)
+
+
+@router.get("", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
+async def hub_dashboard() -> HTMLResponse:
+    return _render_hub()
+
+
+@router.get("/embed", response_class=HTMLResponse)
+async def hub_embed_dashboard() -> HTMLResponse:
+    """Zinesh.com iframe embed — protokol markası, landing kapalı."""
+    return _render_hub(
+        embed_mode=True,
+        brand_title="Zinesh Protocol",
+        brand_sub="Dijital İşçiler",
+    )
+
+
+@router.get("/sdk/config")
+async def hub_sdk_config() -> Dict[str, Any]:
+    """Zinesh web sitesi frontend entegrasyonu için public API haritası."""
+    base = settings.public_base_url.rstrip("/")
+    return {
+        "protocol": "OAM-Hub-SDK",
+        "version": "1.0",
+        "hub_build": HUB_BUILD,
+        "api_base": base,
+        "embed_url": f"{base}/hub/embed",
+        "demo_mode": settings.hub_demo_mode,
+        "onchain": build_public_config(),
+        "endpoints": {
+            "agents": f"{base}/hub/agents",
+            "agent": f"{base}/hub/agents/{{agent_id}}",
+            "live": f"{base}/hub/live",
+            "live_ws": base.replace("https://", "wss://").replace("http://", "ws://") + "/hub/ws/live",
+            "stake": f"{base}/hub/stake",
+            "claim": f"{base}/hub/claim",
+            "positions": f"{base}/hub/positions/{{investor_id}}",
+            "revenue_config": f"{base}/hub/revenue/config",
+            "onchain_config": f"{base}/hub/onchain/config",
+            "version": f"{base}/hub/version",
         },
-    )
+        "cors_origins": settings.cors_origins,
+        "frame_origins": settings.embed_frame_origins,
+    }
+
+
+@router.get("/onchain/config")
+async def hub_onchain_config() -> Dict[str, Any]:
+    return build_public_config()
 
 
 @router.get("/version")
@@ -137,17 +213,37 @@ async def stake(request: StakeRequest) -> Dict[str, Any]:
     if manifest is None:
         raise HTTPException(status_code=404, detail="Ajan kayıtlı değil")
     hub.ensure_agent(manifest)
+
+    onchain = settings.onchain_enabled and is_onchain_ready()
+    if onchain and settings.onchain_require_tx:
+        if not request.tx_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="On-chain stake için önce MetaMask ile işlemi onaylayın (tx_hash gerekli)",
+            )
+        try:
+            verify_stake_tx(request.tx_hash, request.investor_id, request.agent_id, request.amount_usdc)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     try:
-        position = hub.pools.stake(request.investor_id, request.agent_id, request.amount_usdc)
+        position = hub.pools.stake(
+            request.investor_id,
+            request.agent_id,
+            request.amount_usdc,
+            tx_hash=request.tx_hash,
+            onchain=onchain,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     ledger = hub.pools.list_ledger(request.agent_id, limit=1)
     return {
         "staked": True,
+        "onchain": onchain,
         "shares": position.shares,
         "staked_usdc": position.staked_usdc,
         "token_price": hub.pools.token_price(request.agent_id),
-        "tx_hash": ledger[-1].tx_hash if ledger else None,
+        "tx_hash": ledger[-1].tx_hash if ledger else request.tx_hash,
     }
 
 
@@ -163,8 +259,27 @@ async def unstake(request: UnstakeRequest) -> Dict[str, Any]:
 
 @router.post("/claim")
 async def claim_rewards(request: ClaimRewardsRequest) -> Dict[str, Any]:
-    claimed = get_investment_hub().pools.claim_rewards(request.investor_id, request.agent_id)
-    return {"claimed_usdc": claimed}
+    onchain = settings.onchain_enabled and is_onchain_ready()
+    claimed_override: float | None = None
+    if onchain and settings.onchain_require_tx:
+        if not request.tx_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="On-chain claim için MetaMask işlem hash'i gerekli",
+            )
+        try:
+            proof = verify_claim_tx(request.tx_hash, request.investor_id, request.agent_id)
+            claimed_override = proof["claimed_usdc"]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    claimed = get_investment_hub().pools.claim_rewards(
+        request.investor_id,
+        request.agent_id,
+        tx_hash=request.tx_hash,
+        claimed_override=claimed_override,
+    )
+    return {"claimed_usdc": claimed, "onchain": onchain, "tx_hash": request.tx_hash}
 
 
 @router.get("/positions/{investor_id}")

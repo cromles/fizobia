@@ -72,7 +72,7 @@ def _render_agent_card(
     use_cases = _use_cases_html(p.use_cases)
 
     return f"""
-    <article class="agent-card reveal" style="--delay:{delay}s" data-agent="{agent_id}" data-token="{_esc(p.token_symbol)}">
+    <article class="agent-card reveal" style="--delay:{delay}s" data-agent="{agent_id}" data-token="{_esc(p.token_symbol)}" data-pool="{contract}">
       <div class="card-glow"></div>
       <div class="live-status-bar">
         <span class="status-dot" data-status="standby"></span>
@@ -173,6 +173,10 @@ def render_hub_dashboard(
     manifests: Optional[Dict[str, AgentManifest]] = None,
     build: str = "dev",
     demo_mode: bool = True,
+    onchain: Optional[Dict[str, object]] = None,
+    embed_mode: bool = False,
+    brand_title: str = "The Hub",
+    brand_sub: str = "Veridag",
 ) -> str:
     manifests = manifests or {}
     card_html = "".join(
@@ -191,6 +195,14 @@ def render_hub_dashboard(
         else '<div class="live-banner">● CANLI İŞÇİLER — Gerçek ajanlar ağda çalışıyor, gerçek görevler gerçek gelir üretiyor</div>'
     )
     class_attr = ' class="has-banner"'
+    onchain_json = json.dumps(onchain or {"enabled": False, "ready": False})
+    embed_class = ' class="embed-mode"' if embed_mode else ""
+    landing_hidden = " hidden" if embed_mode else ""
+    onchain_badge = (
+        '<span class="onchain-badge">⛓ On-Chain Staking</span>'
+        if (onchain or {}).get("ready")
+        else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="tr">
@@ -201,6 +213,7 @@ def render_hub_dashboard(
   <title>The Hub — Veridag · AI Ajan Yatırım Platformu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
   <style>
     :root {{
       --bg: #050508; --glass: rgba(16,16,24,0.7); --border: rgba(255,255,255,0.07);
@@ -699,15 +712,23 @@ def render_hub_dashboard(
       font-size: 0.65rem; color: var(--muted); opacity: 0.6;
       font-family: ui-monospace, monospace; margin-left: 0.75rem;
     }}
+    .onchain-badge {{
+      font-size: 0.68rem; padding: 0.25rem 0.6rem; border-radius: 999px;
+      border: 1px solid rgba(110,207,255,0.35); color: var(--cyan);
+      background: rgba(110,207,255,0.08); margin-left: 0.5rem;
+    }}
     #landing.hidden {{ display: none; }}
+    body.embed-mode .site-nav {{ padding: 0.65rem 1.25rem; }}
+    body.embed-mode #landing {{ display: none !important; }}
+    body.embed-mode #market {{ padding-top: 4.5rem; }}
   </style>
 </head>
-<body{class_attr}>
+<body{class_attr}{embed_class}>
   {demo_banner}
   <div class="ambient"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
   <nav class="site-nav">
-    <div class="logo">The Hub <span>· Veridag</span><span class="build-badge">{_esc(build)}</span></div>
+    <div class="logo">{_esc(brand_title)} <span>· {_esc(brand_sub)}</span>{onchain_badge}<span class="build-badge">{_esc(build)}</span></div>
     <div class="wallet-bar">
       <div class="wallet-connected" id="walletConnected">
         <span id="walletShort">0x…</span>
@@ -718,7 +739,7 @@ def render_hub_dashboard(
   </nav>
 
   <!-- LANDING -->
-  <div id="landing">
+  <div id="landing"{landing_hidden}>
     <section class="hero-landing">
       <p class="eyebrow">Yeni Dünyanın Dijital İşçileri</p>
       <h1>Siz dinlenirken<br/>işçileriniz çalışsın</h1>
@@ -931,12 +952,17 @@ def render_hub_dashboard(
     <div class="modal" style="position:relative">
       <button class="modal-close" onclick="closeWalletModal()">×</button>
       <h2>Cüzdan Bağla</h2>
-      <p>Devam etmek için Ethereum uyumlu cüzdan adresinizi girin. Üretimde MetaMask / WalletConnect entegrasyonu kullanılacaktır.</p>
-      <input type="text" class="field" id="walletInput" placeholder="0x…" autocomplete="off" />
-      <div class="modal-actions">
-        <button class="btn-modal primary" onclick="connectWallet()">Bağlan ve Devam Et</button>
-        <button class="btn-modal ghost" onclick="connectDemoWallet()">Demo Cüzdan Oluştur</button>
+      <p>Dijital işçilerinize ortak olmak için MetaMask ile bağlanın. Stake işlemleri gerçek USDC sözleşmesi üzerinden on-chain yapılır.</p>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button class="btn-modal primary" onclick="connectMetaMask()">🦊 MetaMask ile Bağlan</button>
       </div>
+      <p style="margin-top:1.25rem;font-size:0.78rem;color:var(--muted)">Yerel geliştirme: Hardhat ağı (chain 31337) · RPC 127.0.0.1:8545</p>
+      <details style="margin-top:1rem;color:var(--muted);font-size:0.82rem">
+        <summary>Gelişmiş — manuel adres</summary>
+        <input type="text" class="field" id="walletInput" placeholder="0x…" autocomplete="off" style="margin-top:0.75rem" />
+        <button class="btn-modal ghost" style="margin-top:0.5rem" onclick="connectWallet()">Adres ile devam</button>
+        <button class="btn-modal ghost" style="margin-top:0.5rem" onclick="connectDemoWallet()">Demo cüzdan (off-chain)</button>
+      </details>
     </div>
   </div>
 
@@ -944,6 +970,17 @@ def render_hub_dashboard(
 
   <script>
     const WALLET_KEY = 'oam_hub_wallet';
+    const ONCHAIN_CONFIG = {onchain_json};
+    const ERC20_ABI = [
+      'function approve(address spender, uint256 amount) returns (bool)',
+      'function balanceOf(address account) view returns (uint256)',
+      'function decimals() view returns (uint8)'
+    ];
+    const POOL_ABI = [
+      'function stake(uint256 amount)',
+      'function claimRewards()',
+      'function pendingReward(address user) view returns (uint256)'
+    ];
 
     function getWallet() {{ return localStorage.getItem(WALLET_KEY) || ''; }}
 
@@ -952,6 +989,7 @@ def render_hub_dashboard(
     }}
 
     const DEMO_MODE = {'true' if demo_mode else 'false'};
+    const EMBED_MODE = {'true' if embed_mode else 'false'};
 
     function updateWalletUI() {{
       const w = getWallet();
@@ -1147,6 +1185,51 @@ def render_hub_dashboard(
     function openWalletModal() {{ document.getElementById('walletModal').classList.add('open'); }}
     function closeWalletModal() {{ document.getElementById('walletModal').classList.remove('open'); }}
 
+    async function ensureTargetChain(provider) {{
+      if (!ONCHAIN_CONFIG.chain_id) return;
+      const network = await provider.getNetwork();
+      const target = BigInt(ONCHAIN_CONFIG.chain_id);
+      if (network.chainId === target) return;
+      const hexId = '0x' + target.toString(16);
+      try {{
+        await window.ethereum.request({{ method: 'wallet_switchEthereumChain', params: [{{ chainId: hexId }}] }});
+      }} catch (err) {{
+        if (err.code === 4902) {{
+          await window.ethereum.request({{
+            method: 'wallet_addEthereumChain',
+            params: [{{
+              chainId: hexId,
+              chainName: 'OAM Hardhat Local',
+              rpcUrls: ['http://127.0.0.1:8545'],
+              nativeCurrency: {{ name: 'ETH', symbol: 'ETH', decimals: 18 }},
+            }}],
+          }});
+        }} else {{
+          throw err;
+        }}
+      }}
+    }}
+
+    async function connectMetaMask() {{
+      if (!window.ethereum) {{
+        showToast('MetaMask bulunamadı — eklentiyi yükleyin', true);
+        return;
+      }}
+      try {{
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await ensureTargetChain(provider);
+        const accounts = await provider.send('eth_requestAccounts', []);
+        const addr = accounts[0];
+        localStorage.setItem(WALLET_KEY, addr);
+        closeWalletModal();
+        sessionStorage.setItem('hub_just_connected', '1');
+        updateWalletUI();
+        showToast('MetaMask bağlandı · ' + shortAddr(addr));
+      }} catch (err) {{
+        showToast(err.message || 'MetaMask bağlantı hatası', true);
+      }}
+    }}
+
     function connectWallet() {{
       const addr = document.getElementById('walletInput').value.trim();
       if (!addr.startsWith('0x') || addr.length < 10) {{
@@ -1189,44 +1272,107 @@ def render_hub_dashboard(
       setTimeout(() => t.classList.remove('show'), 4000);
     }}
 
+    async function onchainStake(agentId, amount, poolAddress) {{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await ensureTargetChain(provider);
+      const signer = await provider.getSigner();
+      const decimals = ONCHAIN_CONFIG.usdc_decimals || 6;
+      const amountWei = ethers.parseUnits(String(amount), decimals);
+      const usdc = new ethers.Contract(ONCHAIN_CONFIG.usdc, ERC20_ABI, signer);
+      const pool = new ethers.Contract(poolAddress, POOL_ABI, signer);
+      const approveTx = await usdc.approve(poolAddress, amountWei);
+      await approveTx.wait();
+      const stakeTx = await pool.stake(amountWei);
+      const receipt = await stakeTx.wait();
+      return receipt.hash;
+    }}
+
+    async function onchainClaim(poolAddress) {{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await ensureTargetChain(provider);
+      const signer = await provider.getSigner();
+      const pool = new ethers.Contract(poolAddress, POOL_ABI, signer);
+      const tx = await pool.claimRewards();
+      const receipt = await tx.wait();
+      return receipt.hash;
+    }}
+
+    function resolvePoolAddress(agentId, card) {{
+      const fromCard = card?.dataset?.pool;
+      if (fromCard && fromCard.startsWith('0x') && fromCard.length > 10) return fromCard;
+      const pools = ONCHAIN_CONFIG.pools || {{}};
+      return pools[agentId]?.address || null;
+    }}
+
     async function stake(agentId, btn) {{
       const w = getWallet();
-      const amount = parseFloat(btn.closest('.agent-card').querySelector('.amount').value);
+      const card = btn.closest('.agent-card');
+      const amount = parseFloat(card.querySelector('.amount').value);
       if (!w) {{ openWalletModal(); return; }}
       if (!amount) {{ showToast('USDC miktarı girin', true); return; }}
       btn.classList.add('loading');
       try {{
+        let txHash = null;
+        const useChain = ONCHAIN_CONFIG.ready && ONCHAIN_CONFIG.require_tx && window.ethereum;
+        if (useChain) {{
+          const poolAddress = resolvePoolAddress(agentId, card);
+          if (!poolAddress) throw new Error('On-chain havuz adresi bulunamadı');
+          showToast('MetaMask onayı bekleniyor…');
+          txHash = await onchainStake(agentId, amount, poolAddress);
+        }}
         const res = await fetch('/hub/stake', {{
           method: 'POST',
           headers: {{'Content-Type':'application/json'}},
-          body: JSON.stringify({{ investor_id: w, agent_id: agentId, amount_usdc: amount }})
+          body: JSON.stringify({{
+            investor_id: w,
+            agent_id: agentId,
+            amount_usdc: amount,
+            tx_hash: txHash,
+          }})
         }});
         const data = await res.json();
         if (res.ok) {{
-          showToast('Stake başarılı · ' + data.shares?.toFixed(2) + ' pay');
+          const chainNote = data.onchain ? ' · on-chain' : '';
+          showToast('Stake başarılı · ' + data.shares?.toFixed(2) + ' pay' + chainNote);
           setTimeout(() => location.reload(), 1800);
         }} else {{
           showToast(data.detail || 'Hata', true);
           btn.classList.remove('loading');
         }}
-      }} catch {{ showToast('Sunucuya bağlanılamadı — gateway çalışıyor mu?', true); btn.classList.remove('loading'); }}
+      }} catch (err) {{
+        showToast(err.message || 'Stake başarısız', true);
+        btn.classList.remove('loading');
+      }}
     }}
 
     async function claim(agentId, btn) {{
       const w = getWallet();
+      const card = btn?.closest?.('.agent-card');
       if (!w) {{ openWalletModal(); return; }}
       try {{
+        let txHash = null;
+        const useChain = ONCHAIN_CONFIG.ready && ONCHAIN_CONFIG.require_tx && window.ethereum;
+        if (useChain) {{
+          const poolAddress = resolvePoolAddress(agentId, card);
+          if (!poolAddress) throw new Error('On-chain havuz adresi bulunamadı');
+          showToast('MetaMask claim onayı…');
+          txHash = await onchainClaim(poolAddress);
+        }}
         const res = await fetch('/hub/claim', {{
           method: 'POST',
           headers: {{'Content-Type':'application/json'}},
-          body: JSON.stringify({{ investor_id: w, agent_id: agentId }})
+          body: JSON.stringify({{ investor_id: w, agent_id: agentId, tx_hash: txHash }})
         }});
         const data = await res.json();
-        showToast(res.ok ? 'Ödül: $' + data.claimed_usdc?.toFixed(4) : (data.detail || 'Hata'), !res.ok);
-      }} catch {{ showToast('Sunucuya bağlanılamadı', true); }}
+        if (res.ok) showToast('Ödül alındı · $' + (data.claimed_usdc?.toFixed(4) || '0'));
+        else showToast(data.detail || 'Hata', true);
+      }} catch (err) {{ showToast(err.message || 'Claim başarısız', true); }}
     }}
 
     updateWalletUI();
+    if (EMBED_MODE && !getWallet()) {{
+      setTimeout(() => openWalletModal(), 400);
+    }}
     console.info('[The Hub] build:', '{_esc(build)}');
   </script>
 </body>

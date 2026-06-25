@@ -49,13 +49,24 @@ class StakingPoolManager:
         curve = BondingCurve(pool.curve)
         return curve.price_at_supply(pool.total_supply)
 
-    def stake(self, investor_id: str, agent_id: str, amount_usdc: float) -> StakePosition:
+    def stake(
+        self,
+        investor_id: str,
+        agent_id: str,
+        amount_usdc: float,
+        *,
+        tx_hash: str | None = None,
+        onchain: bool = False,
+    ) -> StakePosition:
         pool = self._pools.get(agent_id)
         if pool is None:
             raise ValueError(f"Havuz bulunamadı: {agent_id}")
 
-        curve = BondingCurve(pool.curve)
-        shares, _ = curve.mint_shares(pool.total_supply, amount_usdc)
+        if onchain:
+            shares = amount_usdc
+        else:
+            curve = BondingCurve(pool.curve)
+            shares, _ = curve.mint_shares(pool.total_supply, amount_usdc)
 
         pool.total_staked_usdc += amount_usdc
         pool.reserve_usdc += amount_usdc
@@ -70,6 +81,7 @@ class StakingPoolManager:
         position.shares += shares
         position.staked_usdc += amount_usdc
 
+        ledger_tx = tx_hash or f"0x{uuid.uuid4().hex}"
         self._ledger.append(
             LedgerEntry(
                 entry_id=uuid.uuid4().hex,
@@ -78,7 +90,7 @@ class StakingPoolManager:
                 action="stake",
                 amount_usdc=amount_usdc,
                 shares_delta=shares,
-                tx_hash=f"0x{uuid.uuid4().hex}",
+                tx_hash=ledger_tx,
             )
         )
         return position
@@ -128,13 +140,25 @@ class StakingPoolManager:
             reward = amount_usdc * share_ratio
             position.rewards_pending_usdc += reward
 
-    def claim_rewards(self, investor_id: str, agent_id: str) -> float:
+    def claim_rewards(
+        self,
+        investor_id: str,
+        agent_id: str,
+        *,
+        tx_hash: str | None = None,
+        claimed_override: float | None = None,
+    ) -> float:
         key = (investor_id, agent_id)
         position = self._positions.get(key)
         if position is None:
             return 0.0
-        claimed = position.rewards_pending_usdc
-        position.rewards_pending_usdc = 0.0
+        claimed = claimed_override if claimed_override is not None else position.rewards_pending_usdc
+        if claimed <= 0 and claimed_override is None:
+            return 0.0
+        if claimed_override is None:
+            position.rewards_pending_usdc = 0.0
+        else:
+            position.rewards_pending_usdc = max(0.0, position.rewards_pending_usdc - claimed)
         position.rewards_claimed_usdc += claimed
 
         if claimed > 0:
@@ -145,7 +169,7 @@ class StakingPoolManager:
                     investor_id=investor_id,
                     action="claim_rewards",
                     amount_usdc=claimed,
-                    tx_hash=f"0x{uuid.uuid4().hex}",
+                    tx_hash=tx_hash or f"0x{uuid.uuid4().hex}",
                 )
             )
         return claimed

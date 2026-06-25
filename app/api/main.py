@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_routes import router as hub_router
@@ -68,6 +69,14 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 app.include_router(hub_router)
 
 
