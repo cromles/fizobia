@@ -171,6 +171,7 @@ def render_hub_dashboard(
     cards: List[AgentIdentityCard],
     split: RevenueSplitConfig,
     manifests: Optional[Dict[str, AgentManifest]] = None,
+    build: str = "dev",
 ) -> str:
     manifests = manifests or {}
     card_html = "".join(
@@ -187,6 +188,7 @@ def render_hub_dashboard(
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="hub-build" content="{_esc(build)}"/>
   <title>The Hub — Veridag · AI Ajan Yatırım Platformu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -642,14 +644,17 @@ def render_hub_dashboard(
     .toast.show {{ transform: none; opacity: 1; }}
     .toast.error {{ border-color: rgba(255,100,100,0.3); color: #ff8a8a; }}
 
-    #landing.hidden {{ display: none; }}
+    .build-badge {{
+      font-size: 0.65rem; color: var(--muted); opacity: 0.6;
+      font-family: ui-monospace, monospace; margin-left: 0.75rem;
+    }}
   </style>
 </head>
 <body>
   <div class="ambient"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
   <nav class="site-nav">
-    <div class="logo">The Hub <span>· Veridag</span></div>
+    <div class="logo">The Hub <span>· Veridag</span><span class="build-badge">{_esc(build)}</span></div>
     <div class="wallet-bar">
       <div class="wallet-connected" id="walletConnected">
         <span id="walletShort">0x…</span>
@@ -1082,6 +1087,7 @@ def render_hub_dashboard(
     }}
 
     updateWalletUI();
+    console.info('[The Hub] build:', '{_esc(build)}');
   </script>
 </body>
 </html>"""

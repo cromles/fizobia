@@ -27,7 +27,11 @@ if errorlevel 1 (
 echo [2/2] Gateway baslatiliyor...
 echo.
 echo   Tarayici:  http://127.0.0.1:8787/hub
+echo   Surum:     http://127.0.0.1:8787/hub/version
 echo   Saglik:    http://127.0.0.1:8787/health
+echo.
+echo   DOGRULAMA: /hub/version icinde hub_build gorunmeli
+echo   Ornek: "2026.06.25-live-dashboard"
 echo.
 echo   DURDURMAK ICIN: Ctrl+C
 echo   Bu pencereyi KAPATMAYIN.

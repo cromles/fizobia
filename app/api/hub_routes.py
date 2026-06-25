@@ -17,6 +17,8 @@ from app.investment.schemas import (
 )
 from app.protocol.schemas import AgentManifest
 
+HUB_BUILD = "2026.06.25-live-dashboard"
+
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
 
@@ -28,13 +30,26 @@ def _mesh() -> OpenAgentMeshRouter:
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-async def hub_dashboard() -> str:
+async def hub_dashboard() -> HTMLResponse:
     hub = get_investment_hub()
     mesh = _mesh()
     agents = mesh.list_agents()
     cards = hub.list_identity_cards(agents)
     manifests = {m.agent_id: m for m in agents}
-    return render_hub_dashboard(cards, hub.split, manifests)
+    html = render_hub_dashboard(cards, hub.split, manifests, build=HUB_BUILD)
+    return HTMLResponse(
+        content=html,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "X-Hub-Build": HUB_BUILD,
+        },
+    )
+
+
+@router.get("/version")
+async def hub_version() -> Dict[str, str]:
+    return {"hub_build": HUB_BUILD, "status": "ok"}
 
 
 @router.get("/live")
