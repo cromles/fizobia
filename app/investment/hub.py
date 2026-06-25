@@ -144,6 +144,8 @@ class InvestmentHub:
         }
         for agent_id, amount in seeds.items():
             if agent_id in self._profiles:
+                profile = self._profiles[agent_id]
+                self.pools.ensure_pool(agent_id, profile.token_symbol)
                 try:
                     self.pools.stake("demo_investor_0x7a3f", agent_id, amount)
                 except ValueError:
