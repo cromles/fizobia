@@ -1,3 +1,4 @@
+import httpx
 import pytest
 
 from app.matching.embedding_matcher import EmbeddingCapabilityMatcher, HybridCapabilityMatcher
