@@ -30,8 +30,10 @@ def _mesh() -> OpenAgentMeshRouter:
 async def hub_dashboard() -> str:
     hub = get_investment_hub()
     mesh = _mesh()
-    cards = hub.list_identity_cards(mesh.list_agents())
-    return render_hub_dashboard(cards, hub.split)
+    agents = mesh.list_agents()
+    cards = hub.list_identity_cards(agents)
+    manifests = {m.agent_id: m for m in agents}
+    return render_hub_dashboard(cards, hub.split, manifests)
 
 
 @router.get("/agents")

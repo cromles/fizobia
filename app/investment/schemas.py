@@ -41,6 +41,19 @@ class AgentInvestmentProfile(BaseModel):
     mission: str
     token_symbol: str
     contract_address: Optional[str] = None
+    long_description: str = Field(
+        default="",
+        description="Yatırımcıya yönelik detaylı ajan açıklaması",
+    )
+    investment_thesis: str = Field(
+        default="",
+        description="Neden bu ajana yatırım yapılmalı",
+    )
+    use_cases: List[str] = Field(default_factory=list)
+    staking_covers: str = Field(
+        default="GPU/sunucu kirası, LLM API token maliyetleri ve ağ bant genişliği.",
+    )
+    risk_level: str = Field(default="orta", description="düşük | orta | yüksek")
 
 
 class AgentHealthMetrics(BaseModel):
