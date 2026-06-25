@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_dashboard import render_hub_dashboard
@@ -18,7 +19,7 @@ from app.investment.schemas import (
 )
 from app.protocol.schemas import AgentManifest
 
-HUB_BUILD = "2026.06.25-live-dashboard"
+HUB_BUILD = "2026.06.25-real-integration"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -64,6 +65,34 @@ async def hub_live_feed() -> JSONResponse:
     hub = get_investment_hub()
     agents = _mesh().list_agents()
     return JSONResponse(build_live_snapshot(hub, agents))
+
+
+@router.websocket("/ws/live")
+async def hub_live_websocket(websocket: WebSocket) -> None:
+    await websocket.accept()
+    hub = get_investment_hub()
+    try:
+        while True:
+            agents = _mesh().list_agents()
+            snapshot = build_live_snapshot(hub, agents)
+            await websocket.send_json(snapshot)
+            await asyncio.sleep(max(2.0, settings.hub_live_interval / 4))
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        await websocket.close()
+
+
+@router.post("/trigger-run")
+async def hub_trigger_live_run() -> Dict[str, Any]:
+    if settings.hub_demo_mode:
+        raise HTTPException(status_code=400, detail="Demo modunda gerçek görev tetiklenemez")
+    from app.api.main import hub_activity_worker
+
+    try:
+        return await hub_activity_worker.run_once()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/agents")

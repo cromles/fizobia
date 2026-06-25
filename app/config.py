@@ -25,6 +25,7 @@ class OAMSettings:
     extra_stun_servers: List[str]
     turn_servers: List[str]
     hub_demo_mode: bool
+    hub_live_interval: float
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -38,6 +39,8 @@ class OAMSettings:
         ]
         turn_raw = os.getenv("OAM_TURN_SERVERS", "")
         turn_servers = [item.strip() for item in turn_raw.split(",") if item.strip()]
+        demo_mode = os.getenv("OAM_HUB_DEMO", "false").lower() in ("1", "true", "yes")
+        live_interval = float(os.getenv("OAM_HUB_LIVE_INTERVAL", "30" if not demo_mode else "0"))
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -55,7 +58,8 @@ class OAMSettings:
             sandbox_backend=os.getenv("OAM_SANDBOX_BACKEND", "local").lower(),
             extra_stun_servers=extra_stun,
             turn_servers=turn_servers,
-            hub_demo_mode=os.getenv("OAM_HUB_DEMO", "true").lower() in ("1", "true", "yes"),
+            hub_demo_mode=demo_mode,
+            hub_live_interval=live_interval,
         )
 
     @property

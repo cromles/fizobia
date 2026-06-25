@@ -184,13 +184,13 @@ def render_hub_dashboard(
     platform_pct = split.platform_share * 100
     operator_pct = split.operator_share * 100
 
-    class_attr = ' class="has-demo-banner"' if demo_mode else ""
     demo_banner = (
         '<div class="demo-banner">⚠ DEMO MODU — TVL, çağrı sayısı ve aktivite akışının çoğu simüle veridir. '
-        "Gerçek test: <code>OAM_HUB_DEMO=false</code> + <code>python -m app.run_stack</code></div>"
+        "Gerçek mod: <code>python -m app.run_stack</code></div>"
         if demo_mode
-        else ""
+        else '<div class="live-banner">● CANLI VERİ — Gerçek ajanlar, gerçek görevler, gerçek gelir kaydı</div>'
     )
+    class_attr = ' class="has-banner"'
 
     return f"""<!DOCTYPE html>
 <html lang="tr">
@@ -467,6 +467,12 @@ def render_hub_dashboard(
       padding: 0.35rem 0.75rem; border-radius: 100px;
       background: rgba(94,228,168,0.08); border: 1px solid rgba(94,228,168,0.2);
     }}
+    .btn-trigger {{
+      padding: 0.4rem 0.85rem; border-radius: 100px; border: 1px solid rgba(94,228,168,0.35);
+      background: rgba(94,228,168,0.1); color: var(--emerald); font-size: 0.72rem;
+      font-weight: 600; cursor: pointer; transition: all 0.25s;
+    }}
+    .btn-trigger:hover {{ background: rgba(94,228,168,0.2); transform: translateY(-1px); }}
 
     .grid {{
       display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.5rem;
@@ -660,8 +666,16 @@ def render_hub_dashboard(
       font-size: 0.78rem; font-weight: 600; letter-spacing: 0.03em;
       border-bottom: 1px solid rgba(251,191,36,0.3);
     }}
-    body.has-demo-banner #landing {{ padding-top: 7rem; }}
-    body.has-demo-banner #market {{ padding-top: 7rem; }}
+    body.has-banner #market {{ padding-top: 7rem; }}
+    .live-banner {{
+      position: fixed; top: 4rem; left: 0; right: 0; z-index: 99;
+      background: linear-gradient(90deg, rgba(6,78,59,0.92), rgba(4,60,45,0.92));
+      color: #a7f3d0; text-align: center; padding: 0.55rem 1rem;
+      font-size: 0.78rem; font-weight: 600;
+      border-bottom: 1px solid rgba(94,228,168,0.25);
+    }}
+    body.has-banner #landing,
+    body.has-banner #market {{ padding-top: 7rem; }}
     .build-badge {{
       font-size: 0.65rem; color: var(--muted); opacity: 0.6;
       font-family: ui-monospace, monospace; margin-left: 0.75rem;
@@ -847,7 +861,10 @@ def render_hub_dashboard(
 
         <div class="agents-section-head">
           <h3>Canlı Ajanlar</h3>
-          <span class="live-badge"><span class="live-dot"></span> {agent_count} düğüm aktif</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span class="live-badge"><span class="live-dot"></span> <span id="liveDataLabel">{agent_count} düğüm</span></span>
+            {'<button type="button" class="btn-trigger" onclick="triggerLiveRun()">▶ Görev Tetikle</button>' if not demo_mode else ''}
+          </div>
         </div>
         <div class="grid" id="agentGrid">{card_html or '<p style="color:var(--muted)">Henüz ajan yok.</p>'}</div>
       </main>
@@ -914,6 +931,7 @@ def render_hub_dashboard(
 
     let liveTimer = null;
     let processTimer = null;
+    let liveSocket = null;
     let lastEventCount = 0;
     const agentNameMap = {{}};
 
@@ -930,12 +948,53 @@ def render_hub_dashboard(
     function stopLiveFeed() {{
       if (liveTimer) clearInterval(liveTimer);
       if (processTimer) clearInterval(processTimer);
+      if (liveSocket) {{ liveSocket.close(); liveSocket = null; }}
       liveTimer = null; processTimer = null;
     }}
 
     function startLiveFeed() {{
+      if (!DEMO_MODE && window.WebSocket) {{
+        try {{
+          const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+          liveSocket = new WebSocket(proto + '//' + location.host + '/hub/ws/live');
+          liveSocket.onmessage = (ev) => {{
+            const data = JSON.parse(ev.data);
+            applyLiveSnapshot(data);
+          }};
+          liveSocket.onerror = () => {{ liveSocket = null; pollLiveFallback(); }};
+          return;
+        }} catch (_) {{}}
+      }}
+      pollLiveFallback();
+    }}
+
+    function pollLiveFallback() {{
       refreshLive();
       liveTimer = setInterval(refreshLive, 4000);
+    }}
+
+    function applyLiveSnapshot(data) {{
+      updateNetworkStats(data.network);
+      updateActivityFeed(data.activity_feed);
+      updateAgentCards(data.agents);
+      const label = document.getElementById('liveDataLabel');
+      if (label && data.network) {{
+        label.textContent = data.network.reachable_agents + ' çevrimiçi · ' +
+          (data.network.real_event_count || 0) + ' gerçek işlem';
+      }}
+    }}
+
+    async function triggerLiveRun() {{
+      try {{
+        const res = await fetch('/hub/trigger-run', {{ method: 'POST' }});
+        const data = await res.json();
+        if (res.ok) {{
+          showToast('Görev tamamlandı · ' + data.tasks + ' task');
+          refreshLive();
+        }} else {{
+          showToast(data.detail || 'Görev başarısız', true);
+        }}
+      }} catch {{ showToast('Bağlantı hatası', true); }}
     }}
 
     async function refreshLive() {{
@@ -943,9 +1002,7 @@ def render_hub_dashboard(
         const res = await fetch('/hub/live');
         if (!res.ok) return;
         const data = await res.json();
-        updateNetworkStats(data.network);
-        updateActivityFeed(data.activity_feed);
-        updateAgentCards(data.agents);
+        applyLiveSnapshot(data);
       }} catch (_) {{}}
     }}
 

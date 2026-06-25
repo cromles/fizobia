@@ -60,7 +60,13 @@ class OpenAgentMeshRouter:
         self.global_mesh = global_mesh or get_global_mesh()
         self.nat_coordinator = nat_coordinator or create_nat_coordinator()
         self.sandbox = sandbox or create_sandbox_executor()
-        self.investment_hub = investment_hub or get_investment_hub()
+        self._investment_hub_override = investment_hub
+
+    @property
+    def investment_hub(self) -> Any:
+        if self._investment_hub_override is not None:
+            return self._investment_hub_override
+        return get_investment_hub()
 
     def register_agent(self, manifest: AgentManifest) -> bool:
         accepted = self.registry.register(manifest)

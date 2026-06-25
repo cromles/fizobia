@@ -127,3 +127,33 @@ def test_hub_api_endpoints():
     body = live.json()
     assert "network" in body
     assert "demo_mode" in body
+
+
+def test_hub_live_integration_trigger():
+    """Gerçek modda mesh görevi → gelir kaydı → /hub/live akışı."""
+    import os
+
+    os.environ["OAM_HUB_DEMO"] = "false"
+    from fastapi.testclient import TestClient
+
+    import app.investment.factory as hub_factory
+    from app.agents.builtins import FETCHER_MANIFEST, SYNTHESIZER_MANIFEST, TRANSFORMER_MANIFEST
+    from app.api.main import app, router_mesh
+    from app.registry.agent_registry import InMemoryAgentRegistry
+
+    hub_factory._hub = None
+    router_mesh.registry = InMemoryAgentRegistry()
+    for manifest in (FETCHER_MANIFEST, SYNTHESIZER_MANIFEST, TRANSFORMER_MANIFEST):
+        router_mesh.upsert_agent(manifest)
+
+    client = TestClient(app)
+    version = client.get("/hub/version").json()
+    assert version["demo_mode"] is False
+
+    trigger = client.post("/hub/trigger-run")
+    assert trigger.status_code == 200
+    assert trigger.json()["tasks"] >= 1
+
+    live = client.get("/hub/live").json()
+    assert live["network"]["real_event_count"] >= 1
+    assert all(not e.get("simulated") for e in live["activity_feed"])
