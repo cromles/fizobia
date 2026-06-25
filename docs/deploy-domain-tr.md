@@ -32,7 +32,21 @@ Tek komut (systemd):
 HUB_IP=HUB_SUNUCU_IP bash scripts/install_hub_server.sh
 ```
 
-## 3. HTTPS (Caddy)
+## 3. HTTPS
+
+### aaPanel (sunucuda bu panel varsa — önerilen)
+
+1. **Site** → **Add site** → `axium.com.tr` + `www.axium.com.tr`
+2. **SSL** → Let's Encrypt (ücretsiz)
+3. **Reverse proxy** → hedef: `http://127.0.0.1:8787`
+4. Kaydet
+
+Tek komut Hub kurulumu:
+```bash
+curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/deploy_axium_production.sh | bash
+```
+
+### Caddy (alternatif)
 
 ```bash
 sudo apt install -y caddy
