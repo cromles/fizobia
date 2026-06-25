@@ -10,6 +10,7 @@ from app.agents.builtins import (
     TRANSFORMER_MANIFEST,
 )
 from app.api.main import app, create_mock_agent_app, router_mesh
+from app.config import settings
 from app.registry.factory import create_registry
 from app.discovery.factory import create_discovery
 
@@ -20,9 +21,16 @@ def bootstrap_default_mesh() -> None:
     bootstrap_default_agents(router_mesh, discovery)
 
 
-def run_gateway(host: str = "0.0.0.0", port: int = 8000) -> None:
+def run_gateway(
+    host: str | None = None,
+    port: int | None = None,
+) -> None:
     bootstrap_default_mesh()
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(
+        app,
+        host=host or settings.gateway_host,
+        port=port or settings.gateway_port,
+    )
 
 
 def run_mock_fetcher() -> None:

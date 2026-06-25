@@ -11,12 +11,13 @@ import time
 
 import uvicorn
 
+from app.config import settings
 from oam_agent import OAMAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("oam.echo.live")
 
-DEFAULT_GATEWAY = "http://127.0.0.1:8000"
+DEFAULT_GATEWAY = f"http://127.0.0.1:{settings.gateway_port}"
 HOST = "127.0.0.1"
 PORT = 8200
 

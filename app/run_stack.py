@@ -5,6 +5,7 @@ from __future__ import annotations
 import multiprocessing
 import time
 
+from app.config import settings
 from app.main import run_gateway, run_mock_fetcher, run_mock_synthesizer, run_mock_transformer
 
 
@@ -22,7 +23,7 @@ def main() -> None:
         _run(run_gateway, "oam-gateway"),
     ]
     print("OAM yığını başlatıldı:")
-    print("  Gateway:     http://127.0.0.1:8000")
+    print(f"  Gateway:     http://127.0.0.1:{settings.gateway_port}")
     print("  Fetcher:     http://127.0.0.1:8101")
     print("  Synthesizer: http://127.0.0.1:8102")
     print("  Transformer: http://127.0.0.1:8103")

@@ -17,6 +17,8 @@ class OAMSettings:
 
     discovery_backend: str
     discovery_sync_interval: float
+    gateway_port: int
+    gateway_host: str
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -31,6 +33,8 @@ class OAMSettings:
             embedding_model=os.getenv("OAM_EMBEDDING_MODEL", "text-embedding-3-small"),
             discovery_backend=os.getenv("OAM_DISCOVERY_BACKEND", "memory").lower(),
             discovery_sync_interval=float(os.getenv("OAM_DISCOVERY_SYNC_INTERVAL", "30")),
+            gateway_port=int(os.getenv("OAM_GATEWAY_PORT", "8787")),
+            gateway_host=os.getenv("OAM_GATEWAY_HOST", "0.0.0.0"),
         )
 
     @property

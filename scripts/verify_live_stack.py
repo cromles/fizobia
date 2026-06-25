@@ -8,7 +8,9 @@ import sys
 import urllib.error
 import urllib.request
 
-GATEWAY = "http://127.0.0.1:8000"
+from app.config import settings
+
+GATEWAY = f"http://127.0.0.1:{settings.gateway_port}"
 AGENTS = {
     "fetcher": ("http://127.0.0.1:8101", "data_fetcher", {"query": "live-test"}),
     "synthesizer": ("http://127.0.0.1:8102", "synthesizer", {"text": "hello mesh"}),

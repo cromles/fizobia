@@ -57,6 +57,8 @@ async def health() -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "status": "ok",
         "protocol": "OAM",
+        "service": "open-agent-mesh",
+        "version": "0.1.0",
         "registry": registry_backend_name(router_mesh.registry),
         "discovery": discovery_backend_name(peer_discovery),
         "planner": planner_backend_name(router_mesh.plan_compiler.decomposer),
