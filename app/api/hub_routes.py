@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.api.hub_dashboard import render_hub_dashboard
 from app.core.router import OpenAgentMeshRouter
 from app.investment.factory import get_investment_hub
+from app.investment.live import build_live_snapshot
 from app.investment.schemas import (
     ClaimRewardsRequest,
     RevenueSplitConfig,
@@ -34,6 +35,13 @@ async def hub_dashboard() -> str:
     cards = hub.list_identity_cards(agents)
     manifests = {m.agent_id: m for m in agents}
     return render_hub_dashboard(cards, hub.split, manifests)
+
+
+@router.get("/live")
+async def hub_live_feed() -> JSONResponse:
+    hub = get_investment_hub()
+    agents = _mesh().list_agents()
+    return JSONResponse(build_live_snapshot(hub, agents))
 
 
 @router.get("/agents")

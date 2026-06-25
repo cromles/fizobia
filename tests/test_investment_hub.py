@@ -121,3 +121,10 @@ def test_hub_api_endpoints():
     html = client.get("/hub")
     assert html.status_code == 200
     assert "The Hub" in html.text
+
+    live = client.get("/hub/live")
+    assert live.status_code == 200
+    body = live.json()
+    assert body["network"]["status"] == "online"
+    assert "agents" in body
+    assert "activity_feed" in body

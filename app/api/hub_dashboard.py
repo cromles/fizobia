@@ -72,12 +72,20 @@ def _render_agent_card(
     use_cases = _use_cases_html(p.use_cases)
 
     return f"""
-    <article class="agent-card reveal" style="--delay:{delay}s" data-agent="{agent_id}">
+    <article class="agent-card reveal" style="--delay:{delay}s" data-agent="{agent_id}" data-token="{_esc(p.token_symbol)}">
       <div class="card-glow"></div>
+      <div class="live-status-bar">
+        <span class="status-dot" data-status="standby"></span>
+        <span class="status-text">Bağlanıyor…</span>
+        <span class="status-latency"></span>
+      </div>
       <header class="card-header">
         <div class="agent-identity">
-          <div class="avatar-ring class-{p.agent_class.value}">
-            <span class="avatar-letter">{_esc(p.display_name[0])}</span>
+          <div class="avatar-wrap">
+            <div class="avatar-pulse"></div>
+            <div class="avatar-ring class-{p.agent_class.value}">
+              <span class="avatar-letter">{_esc(p.display_name[0])}</span>
+            </div>
           </div>
           <div>
             <h2 class="agent-name">{_esc(p.display_name)}</h2>
@@ -91,6 +99,7 @@ def _render_agent_card(
       </header>
 
       <p class="mission">{_esc(p.mission)}</p>
+      <div class="agent-live-task glass" data-live-task>Görev bekleniyor…</div>
 
       <div class="detail-tabs">
         <button class="tab active" data-tab="overview" onclick="switchTab(this)">Genel</button>
@@ -322,21 +331,180 @@ def render_hub_dashboard(
     .faq-item p {{ font-size: 0.82rem; color: var(--muted); line-height: 1.65; display: none; }}
     .faq-item.open p {{ display: block; }}
 
-    /* Market (gated) */
+    /* Market dashboard */
     #market {{
       display: none; position: relative; z-index: 1;
-      padding: 6rem 2rem 4rem; max-width: 1440px; margin: 0 auto;
+      padding: 5rem 0 3rem; min-height: 100vh;
     }}
-    #market.visible {{ display: block; animation: fadeIn 0.6s var(--ease); }}
-    @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: none; }} }}
-    .market-header {{ margin-bottom: 2rem; }}
-    .market-header h2 {{
-      font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; color: var(--gold-light);
+    #market.visible {{ display: block; }}
+
+    .market-splash {{
+      position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center;
+      background: rgba(5,5,8,0.92); backdrop-filter: blur(12px);
+      opacity: 0; pointer-events: none; transition: opacity 0.6s var(--ease);
     }}
-    .market-header p {{ color: var(--muted); margin-top: 0.5rem; }}
+    .market-splash.show {{ opacity: 1; pointer-events: auto; }}
+    .splash-inner {{ text-align: center; animation: splashIn 0.8s var(--ease); }}
+    .splash-inner h2 {{
+      font-family: 'Cormorant Garamond', serif; font-size: 2.5rem; color: var(--gold-light);
+      margin-bottom: 0.5rem;
+    }}
+    .splash-inner p {{ color: var(--muted); }}
+  .splash-ring {{
+      width: 64px; height: 64px; margin: 0 auto 1.5rem; border-radius: 50%;
+      border: 2px solid rgba(201,169,98,0.3); border-top-color: var(--gold);
+      animation: spin 1s linear infinite;
+    }}
+    @keyframes splashIn {{ from {{ transform: scale(0.9); opacity: 0; }} }}
+
+    .dashboard-wrap {{
+      display: grid; grid-template-columns: 320px 1fr; gap: 0;
+      max-width: 1600px; margin: 0 auto; min-height: calc(100vh - 5rem);
+    }}
+    @media (max-width: 1100px) {{ .dashboard-wrap {{ grid-template-columns: 1fr; }} }}
+
+    .live-sidebar {{
+      border-right: 1px solid var(--border); padding: 1.5rem;
+      background: rgba(8,8,12,0.6); backdrop-filter: blur(12px);
+      position: sticky; top: 4rem; height: calc(100vh - 4rem); overflow: hidden;
+      display: flex; flex-direction: column;
+    }}
+    @media (max-width: 1100px) {{ .live-sidebar {{ position: relative; height: auto; max-height: 360px; }} }}
+
+    .network-pulse-card {{
+      padding: 1.25rem; border-radius: 16px; margin-bottom: 1.25rem;
+      background: linear-gradient(145deg, rgba(94,228,168,0.08), rgba(201,169,98,0.05));
+      border: 1px solid rgba(94,228,168,0.15);
+    }}
+    .network-pulse-card h3 {{
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em;
+      color: var(--emerald); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+    }}
+    .mesh-viz {{
+      height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }}
+    .mesh-node {{
+      width: 10px; height: 10px; border-radius: 50%; background: var(--emerald);
+      animation: meshPulse 2s ease-in-out infinite;
+    }}
+    .mesh-node:nth-child(2) {{ animation-delay: 0.3s; }}
+    .mesh-node:nth-child(3) {{ animation-delay: 0.6s; }}
+    .mesh-line {{ flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--emerald), transparent); opacity: 0.4; }}
+    @keyframes meshPulse {{ 0%,100% {{ opacity: 0.4; transform: scale(0.85); }} 50% {{ opacity: 1; transform: scale(1.1); box-shadow: 0 0 12px var(--emerald); }} }}
+
+    .net-stat {{ display: flex; justify-content: space-between; font-size: 0.78rem; padding: 0.3rem 0; color: var(--muted); }}
+    .net-stat strong {{ color: var(--text); }}
+
+    .feed-head {{
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--muted); margin-bottom: 0.75rem; flex-shrink: 0;
+    }}
+    .activity-feed {{
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;
+      scrollbar-width: thin;
+    }}
+    .feed-item {{
+      padding: 0.65rem 0.75rem; border-radius: 10px; font-size: 0.72rem;
+      background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      border-left: 2px solid var(--emerald);
+      animation: feedSlide 0.4s var(--ease);
+    }}
+    .feed-item.new {{ border-left-color: var(--gold); background: rgba(201,169,98,0.06); }}
+    .feed-item .feed-agent {{ color: var(--gold-light); font-weight: 600; }}
+    .feed-item .feed-meta {{ color: var(--muted); margin-top: 0.25rem; font-size: 0.65rem; }}
+    @keyframes feedSlide {{ from {{ opacity: 0; transform: translateX(-8px); }} }}
+
+    .dashboard-main {{ padding: 1.5rem 2rem 3rem; }}
+
+    .welcome-bar {{
+      margin-bottom: 1.75rem; padding: 1.5rem 2rem; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(201,169,98,0.12), rgba(94,228,168,0.06));
+      border: 1px solid rgba(201,169,98,0.2);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }}
+    .welcome-bar h2 {{
+      font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: var(--gold-light);
+    }}
+    .welcome-bar p {{ color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }}
+
+    .stats-row {{
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;
+    }}
+    @media (max-width: 900px) {{ .stats-row {{ grid-template-columns: repeat(2, 1fr); }} }}
+    .stat-card {{
+      padding: 1.25rem; border-radius: 16px; background: var(--glass);
+      border: 1px solid var(--border); transition: border-color 0.3s, transform 0.3s;
+    }}
+    .stat-card:hover {{ border-color: rgba(201,169,98,0.2); transform: translateY(-2px); }}
+    .stat-card .stat-label {{ font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }}
+    .stat-card .stat-value {{
+      font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; margin-top: 0.35rem;
+      color: var(--text);
+    }}
+    .stat-card .stat-value.emerald {{ color: var(--emerald); }}
+    .stat-card .stat-value.gold {{ color: var(--gold-light); }}
+
+    .agents-section-head {{
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;
+    }}
+    .agents-section-head h3 {{
+      font-family: 'Cormorant Garamond', serif; font-size: 1.5rem;
+    }}
+    .live-badge {{
+      display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--emerald);
+      padding: 0.35rem 0.75rem; border-radius: 100px;
+      background: rgba(94,228,168,0.08); border: 1px solid rgba(94,228,168,0.2);
+    }}
+
     .grid {{
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.75rem;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.5rem;
     }}
+
+    /* Live agent card extras */
+    .live-status-bar {{
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;
+      padding: 0.4rem 0.65rem; border-radius: 8px; background: rgba(0,0,0,0.3);
+      font-size: 0.68rem; color: var(--muted);
+    }}
+    .status-dot {{
+      width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+    }}
+    .status-dot.active {{ background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: livePulse 1.5s infinite; }}
+    .status-dot.processing {{ background: var(--gold); animation: processBlink 0.6s infinite; }}
+    .status-dot.standby {{ background: #6b7280; }}
+    .status-dot.degraded {{ background: #f87171; }}
+    @keyframes processBlink {{ 50% {{ opacity: 0.4; transform: scale(1.3); }} }}
+    .status-text {{ flex: 1; }}
+    .status-latency {{ color: var(--cyan); font-variant-numeric: tabular-nums; }}
+
+    .avatar-wrap {{ position: relative; }}
+    .avatar-pulse {{
+      position: absolute; inset: -4px; border-radius: 18px;
+      border: 1px solid rgba(94,228,168,0.3); opacity: 0;
+      transition: opacity 0.3s;
+    }}
+    .agent-card.is-live .avatar-pulse {{
+      opacity: 1; animation: avatarRing 2s ease-out infinite;
+    }}
+    @keyframes avatarRing {{ 0% {{ transform: scale(1); opacity: 0.6; }} 100% {{ transform: scale(1.25); opacity: 0; }} }}
+
+    .agent-card.processing {{
+      border-color: rgba(201,169,98,0.35);
+      box-shadow: 0 0 40px rgba(201,169,98,0.08);
+    }}
+    .agent-card.processing .card-glow {{ opacity: 1; }}
+
+    .agent-live-task {{
+      padding: 0.55rem 0.75rem; margin-bottom: 0.85rem; font-size: 0.72rem;
+      color: var(--muted); font-family: ui-monospace, monospace;
+      border-left: 2px solid var(--emerald); transition: all 0.3s;
+    }}
+    .agent-card.processing .agent-live-task {{
+      color: var(--emerald); border-left-color: var(--gold);
+    }}
+
+    #market.visible .dashboard-wrap {{ animation: fadeIn 0.8s var(--ease) 0.3s both; }}
 
     /* Agent cards */
     .agent-card {{
@@ -595,12 +763,70 @@ def render_hub_dashboard(
   </div>
 
   <!-- MARKET (wallet gated) -->
-  <section id="market">
-    <div class="market-header">
-      <h2>Yatırım Pazarı</h2>
-      <p id="marketWelcome">{agent_count} aktif ajan · Cüzdan bağlı</p>
+  <div class="market-splash" id="marketSplash">
+    <div class="splash-inner">
+      <div class="splash-ring"></div>
+      <h2>Ağa Bağlanılıyor</h2>
+      <p>Canlı ajanlar yükleniyor…</p>
     </div>
-    <div class="grid">{card_html or '<p style="color:var(--muted)">Henüz ajan yok.</p>'}</div>
+  </div>
+
+  <section id="market">
+    <div class="dashboard-wrap">
+      <aside class="live-sidebar">
+        <div class="network-pulse-card">
+          <h3><span class="live-dot"></span> OAM Mesh Canlı</h3>
+          <div class="mesh-viz">
+            <span class="mesh-node"></span><span class="mesh-line"></span>
+            <span class="mesh-node"></span><span class="mesh-line"></span>
+            <span class="mesh-node"></span>
+          </div>
+          <div class="net-stat"><span>Durum</span><strong id="netStatus">Online</strong></div>
+          <div class="net-stat"><span>Aktif ajan</span><strong id="netActive">—</strong></div>
+          <div class="net-stat"><span>Toplam TVL</span><strong id="netTvl">—</strong></div>
+          <div class="net-stat"><span>Toplam çağrı</span><strong id="netCalls">—</strong></div>
+        </div>
+        <div class="feed-head">Canlı Aktivite Akışı</div>
+        <div class="activity-feed" id="activityFeed">
+          <div class="feed-item"><span class="feed-meta">Ağ dinleniyor…</span></div>
+        </div>
+      </aside>
+
+      <main class="dashboard-main">
+        <div class="welcome-bar">
+          <div>
+            <h2>Hoş geldiniz</h2>
+            <p id="marketWelcome">Yatırım pazarı · canlı ajan operasyonları</p>
+          </div>
+          <div class="live-badge"><span class="live-dot"></span> CANLI</div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">Aktif Ajan</div>
+            <div class="stat-value emerald" id="statAgents">{agent_count}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Toplam TVL</div>
+            <div class="stat-value gold" id="statTvl">$0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ağ Getirisi</div>
+            <div class="stat-value" id="statRevenue">$0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Görev / dk</div>
+            <div class="stat-value emerald" id="statTpm">—</div>
+          </div>
+        </div>
+
+        <div class="agents-section-head">
+          <h3>Canlı Ajanlar</h3>
+          <span class="live-badge"><span class="live-dot"></span> {agent_count} düğüm aktif</span>
+        </div>
+        <div class="grid" id="agentGrid">{card_html or '<p style="color:var(--muted)">Henüz ajan yok.</p>'}</div>
+      </main>
+    </div>
   </section>
 
   <!-- WALLET MODAL -->
@@ -641,14 +867,136 @@ def render_hub_dashboard(
         landing.classList.add('hidden');
         market.classList.add('visible');
         document.getElementById('marketWelcome').textContent =
-          '{agent_count} aktif ajan · ' + shortAddr(w);
+          'Portföy · ' + shortAddr(w) + ' · canlı ajan operasyonları';
+        if (sessionStorage.getItem('hub_just_connected')) {{
+          sessionStorage.removeItem('hub_just_connected');
+          showMarketSplash();
+        }} else {{
+          startLiveFeed();
+          startProcessAnimation();
+        }}
         window.scrollTo({{ top: 0, behavior: 'smooth' }});
       }} else {{
         connected.classList.remove('show');
         btn.style.display = 'block';
         landing.classList.remove('hidden');
         market.classList.remove('visible');
+        stopLiveFeed();
       }}
+    }}
+
+    let liveTimer = null;
+    let processTimer = null;
+    let lastEventCount = 0;
+    const agentNameMap = {{}};
+
+    function showMarketSplash() {{
+      const splash = document.getElementById('marketSplash');
+      splash.classList.add('show');
+      setTimeout(() => {{
+        splash.classList.remove('show');
+        startLiveFeed();
+        startProcessAnimation();
+      }}, 1600);
+    }}
+
+    function stopLiveFeed() {{
+      if (liveTimer) clearInterval(liveTimer);
+      if (processTimer) clearInterval(processTimer);
+      liveTimer = null; processTimer = null;
+    }}
+
+    function startLiveFeed() {{
+      refreshLive();
+      liveTimer = setInterval(refreshLive, 4000);
+    }}
+
+    async function refreshLive() {{
+      try {{
+        const res = await fetch('/hub/live');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateNetworkStats(data.network);
+        updateActivityFeed(data.activity_feed);
+        updateAgentCards(data.agents);
+      }} catch (_) {{}}
+    }}
+
+    function updateNetworkStats(net) {{
+      document.getElementById('netStatus').textContent = net.status === 'online' ? '● Online' : net.status;
+      document.getElementById('netActive').textContent = net.active_agents + ' / ' + net.total_agents;
+      document.getElementById('netTvl').textContent = '$' + net.total_tvl_usd.toLocaleString('tr-TR');
+      document.getElementById('netCalls').textContent = formatNum(net.total_calls);
+      document.getElementById('statAgents').textContent = net.active_agents;
+      document.getElementById('statTvl').textContent = '$' + net.total_tvl_usd.toLocaleString('tr-TR', {{maximumFractionDigits:0}});
+      document.getElementById('statRevenue').textContent = '$' + net.total_revenue_usd.toLocaleString('tr-TR', {{minimumFractionDigits:2}});
+      const tpm = Math.max(1, Math.round(net.total_calls / 1440));
+      document.getElementById('statTpm').textContent = '~' + tpm;
+    }}
+
+    function formatNum(n) {{
+      if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+      return String(n);
+    }}
+
+    function updateActivityFeed(feed) {{
+      const el = document.getElementById('activityFeed');
+      if (!feed || !feed.length) {{
+        el.innerHTML = '<div class="feed-item"><span class="feed-meta">Ajanlar hazır — görev bekleniyor</span></div>';
+        return;
+      }}
+      const isNew = feed.length > lastEventCount;
+      lastEventCount = feed.length;
+      el.innerHTML = feed.slice(0, 12).map((item, i) => {{
+        const name = agentNameMap[item.agent_id] || item.agent_id.split('.')[0];
+        const cls = i === 0 && isNew ? 'feed-item new' : 'feed-item';
+        const status = item.success ? '✓ görev tamamlandı' : '✗ hata';
+        return `<div class="${{cls}}">
+          <span class="feed-agent">${{name}}</span> · ${{status}}
+          <div class="feed-meta">+$${{item.staking_usd?.toFixed(4) || item.gross_usd?.toFixed(4)}} staking · ${{Math.round(item.latency_ms)}}ms · ${{item.tx_hash?.slice(0,10)}}…</div>
+        </div>`;
+      }}).join('');
+    }}
+
+    function updateAgentCards(agents) {{
+      agents.forEach(a => {{
+        agentNameMap[a.agent_id] = a.display_name;
+        const card = document.querySelector('[data-agent="' + a.agent_id + '"]');
+        if (!card) return;
+        const dot = card.querySelector('.status-dot');
+        const text = card.querySelector('.status-text');
+        const lat = card.querySelector('.status-latency');
+        dot.className = 'status-dot ' + a.status;
+        const labels = {{ active: 'Çevrimiçi · görev alıyor', standby: 'Hazır · bekliyor', degraded: 'Düşük performans' }};
+        text.textContent = labels[a.status] || a.status;
+        lat.textContent = a.latency_ms > 0 ? Math.round(a.latency_ms) + 'ms' : '';
+        card.classList.toggle('is-live', a.status === 'active');
+      }});
+    }}
+
+    function startProcessAnimation() {{
+      const cards = Array.from(document.querySelectorAll('.agent-card'));
+      if (!cards.length) return;
+      let idx = 0;
+      const tasks = [
+        'data_fetcher → query pipeline',
+        'synthesizer → risk özeti üretiliyor',
+        'transform → şema normalizasyonu',
+        'DAG node execute · proof-of-work',
+        'mesh/run → capability match',
+        'staking yield dağıtımı',
+      ];
+      processTimer = setInterval(() => {{
+        cards.forEach(c => c.classList.remove('processing'));
+        const card = cards[idx % cards.length];
+        card.classList.add('processing');
+        const taskEl = card.querySelector('[data-live-task]');
+        if (taskEl) taskEl.textContent = '▸ ' + tasks[idx % tasks.length];
+        const dot = card.querySelector('.status-dot');
+        if (dot) {{ dot.classList.add('processing'); setTimeout(() => dot.classList.remove('processing'), 1400); }}
+        idx++;
+      }}, 2800);
     }}
 
     function openWalletModal() {{ document.getElementById('walletModal').classList.add('open'); }}
@@ -661,6 +1009,7 @@ def render_hub_dashboard(
       }}
       localStorage.setItem(WALLET_KEY, addr);
       closeWalletModal();
+      sessionStorage.setItem('hub_just_connected', '1');
       updateWalletUI();
       showToast('Cüzdan bağlandı · ' + shortAddr(addr));
     }}
