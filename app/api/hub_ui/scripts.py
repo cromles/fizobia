@@ -152,25 +152,41 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   function applyLiveSnapshot(data) {{
     updateNetworkStats(data.network);
-    updateActivityFeed(data.activity_feed);
+    updateActivityFeed(data.activity_feed, data.network);
     updateWorkerCards(data.agents);
     const label = $('liveDataLabel');
     if (label && data.network) {{
-      label.textContent = data.network.reachable_agents + ' çevrimiçi · ' +
-        (data.network.real_event_count || 0) + ' faaliyet';
+      label.textContent = data.network.reachable_agents + ' / ' + data.network.total_agents +
+        ' çevrimiçi · ' + (data.network.real_event_count || 0) + ' faaliyet';
     }}
   }}
 
   function updateNetworkStats(net) {{
     if (!net) return;
-    $('netStatus').textContent = net.status === 'online' ? '● Online' : net.status;
+    const online = net.status === 'online';
+    const statusEl = $('netStatus');
+    statusEl.textContent = online ? '● Online' : 'degraded';
+    statusEl.className = online ? 'net-online' : 'net-degraded';
     $('netActive').textContent = net.active_agents + ' / ' + net.total_agents;
     $('netTvl').textContent = '$' + net.total_tvl_usd.toLocaleString('tr-TR');
     $('netCalls').textContent = formatNum(net.total_calls);
-    animateStat('statAgents', net.active_agents);
+    animateStat('statAgents', net.active_agents + ' / ' + net.total_agents);
     animateStat('statTvl', '$' + Math.round(net.total_tvl_usd).toLocaleString('tr-TR'));
     animateStat('statRevenue', '$' + net.total_revenue_usd.toFixed(2));
-    $('statTpm').textContent = '~' + Math.max(1, Math.round(net.total_calls / 1440));
+    const tpm = Number(net.tasks_per_min || 0);
+    $('statTpm').textContent = tpm > 0 ? '~' + tpm.toFixed(1) : '—';
+
+    const alert = $('setupAlert');
+    const banner = $('topBanner');
+    if (alert) alert.classList.toggle('hidden', !net.mesh_offline);
+    if (banner && !DEMO_MODE) {{
+      banner.className = online
+        ? 'top-banner banner-live'
+        : 'top-banner banner-warn';
+      banner.textContent = online
+        ? '● Mesh çalışıyor — gelirin %65\\'i staking havuzuna'
+        : '⚠ Mesh kapalı — x402 hâlâ çalışır · tam ağ için python3 -m app.run_stack';
+    }}
   }}
 
   function animateStat(id, val) {{
@@ -188,21 +204,31 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     return String(n);
   }}
 
-  function updateActivityFeed(feed) {{
+  function updateActivityFeed(feed, net) {{
     const el = $('activityFeed');
+    if (net && net.mesh_offline) {{
+      el.innerHTML = `<div class="feed-item feed-setup">
+        <span class="feed-agent">İşçi süreçleri kapalı</span>
+        <div class="feed-meta">Gateway çalışıyor ama 10 ajan başlamadı. <code>${{net.setup_command || 'python3 -m app.run_stack'}}</code> ile tam mesh'i açın. x402 ödemesi gateway üzerinden çalışmaya devam eder.</div>
+      </div>`;
+      return;
+    }}
     if (!feed || !feed.length) {{
       el.innerHTML = '<div class="feed-item"><span class="feed-meta">İşçiler hazır — görev bekliyor</span></div>';
       return;
     }}
     const isNew = feed.length > lastEventCount;
     lastEventCount = feed.length;
-    el.innerHTML = feed.slice(0, 14).map((item, i) => {{
+    const items = feed.filter(item => item.success !== false).slice(0, 14);
+    const display = items.length ? items : feed.slice(0, 6);
+    el.innerHTML = display.map((item, i) => {{
       const cls = i === 0 && isNew ? 'feed-item new' : 'feed-item';
       const sim = item.simulated
         ? ' <span style="color:#fbbf24">DEMO</span>'
         : ' <span style="color:var(--mint)">CANLI</span>';
       const headline = item.message || (item.worker_name || 'İşçi') + ' görev tamamladı';
-      return `<div class="${{cls}}">
+      const failed = item.success === false;
+      return `<div class="${{cls}}${{failed ? ' feed-fail' : ''}}">
         <span class="feed-agent">${{headline}}</span>${{sim}}
         <div class="feed-meta">+${{(item.staking_usd || item.gross_usd || 0).toFixed(4)}} havuza · ${{Math.round(item.latency_ms || 0)}}ms</div>
       </div>`;
@@ -231,6 +257,20 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }});
   }}
 
+  window.filterWorkers = function(cls, btn) {{
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const featured = $('featuredSlot');
+    const pool = $('workerPool');
+    if (cls === 'all') {{
+      if (featured) featured.style.display = '';
+      if (pool) pool.open = false;
+    }} else {{
+      if (featured) featured.style.display = 'none';
+      if (pool) pool.open = true;
+    }}
+  }};
+
   function startProcessAnimation() {{
     const cards = Array.from(document.querySelectorAll('.worker-card'));
     if (!cards.length) return;
@@ -256,16 +296,6 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   }}
 
   /* ── Filter ── */
-  window.filterWorkers = function(cls, btn) {{
-    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.worker-card').forEach(card => {{
-      const match = cls === 'all' || card.dataset.class === cls;
-      card.style.display = match ? '' : 'none';
-      if (match) card.style.animation = 'cardReveal 0.5s var(--ease) both';
-    }});
-  }};
-
   window.toggleWorkerDetail = function(btn) {{
     const card = btn.closest('.worker-card');
     const detail = card.querySelector('.wc-detail');
@@ -461,7 +491,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       const a = data.analysis || {{}};
       showToast('x402 ödeme OK · ' + (a.analysis || a.symbol || 'analiz'));
-      const card = btn.closest('.worker-card');
+      const card = btn.closest('.featured-worker') || btn.closest('.worker-card');
       const taskEl = card?.querySelector('.task-text');
       if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || 'tamamlandı');
       refreshLive();

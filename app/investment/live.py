@@ -11,6 +11,23 @@ from app.investment.hub import InvestmentHub
 from app.protocol.schemas import AgentManifest
 
 
+def count_reachable_agents(agents: List[AgentManifest]) -> int:
+    return sum(1 for manifest in agents if _probe_endpoint(manifest.endpoint)[0])
+
+
+def _tasks_per_minute(events: List[Any], window_seconds: float = 3600.0) -> float:
+    cutoff = time.time() - window_seconds
+    recent = [
+        event
+        for event in events
+        if event.created_at and event.created_at.timestamp() >= cutoff
+    ]
+    if not recent:
+        return 0.0
+    span = max(60.0, time.time() - min(event.created_at.timestamp() for event in recent))
+    return round((len(recent) / span) * 60.0, 2)
+
+
 def _probe_endpoint(endpoint: str) -> Tuple[bool, float]:
     if not endpoint or not endpoint.startswith("http"):
         return False, 0.0
@@ -36,13 +53,11 @@ def build_live_snapshot(
     total_calls = sum(c.health.total_calls for c in cards)
 
     agent_rows: List[Dict[str, Any]] = []
-    reachable_count = 0
+    reachable_count = count_reachable_agents(agents)
     for card in cards:
         manifest = next((m for m in agents if m.agent_id == card.profile.agent_id), None)
         endpoint = manifest.endpoint if manifest else ""
         reachable, probe_latency = _probe_endpoint(endpoint)
-        if reachable:
-            reachable_count += 1
 
         if reachable:
             status = "active"
@@ -109,6 +124,8 @@ def build_live_snapshot(
         )
 
     real_events = [e for e in feed if not e.get("simulated")]
+    mesh_offline = reachable_count == 0 and not settings.hub_demo_mode
+    tasks_per_min = _tasks_per_minute(events)
 
     return {
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -126,12 +143,15 @@ def build_live_snapshot(
         "network": {
             "status": "online" if reachable_count > 0 else "degraded",
             "protocol": "OAM-NAT-v2",
+            "mesh_offline": mesh_offline,
+            "setup_command": "python3 -m app.run_stack",
             "reachable_agents": reachable_count,
             "active_agents": len([a for a in agent_rows if a["status"] == "active"]),
             "total_agents": len(agent_rows),
             "total_tvl_usd": round(total_tvl, 2),
             "total_revenue_usd": round(total_revenue, 4),
             "total_calls": total_calls,
+            "tasks_per_min": tasks_per_min,
             "real_event_count": len(real_events),
         },
         "agents": agent_rows,

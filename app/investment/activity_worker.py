@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 from app.config import settings
 from app.core.router import OpenAgentMeshRouter
+from app.investment.live import count_reachable_agents
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,14 @@ class HubActivityWorker:
 
         await asyncio.sleep(8.0)
         while self._running:
+            reachable = count_reachable_agents(self.router.list_agents())
+            if reachable == 0:
+                logger.info(
+                    "Hub activity worker: çevrimiçi ajan yok — görev atlanıyor "
+                    "(tam mesh için: python3 -m app.run_stack)"
+                )
+                await asyncio.sleep(settings.hub_live_interval)
+                continue
             try:
                 await self.run_once()
             except Exception as exc:

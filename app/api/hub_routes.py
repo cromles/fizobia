@@ -47,7 +47,7 @@ class MarketPulseAnalyzeRequest(BaseModel):
     symbol: str = Field(default="bitcoin", description="btc, eth, sol, bitcoin, ...")
 
 
-HUB_BUILD = "2026.06.25-market-pulse-x402"
+HUB_BUILD = "2026.06.25-hub-pulse-v3"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
