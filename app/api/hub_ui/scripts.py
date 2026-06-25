@@ -429,6 +429,48 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.triggerLiveRun = triggerLiveRun;
 
+  window.tryX402MarketPulse = async function(agentId, btn) {{
+    btn.classList.add('loading');
+    const symbol = 'bitcoin';
+    const proof = JSON.stringify({{
+      amount_usdc: 0.05,
+      payer: getWallet() || '0x' + 'a'.repeat(40),
+      payment_id: 'ui_' + Date.now(),
+      network: 'x402-demo',
+      asset: 'USDC',
+    }});
+    try {{
+      const res = await fetch('/hub/x402/market-pulse/analyze', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'X-Payment-Proof': proof,
+        }},
+        body: JSON.stringify({{ symbol }}),
+      }});
+      const data = await res.json();
+      if (res.status === 402) {{
+        showToast('Ödeme gerekli — demo proof ile tekrar deneyin', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      if (!res.ok) {{
+        showToast(data.detail || 'x402 hatası', true);
+        btn.classList.remove('loading');
+        return;
+      }}
+      const a = data.analysis || {{}};
+      showToast('x402 ödeme OK · ' + (a.analysis || a.symbol || 'analiz'));
+      const card = btn.closest('.worker-card');
+      const taskEl = card?.querySelector('.task-text');
+      if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || 'tamamlandı');
+      refreshLive();
+    }} catch (err) {{
+      showToast(err.message || 'Bağlantı hatası', true);
+    }}
+    btn.classList.remove('loading');
+  }};
+
   initMeshCanvas();
   updateWalletUI();
   if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);

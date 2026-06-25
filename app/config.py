@@ -36,6 +36,10 @@ class OAMSettings:
     embed_frame_origins: List[str]
     x402_enabled: bool
     x402_webhook_secret: str
+    x402_market_pulse_price_usd: float
+    x402_network: str
+    x402_payee_address: str
+    x402_dev_accept_proof: bool
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -65,6 +69,14 @@ class OAMSettings:
         embed_frame_origins = [o.strip() for o in embed_raw.split(",") if o.strip()]
         x402_enabled = os.getenv("OAM_X402_ENABLED", "true").lower() in ("1", "true", "yes")
         x402_webhook_secret = os.getenv("OAM_X402_WEBHOOK_SECRET", "")
+        x402_market_pulse_price_usd = float(os.getenv("OAM_X402_MARKET_PULSE_PRICE", "0.05"))
+        x402_network = os.getenv("OAM_X402_NETWORK", "base-sepolia")
+        x402_payee_address = os.getenv("OAM_X402_PAYEE_ADDRESS", "")
+        x402_dev_accept_proof = os.getenv("OAM_X402_DEV_ACCEPT_PROOF", "true").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -94,6 +106,10 @@ class OAMSettings:
             embed_frame_origins=embed_frame_origins,
             x402_enabled=x402_enabled,
             x402_webhook_secret=x402_webhook_secret,
+            x402_market_pulse_price_usd=x402_market_pulse_price_usd,
+            x402_network=x402_network,
+            x402_payee_address=x402_payee_address,
+            x402_dev_accept_proof=x402_dev_accept_proof,
         )
 
     @property

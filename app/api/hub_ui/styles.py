@@ -419,7 +419,15 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .tag.class {{ background: var(--mint-dim); color: var(--mint); }}
 .tag.risk-düşük {{ color: var(--cyan); border: 1px solid rgba(56,189,248,0.2); }}
 .tag.risk-orta {{ color: var(--gold); border: 1px solid rgba(255,209,102,0.2); }}
-.tag.risk-yüksek {{ color: var(--danger); border: 1px solid rgba(251,113,133,0.2); }}
+.tag.real-api {{ background: rgba(56,189,248,0.12); color: var(--cyan); border: 1px solid rgba(56,189,248,0.25); }}
+.btn-x402 {{
+  width: 100%; margin-top: 0.5rem; padding: 0.65rem; border-radius: 10px;
+  border: 1px dashed var(--border-bright); background: rgba(0,255,163,0.06);
+  color: var(--mint); font-family: inherit; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; transition: all 0.25s;
+}}
+.btn-x402:hover {{ background: rgba(0,255,163,0.14); transform: translateY(-1px); }}
+.btn-x402.loading {{ opacity: 0.6; pointer-events: none; }}
 .wc-status {{
   display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem;
   font-size: 0.62rem; color: var(--dim);

@@ -5,13 +5,14 @@ from typing import Any, Dict, List
 from app.protocol.schemas import AgentCapability, AgentManifest
 
 
-def _analyst_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    query = data.get("query", data.get("text", ""))
-    return {
-        "analysis": f"Piyasa analizi: {query[:80]}",
-        "confidence": 0.87,
-        "signals": ["momentum_up", "volume_spike"],
-    }
+def _market_analyst_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.market_pulse import fetch_market_snapshot
+
+    symbol = str(data.get("symbol") or data.get("query") or data.get("text") or "bitcoin")
+    try:
+        return fetch_market_snapshot(symbol)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.market.local"}
 
 
 def _validator_handler(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -48,7 +49,7 @@ def _sentiment_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
-    "oam.analyst.market.local": {"market_analyst": _analyst_handler},
+    "oam.analyst.market.local": {"market_analyst": _market_analyst_handler},
     "oam.validator.compliance.local": {"compliance_validator": _validator_handler},
     "oam.analyst.sentiment.local": {"sentiment_analyst": _sentiment_handler},
     "oam.fetcher.web.local": {"web_fetcher": _web_fetch_handler},

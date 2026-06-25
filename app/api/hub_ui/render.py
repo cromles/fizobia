@@ -10,7 +10,7 @@ from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 
-HUB_UI_BUILD = "2026.06.25-nebula-ui"
+HUB_UI_BUILD = "2026.06.25-market-pulse-x402"
 
 
 def render_hub_dashboard(

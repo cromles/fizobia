@@ -10,6 +10,7 @@ from app.api.hub_ui.helpers import (
     format_num,
     risk_label,
 )
+from app.config import settings
 from app.investment.schemas import AgentIdentityCard
 from app.protocol.schemas import AgentManifest
 
@@ -28,6 +29,17 @@ def render_worker_card(
     contract = esc(pool.contract_address or "")
     caps = capabilities_list(manifest)
     cost = manifest.cost_per_token if manifest else 0
+    real_badge = (
+        '<span class="tag real-api">GERÇEK API · CoinGecko</span>'
+        if p.agent_id == "oam.analyst.market.local"
+        else ""
+    )
+    x402_demo = (
+        f'''<button type="button" class="btn-x402" onclick="tryX402MarketPulse('{agent_id}', this)">
+        x402 ile dene · ${settings.x402_market_pulse_price_usd:.2f}</button>'''
+        if p.agent_id == "oam.analyst.market.local"
+        else ""
+    )
 
     return f"""
 <article class="worker-card" style="--i:{index};--delay:{delay}s"
@@ -48,6 +60,7 @@ def render_worker_card(
       <div class="wc-tags">
         <span class="tag class">{class_label(p.agent_class.value)}</span>
         <span class="tag risk-{esc(p.risk_level)}">{risk_label(p.risk_level)} risk</span>
+        {real_badge}
       </div>
     </div>
     <div class="wc-status">
@@ -96,6 +109,7 @@ def render_worker_card(
       </button>
       <button type="button" class="btn-claim" onclick="claim('{agent_id}', this)">Ödül Al</button>
     </div>
+    {x402_demo}
   </div>
 
   <button type="button" class="wc-expand" onclick="toggleWorkerDetail(this)" aria-expanded="false">
