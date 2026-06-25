@@ -10,15 +10,14 @@ from app.registry.agent_registry import InMemoryAgentRegistry
 
 @pytest.fixture
 def client():
-    with TestClient(api_main.app) as test_client:
-        api_main.router_mesh.registry = InMemoryAgentRegistry()
-        api_main.peer_discovery = InMemoryPeerDiscovery()
-        api_main.discovery_sync = DiscoverySync(
-            api_main.peer_discovery,
-            api_main.router_mesh.registry,
-            interval=0,
-        )
-        yield test_client
+    api_main.router_mesh.registry = InMemoryAgentRegistry()
+    api_main.peer_discovery = InMemoryPeerDiscovery()
+    api_main.discovery_sync = DiscoverySync(
+        api_main.peer_discovery,
+        api_main.router_mesh.registry,
+        interval=0,
+    )
+    return TestClient(api_main.app)
 
 
 def test_discovery_announce_and_list(client):

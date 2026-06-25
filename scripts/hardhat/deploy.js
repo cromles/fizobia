@@ -6,6 +6,9 @@ const AGENT_POOLS = [
   { agentId: "oam.fetcher.local", tokenSymbol: "BMF-TKN" },
   { agentId: "oam.synthesizer.local", tokenSymbol: "CAV4-TKN" },
   { agentId: "oam.transformer.local", tokenSymbol: "DN-TKN" },
+  { agentId: "oam.analyst.market.local", tokenSymbol: "MP-TKN" },
+  { agentId: "oam.analyst.sentiment.local", tokenSymbol: "SR-TKN" },
+  { agentId: "oam.fetcher.web.local", tokenSymbol: "WCP-TKN" },
 ];
 
 const USDC_DECIMALS = 6;
