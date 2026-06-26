@@ -65,9 +65,9 @@ class OAMSettings:
         live_interval = float(os.getenv("OAM_HUB_LIVE_INTERVAL", "30" if not demo_mode else "0"))
         autopilot_enabled = os.getenv("OAM_AUTOPILOT_ENABLED", "true").lower() in ("1", "true", "yes")
         autopilot_interval = float(
-            os.getenv("OAM_AUTOPILOT_INTERVAL", "90" if not demo_mode else "0")
+            os.getenv("OAM_AUTOPILOT_INTERVAL", "60" if not demo_mode else "0")
         )
-        autopilot_warmup = float(os.getenv("OAM_AUTOPILOT_WARMUP", "20"))
+        autopilot_warmup = float(os.getenv("OAM_AUTOPILOT_WARMUP", "12"))
         autopilot_min_agents = int(os.getenv("OAM_AUTOPILOT_MIN_AGENTS", "3"))
         onchain_enabled = os.getenv("OAM_ONCHAIN_ENABLED", "false").lower() in ("1", "true", "yes")
         onchain_require_tx = os.getenv("OAM_ONCHAIN_REQUIRE_TX", "true").lower() in ("1", "true", "yes")

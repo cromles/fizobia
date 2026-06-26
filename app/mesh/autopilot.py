@@ -1,8 +1,9 @@
-"""7/24 mesh otopilot — kurucu emriyle otomatik mesh proof ve işe alma döngüsü."""
+"""7/24 mesh otopilot — otomatik mesh proof ve ekosistem birleştirme."""
 
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
@@ -96,13 +97,23 @@ class MeshAutopilot:
                 count += 1
         return count
 
+    def _pick_pipeline(self) -> str:
+        mode = os.getenv("OAM_STACK_MODE", "").lower()
+        if mode == "ecosystem":
+            return "ecosystem_assembly"
+        # Tam yığında her 2. döngüde ekosistem birleştirme
+        if self._cycles % 2 == 0:
+            return "ecosystem_assembly"
+        return "mesh_proof"
+
     async def run_cycle(self) -> Dict[str, Any]:
-        """Tek otopilot döngüsü — hiyerarşi emri + mesh proof hire."""
+        """Tek otopilot döngüsü — hiyerarşi emri + hire."""
         from app.mesh.growth_protocol import get_growth_protocol
 
         symbol = self._next_symbol()
         self._cycles += 1
         cycle = self._cycles
+        pipeline = self._pick_pipeline()
 
         announce_chain_of_command()
         order = autopilot_cycle_order(cycle, symbol=symbol)
@@ -110,22 +121,25 @@ class MeshAutopilot:
         growth = get_growth_protocol()
         growth._emit(
             "autopilot_cycle_start",
-            f"Otopilot döngü #{cycle} — {symbol} mesh proof",
+            f"Otopilot döngü #{cycle} — {symbol} {pipeline}",
             agent_id=ORCHESTRATOR_ID,
-            detail={"cycle": cycle, "symbol": symbol, "order": order},
+            detail={"cycle": cycle, "symbol": symbol, "pipeline": pipeline, "order": order},
         )
 
-        result = await growth.hire_agents(pipeline="mesh_proof", symbol=symbol)
+        result = await growth.hire_agents(pipeline=pipeline, symbol=symbol)
         result["autopilot_cycle"] = cycle
         result["hierarchy_order"] = order
+        result["autopilot_pipeline"] = pipeline
 
         growth._emit(
             "autopilot_cycle_done",
-            f"Otopilot #{cycle} tamam — {result.get('verdict', 'ok')}",
+            f"Otopilot #{cycle} tamam — {result.get('verdict', result.get('capital_readiness', 'ok'))}",
             agent_id=ORCHESTRATOR_ID,
             detail={
                 "cycle": cycle,
+                "pipeline": pipeline,
                 "proof_id": result.get("proof_id"),
+                "assembly_id": result.get("assembly_id"),
                 "verdict": result.get("verdict"),
             },
         )
@@ -133,10 +147,10 @@ class MeshAutopilot:
         self._last_result = result
         self._last_error = None
         logger.info(
-            "[Autopilot] Döngü #%d tamam — proof=%s verdict=%s",
+            "[Autopilot] Döngü #%d tamam — pipeline=%s proof=%s",
             cycle,
-            result.get("proof_id"),
-            result.get("verdict"),
+            pipeline,
+            result.get("proof_id") or result.get("assembly_id"),
         )
         return result
 
