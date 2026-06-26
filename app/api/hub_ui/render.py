@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-arena-prompt-v16"
+HUB_UI_BUILD = "2026.06.26-terminal-v17"
 
 
 def render_hub_dashboard(
@@ -76,7 +76,7 @@ def render_hub_dashboard(
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
-  <title>{esc(brand_title)} — Pasif Dijital İşçi Ortaklığı</title>
+  <title>{esc(brand_title)} — Financial Terminal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -94,6 +94,10 @@ def render_hub_dashboard(
       <span class="nav-sub">{esc(brand_sub)} · {esc(build)}</span>
     </div>
     <div class="nav-actions">
+      <div class="yield-ticker" id="yieldTicker" title="Canlı temettü tahmini">
+        <span class="yield-label">Temettü</span>
+        <span class="yield-value" id="yieldValue">$0.000000</span>
+      </div>
       <div class="wallet-pill" id="walletPill">
         <span id="walletShort">0x…</span>
         <button class="btn-disconnect" onclick="disconnectWallet()">×</button>
@@ -224,91 +228,110 @@ def render_hub_dashboard(
         </div>
       </aside>
 
-      <div class="dash-main">
-        <header class="dash-header">
+      <div class="dash-main terminal-shell">
+        <header class="terminal-top">
           <div>
-            <h2>İşçilerin</h2>
-            <p id="dashWelcome">Pasif ortaklık paneli</p>
+            <h2 class="terminal-title">Axium Terminal</h2>
+            <p class="terminal-sub" id="dashWelcome">Üretim ve yatırım — tek ekran</p>
           </div>
-          <span style="font-size:0.7rem;color:var(--dim)" id="liveDataLabel">{agent_count} işçi</span>
+          <div class="terminal-tabs" role="tablist">
+            <button type="button" class="terminal-tab active" data-tab="produce" onclick="switchHubTab('produce', this)">Üretim</button>
+            <button type="button" class="terminal-tab" data-tab="invest" onclick="switchHubTab('invest', this)">Yatırım</button>
+          </div>
         </header>
 
-        <section class="synapse-prompt" id="synapsePrompt">
-          <div class="synapse-prompt-head">
-            <span class="synapse-prompt-kicker">Tek girdi · Gladyatör Arenası</span>
-            <h3>Ne üretelim?</h3>
-            <p>Yazın — arka plandaki organizma uyanır. Metin ajanları yarışır, denetçi kör puanlar, kazanan render alır.</p>
-          </div>
-          <textarea id="userPrompt" class="synapse-prompt-input" rows="3"
-            placeholder="Örn: Son teknoloji haberleriyle ilgili 30 saniyelik, dikey, arkada fon müziği olan bir Instagram Reels videosu üret."></textarea>
-          <div class="synapse-prompt-actions">
-            <button type="button" class="btn-prompt" id="btnPrompt" onclick="submitUserPrompt()">
-              <span class="btn-text">Üret</span>
-              <span class="btn-loader"></span>
-            </button>
-          </div>
-          <div class="arena-overlay hidden" id="arenaOverlay" aria-live="polite">
-            <div class="arena-pulse"></div>
-            <p>Organizma çalışıyor — metin gladyatörleri arenada…</p>
-          </div>
-          <div class="arena-result hidden" id="arenaResult"></div>
-        </section>
-
-        <div class="stats-grid">
-          <div class="stat" style="--i:0"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">0 / {agent_count}</span></div>
-          <div class="stat" style="--i:1"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
-          <div class="stat" style="--i:2"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
-          <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
+        <div id="tabProduce" class="terminal-panel active" role="tabpanel">
+          <section class="zero-ui" id="zeroUi">
+            <p class="zero-ui-hint">Ne üretelim? Tek cümle yazın — arka plandaki organizma gerisini halleder.</p>
+            <div class="zero-ui-row">
+              <input type="text" id="userPrompt" class="zero-prompt" autocomplete="off"
+                placeholder="30 saniyelik dikey Instagram Reels — son teknoloji haberleri, fon müziği…" />
+              <button type="button" class="btn-prompt zero-submit" id="btnPrompt" onclick="submitUserPrompt()">
+                <span class="btn-text">Üret</span>
+                <span class="btn-loader"></span>
+              </button>
+            </div>
+            <div class="synapse-monitor" id="synapseMonitor">
+              <div class="synapse-monitor-label">Synapse Monitor</div>
+              <div class="synapse-monitor-inner" id="synapseMonitorInner">
+                <div class="synapse-idle">İstem gönderildiğinde ajan diyaloğu burada akar…</div>
+              </div>
+            </div>
+            <div class="arena-overlay hidden" id="arenaOverlay" aria-live="polite">
+              <div class="arena-pulse"></div>
+              <p>Sinir sistemi aktif — x402 ödeme · paralel arena · kör denetim</p>
+            </div>
+            <div class="terminal-deliverable hidden" id="arenaResult"></div>
+          </section>
         </div>
 
-        <div class="setup-alert hidden" id="setupAlert">
-          <div class="setup-alert-copy">
-            <strong>Mesh henüz çalışmıyor</strong>
-            <p>Gateway açık ama işçi süreçleri kapalı — bu yüzden ağ <em>degraded</em> görünür ve görevler başarısız olur.</p>
+        <div id="tabInvest" class="terminal-panel" role="tabpanel" hidden>
+          <div class="stats-grid stats-compact">
+            <div class="stat" style="--i:0"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
+            <div class="stat" style="--i:1"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
+            <div class="stat" style="--i:2"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">0 / {agent_count}</span></div>
+            <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
           </div>
-          <code class="setup-cmd">python3 -m app.run_stack</code>
-        </div>
 
-        <div class="toolbar">
-          <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterWorkers('all', this)">Canlı işçiler ({len(featured_cards)})</button>
-            <button class="filter-tab" onclick="filterWorkers('pool', this)">Havuz ({pool_count})</button>
-          </div>
-          {trigger_btn}
-        </div>
+          <section class="leaderboard-section">
+            <div class="leaderboard-head">
+              <h3>Gladyatör Liderlik Tablosu</h3>
+              <span class="leaderboard-sub">Otonom ajanlar · canlı başarı ve hacim</span>
+            </div>
+            <div class="leaderboard-table-wrap">
+              <table class="leaderboard-table" id="leaderboardTable">
+                <thead>
+                  <tr>
+                    <th>Ajan</th>
+                    <th>Başarı</th>
+                    <th>24s Hacim</th>
+                    <th>Token</th>
+                    <th>APY</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                  <tr><td colspan="6" class="lb-empty">Yükleniyor…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-        <div class="mesh-proof-hero" id="meshProofHero">
-          <div class="mesh-proof-copy">
-            <span class="mesh-proof-kicker">Skeptiklere cevap</span>
-            <h3>Mesh Kanıtı</h3>
-            <p>4 gerçek dijital işçi <strong>konuşarak</strong> ardışık çalışır — mock yok.</p>
-            <ol class="mesh-proof-steps">
-              <li>Web-Crawler → canlı haber çeker</li>
-              <li>Sentiment-Radar → Fear &amp; Greed + NLP</li>
-              <li>Market-Pulse → CoinGecko fiyat</li>
-              <li>On-Chain-Watcher → zincir doğrulama</li>
-            </ol>
+          <div class="setup-alert hidden" id="setupAlert">
+            <div class="setup-alert-copy">
+              <strong>Mesh henüz çalışmıyor</strong>
+              <p>Gateway açık ama işçi süreçleri kapalı.</p>
+            </div>
+            <code class="setup-cmd">python3 -m app.run_stack</code>
           </div>
-          <div class="mesh-proof-action">
-            <div class="mesh-proof-price">x402 · ${settings.x402_mesh_proof_price_usd:.2f}</div>
-            <button type="button" class="btn-mesh-proof" id="btnMeshProof" onclick="runMeshProof(this)">
-              <span class="btn-text">Mesh Kanıtını Çalıştır</span>
-              <span class="btn-loader"></span>
-            </button>
-            <p class="mesh-proof-result" id="meshProofResult">Tek tıkla kanıt üret — gelirin %65'i havuza</p>
-          </div>
-        </div>
 
-        <div class="featured-slot featured-grid" id="featuredSlot">
-          {featured_html}
-        </div>
-
-        <details class="worker-pool" id="workerPool">
-          <summary>Diğer işçiler · tam mesh ile aktif olur ({pool_count})</summary>
-          <div class="workers-grid compact-grid" id="workersGrid">
-            {pool_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
+          <div class="invest-workers">
+            <h3 class="invest-section-title">Hisse Al — Pasif Ortaklık</h3>
+            <div class="featured-slot featured-grid" id="featuredSlot">
+              {featured_html}
+            </div>
+            <details class="worker-pool" id="workerPool">
+              <summary>Genişletilmiş havuz ({pool_count})</summary>
+              <div class="workers-grid compact-grid" id="workersGrid">
+                {pool_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
+              </div>
+            </details>
           </div>
-        </details>
+
+          <details class="terminal-advanced">
+            <summary>Gelişmiş — Mesh Kanıtı</summary>
+            <div class="mesh-proof-hero mesh-proof-compact" id="meshProofHero">
+              <div class="mesh-proof-copy">
+                <p>4 gerçek işçi konuşarak çalışır — x402 ${settings.x402_mesh_proof_price_usd:.2f}</p>
+              </div>
+              <button type="button" class="btn-mesh-proof" id="btnMeshProof" onclick="runMeshProof(this)">
+                <span class="btn-text">Mesh Kanıtı</span>
+                <span class="btn-loader"></span>
+              </button>
+              <p class="mesh-proof-result" id="meshProofResult"></p>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </section>

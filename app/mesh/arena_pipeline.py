@@ -40,12 +40,17 @@ async def run_arena_pipeline(
     job_id = f"arena_{uuid.uuid4().hex[:10]}"
     thread_id = f"arena_{job_id}"
     started = time.perf_counter()
+    synapse_log: List[str] = []
+
+    def log(line: str) -> None:
+        synapse_log.append(line)
 
     competitors = filter_eligible_agents(list(ARENA_TEXT_COMPETITORS))
     if len(competitors) < 2:
         raise ValueError("Arena için yeterli uygun metin ajanı yok (elenmiş olabilir)")
 
     pipeline_mission_opener(thread_id)
+    log(f"[Orkestratör] İstem alındı — gladyatör arenası başlıyor.")
     dialogue.broadcast(
         ORCHESTRATOR_ID,
         f"Gladyatör arenası başladı — istem: {user_prompt[:100]}…",
@@ -62,15 +67,25 @@ async def run_arena_pipeline(
             intent="arena_hire",
             thread_id=thread_id,
         )
+        log(f"[Orkestratör → {agent_id}] Taslak üretimi başlatıldı.")
 
     t0 = time.perf_counter()
     all_drafts = await run_text_arena_parallel(user_prompt)
     drafts = [d for d in all_drafts if d["agent_id"] in competitors]
     text_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
 
+    for d in drafts:
+        log(f"[{d.get('display_name', 'Ajan')}] Taslak oluşturuldu · {d.get('word_count', 0)} kelime.")
+
     blind = anonymize_submissions(drafts)
     audit = blind_audit(blind)
     mapping = map_winner_to_agent(drafts, blind, audit)
+
+    for review in audit.get("reviews", []):
+        log(
+            f"[{CRITIC_DISPLAY_NAME}] Kör puan: {review.get('critic_score', 0):.0%} — "
+            f"{review.get('rationale', '')}"
+        )
 
     dialogue.say(
         CRITIC_AGENT_ID,
@@ -87,6 +102,8 @@ async def run_arena_pipeline(
 
     for loser_id in mapping["loser_agent_ids"]:
         record_pipeline_outcome(agent_id=loser_id, success=False, verdict="arena_loss")
+        loser_name = next((d.get("display_name") for d in drafts if d["agent_id"] == loser_id), loser_id)
+        log(f"[{CRITIC_DISPLAY_NAME}] {loser_name} elendi — skor yetersiz.")
         dialogue.say(
             CRITIC_AGENT_ID,
             loser_id,
@@ -101,6 +118,10 @@ async def run_arena_pipeline(
             display_name=winner_draft.get("display_name", ""),
             success=True,
             verdict="arena_win",
+        )
+        log(
+            f"[{winner_draft.get('display_name', winner_id)}] Kazandı — "
+            f"skor {mapping.get('winner_score', 0):.0%}. Render kuyruğuna alındı."
         )
 
     t1 = time.perf_counter()
@@ -127,10 +148,13 @@ async def run_arena_pipeline(
         thread_id=thread_id,
     )
 
+    log(f"[{RENDER_NAME}] Nihai ürün spec hazır · {duration_sec}s dikey Reels.")
+
     total_ms = round((time.perf_counter() - started) * 1000, 1)
     return {
         "job_id": job_id,
         "user_prompt": user_prompt,
+        "synapse_log": synapse_log,
         "arena": {
             "competitors": competitors,
             "drafts": drafts,

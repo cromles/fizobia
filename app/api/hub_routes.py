@@ -124,7 +124,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-arena-synapse-onchain-v16"
+HUB_BUILD = "2026.06.26-terminal-v17"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -156,8 +156,8 @@ def _hub_html_response(html: str, *, embed: bool = False) -> HTMLResponse:
 def _render_hub(
     *,
     embed_mode: bool = False,
-    brand_title: str = "The Hub",
-    brand_sub: str = "Veridag",
+    brand_title: str = "Axium",
+    brand_sub: str = "Financial AI Terminal",
 ) -> HTMLResponse:
     hub = get_investment_hub()
     mesh = _mesh()
@@ -226,6 +226,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "mesh_proof": f"{base}/hub/proof/mesh/run",
             "user_prompt": f"{base}/hub/prompt",
             "arena_wallets": f"{base}/hub/arena/wallets",
+            "leaderboard": f"{base}/hub/leaderboard",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
@@ -779,6 +780,55 @@ async def user_prompt_arena(
 async def arena_wallets(limit: int = Query(default=30, ge=1, le=100)) -> Dict[str, Any]:
     """Ajan mikro cüzdanları — görev başına kazanç."""
     return {"wallets": list_wallets(limit=limit)}
+
+
+@router.get("/leaderboard")
+async def hub_gladiator_leaderboard() -> Dict[str, Any]:
+    """Gladyatör liderlik tablosu — borsa terminali görünümü için."""
+    mesh = _mesh()
+    hub = get_investment_hub()
+    organism = get_organism_status()
+    standings_map = {s["agent_id"]: s for s in organism.get("agent_standings", [])}
+    wallets_map = {w["agent_id"]: w for w in list_wallets(limit=200)}
+
+    rows: List[Dict[str, Any]] = []
+    for card in hub.list_identity_cards(mesh.list_agents()):
+        aid = card.profile.agent_id
+        st = standings_map.get(aid, {})
+        wl = wallets_map.get(aid, {})
+        wins = int(wl.get("tasks_won", 0))
+        losses = int(wl.get("tasks_lost", 0))
+        total_tasks = wins + losses
+        if total_tasks > 0:
+            success_pct = round(100.0 * wins / total_tasks, 1)
+        else:
+            success_pct = round(float(st.get("score", 0.5)) * 100, 1)
+
+        price = card.finance.token_price_usdc
+        rows.append(
+            {
+                "agent_id": aid,
+                "display_name": card.profile.display_name,
+                "token_symbol": card.profile.token_symbol,
+                "success_rate_pct": success_pct,
+                "volume_24h_usd": card.finance.volume_24h_usd,
+                "token_price_usdc": price,
+                "apy_pct": card.finance.estimated_apy,
+                "tvl_usd": card.finance.staking_pool_tvl_usd,
+                "identity_tier": st.get("identity_tier", "probation"),
+                "earned_usdc": wl.get("earned_usdc", 0.0),
+                "tier_badge": st.get("identity_tier", "probation"),
+            }
+        )
+
+    rows.sort(key=lambda r: (-r["volume_24h_usd"], -r["success_rate_pct"], -r["tvl_usd"]))
+    total_tvl = sum(r["tvl_usd"] for r in rows)
+    return {
+        "agents": rows,
+        "count": len(rows),
+        "total_tvl_usd": round(total_tvl, 2),
+        "revenue_split_staking_pct": 65,
+    }
 
 
 @router.get("/proof/mesh")
