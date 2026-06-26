@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_routes import router as hub_router
 from app.agents.founder_bootstrap import bootstrap_full_agents, bootstrap_founder_agents
+from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
 from app.core.router import OpenAgentMeshRouter
 from app.discovery.factory import create_discovery, create_discovery_sync, discovery_backend_name
 from app.protocol.schemas import (
@@ -53,7 +54,9 @@ async def lifespan(_: FastAPI):
     peer_discovery = create_discovery()
     discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
     stack_mode = os.getenv("OAM_STACK_MODE", "full").lower()
-    if stack_mode == "founder":
+    if stack_mode == "ecosystem":
+        bootstrap_ecosystem_agents(router_mesh, peer_discovery)
+    elif stack_mode == "founder":
         bootstrap_founder_agents(router_mesh, peer_discovery)
     else:
         bootstrap_full_agents(router_mesh, peer_discovery)

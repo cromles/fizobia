@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-yasin-organism-v13"
+HUB_UI_BUILD = "2026.06.25-ecosystem-assembly-v14"
 
 
 def render_hub_dashboard(

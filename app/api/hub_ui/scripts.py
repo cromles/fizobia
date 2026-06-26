@@ -33,6 +33,11 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     'oam.analyst.sentiment.local': 'Sentiment',
     'oam.analyst.market.local': 'Market',
     'oam.watcher.onchain.local': 'On-Chain',
+    'oam.media.story.local': 'Story-Weaver',
+    'oam.media.brand.local': 'Brand-Voice',
+    'oam.media.outreach.local': 'Outreach',
+    'oam.media.proof.local': 'Proof-Broadcast',
+    'oam.capital.fundraise.local': 'Fund-Radar',
     '*': 'Mesh',
   }};
 

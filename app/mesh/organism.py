@@ -13,6 +13,7 @@ from app.mesh.founder_profile import (
     founder_broadcast_text,
     get_founder_manifest,
 )
+from app.mesh.ecosystem_registry import ECOSYSTEM_GROWTH_IDS_SET, MEDIA_AGENT_IDS_SET
 from app.mesh.founders import ORCHESTRATOR_ID
 from app.mesh.hierarchy import ASSISTANT_ID, FOUNDER_OPERATOR_ID
 from app.mesh.mission import MISSION_THREAD_ID
@@ -257,6 +258,18 @@ def broadcast_organism_manifest(*, force: bool = False) -> Dict[str, Any]:
 
     _organism_announced = True
     return get_organism_status()
+
+
+def activate_ecosystem_divisions() -> Dict[str, Any]:
+    """Planlanan medya/sermaye ajanlarını aktif olarak işaretle."""
+    activated: List[str] = []
+    for division in PLANNED_DIVISIONS.values():
+        for agent in division.get("agents", []):
+            aid = agent.get("agent_id", "")
+            if aid in ECOSYSTEM_GROWTH_IDS_SET or aid in MEDIA_AGENT_IDS_SET:
+                agent["status"] = "active"
+                activated.append(aid)
+    return {"activated": activated, "count": len(activated)}
 
 
 def reset_organism_state() -> None:

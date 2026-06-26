@@ -24,6 +24,8 @@ from app.mesh.mission import (
     emit_mission_growth_event,
     welcome_agent_to_family,
 )
+from app.mesh.assembly_pipeline import run_ecosystem_assembly
+from app.mesh.ecosystem_registry import ECOSYSTEM_ASSEMBLY_AGENTS, MEDIA_AGENT_IDS_SET
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
 
@@ -203,6 +205,57 @@ class MeshGrowthProtocol:
                 "agent_standings": standings,
                 "real_data": True,
             }
+        elif pipeline == "ecosystem_assembly":
+            hired = list(ECOSYSTEM_ASSEMBLY_AGENTS)
+            self._emit(
+                "hire_started",
+                f"Ekosistem birleştirme — {len(hired)} ajan (mesh + medya + sermaye)",
+                agent_id=hired_by,
+                detail={"pipeline": pipeline, "agents": hired},
+            )
+            from app.investment.factory import get_investment_hub
+            from app.mesh.agent_dialogue import get_dialogue_bus
+
+            hub = get_investment_hub()
+            cards = hub.list_identity_cards(self.router.list_agents())
+            stats: Dict[str, Any] = {
+                "total_revenue_usd": sum(c.finance.total_revenue_usd for c in cards),
+                "tvl_usd": sum(c.finance.staking_pool_tvl_usd for c in cards),
+                "total_agents": len(cards),
+                "mesh_proofs": 0,
+            }
+            try:
+                from app.mesh.proof_vault import get_proof_vault
+
+                stats["mesh_proofs"] = get_proof_vault().stats().get("proofs_recorded", 0)
+            except Exception:
+                pass
+
+            assembly = await run_ecosystem_assembly(symbol=symbol, url=url, hub_stats=stats)
+            dialogue = get_dialogue_bus()
+            standings = record_mesh_proof_steps(
+                assembly.get("steps", []),
+                verdict=assembly.get("mesh_verdict", ""),
+            )
+            result = {
+                "pipeline": pipeline,
+                "hired_agents": hired,
+                "assembly_id": assembly.get("assembly_id"),
+                "proof_id": assembly.get("proof_id"),
+                "verdict": assembly.get("mesh_verdict"),
+                "story_headline": assembly.get("story", {}).get("headline"),
+                "share_card": assembly.get("share_card", {}).get("share_card"),
+                "capital_readiness": assembly.get("capital_signal", {}).get("readiness"),
+                "total_latency_ms": assembly.get("total_latency_ms"),
+                "steps": assembly.get("assembly_steps"),
+                "dialogue_thread": assembly.get("dialogue_thread"),
+                "dialogue_messages": assembly.get("dialogue_messages"),
+                "dialogue": dialogue.list_messages(
+                    thread_id=assembly.get("dialogue_thread"), limit=25
+                ),
+                "agent_standings": standings,
+                "real_data": True,
+            }
         elif pipeline == "goal":
             self._emit(
                 "hire_started",
@@ -283,6 +336,9 @@ class MeshGrowthProtocol:
             "organism": {
                 "planned_agents": organism["planned_agent_count"],
                 "media_division": len(organism["divisions"]["media"]["agents"]),
+                "media_active": sum(
+                    1 for a in growth if a["agent_id"] in MEDIA_AGENT_IDS_SET
+                ),
                 "agent_standings": organism["agent_standings"],
             },
             "founder_count": len(founders),
@@ -300,6 +356,10 @@ class MeshGrowthProtocol:
                 "mesh_proof": {
                     "agents": list(MESH_PROOF_AGENTS),
                     "description": "4 ajan konuşarak: crawl → sentiment → market → on-chain",
+                },
+                "ecosystem_assembly": {
+                    "agents": list(ECOSYSTEM_ASSEMBLY_AGENTS),
+                    "description": "Mesh proof + medya dalgası + sermaye radarı — tam ekosistem",
                 },
                 "goal": {
                     "description": "Koordinatör hedefe göre mesh'ten ajan işe alır",

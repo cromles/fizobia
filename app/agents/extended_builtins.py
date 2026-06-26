@@ -106,6 +106,76 @@ def _onchain_handler(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": str(exc), "real_data": False, "agent_id": "oam.watcher.onchain.local"}
 
 
+def _story_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.media_story import weave_story
+
+    try:
+        return weave_story(
+            symbol=str(data.get("symbol", "bitcoin")),
+            verdict=str(data.get("verdict", "")),
+            headline=str(data.get("headline", "")),
+            sentiment=str(data.get("sentiment", "")),
+            price_usd=data.get("price_usd"),
+            proof_id=str(data.get("proof_id", "")),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.media.story.local"}
+
+
+def _brand_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.media_brand import craft_brand_copy
+
+    try:
+        return craft_brand_copy(
+            narrative=str(data.get("narrative", data.get("text", ""))),
+            symbol=str(data.get("symbol", "bitcoin")),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.media.brand.local"}
+
+
+def _outreach_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.media_outreach import build_outreach_pitch
+
+    try:
+        return build_outreach_pitch(
+            tagline=str(data.get("tagline", "")),
+            symbol=str(data.get("symbol", "bitcoin")),
+            proof_id=str(data.get("proof_id", "")),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.media.outreach.local"}
+
+
+def _proof_media_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.media_proof import format_proof_share
+
+    try:
+        return format_proof_share(
+            proof_id=str(data.get("proof_id", "")),
+            verdict=str(data.get("verdict", "")),
+            narrative=str(data.get("narrative", "")),
+            symbol=str(data.get("symbol", "bitcoin")),
+            total_latency_ms=data.get("total_latency_ms"),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.media.proof.local"}
+
+
+def _capital_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.capital_fundraise import scan_fundraise_signals
+
+    try:
+        return scan_fundraise_signals(
+            total_revenue_usd=float(data.get("total_revenue_usd", 0)),
+            mesh_proofs=int(data.get("mesh_proofs", 0)),
+            total_agents=int(data.get("total_agents", 0)),
+            tvl_usd=float(data.get("tvl_usd", 0)),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.capital.fundraise.local"}
+
+
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.analyst.market.local": {"market_analyst": _market_analyst_handler},
     "oam.validator.compliance.local": {"compliance_validator": _validator_handler},
@@ -115,6 +185,11 @@ EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.orchestrator.pipeline.local": {"pipeline_orchestrator": _orchestrator_handler},
     "oam.validator.quality.local": {"quality_validator": _validator_handler},
     "oam.watcher.onchain.local": {"onchain_watcher": _onchain_handler},
+    "oam.media.story.local": {"story_weaver": _story_handler},
+    "oam.media.brand.local": {"brand_voice": _brand_handler},
+    "oam.media.outreach.local": {"outreach_pulse": _outreach_handler},
+    "oam.media.proof.local": {"proof_broadcaster": _proof_media_handler},
+    "oam.capital.fundraise.local": {"fund_radar": _capital_handler},
 }
 
 
@@ -211,6 +286,46 @@ ON_CHAIN_WATCHER = _manifest(
     "Zincir durumu ve USDC ödeme doğrulama",
     "onchain_watcher",
 )
+STORY_WEAVER = _manifest(
+    "oam.media.story.local",
+    8112,
+    0.0015,
+    "story_weaver",
+    "Axium hikayesi ve mesh kanıt anlatısı üretir",
+    "story_weaver",
+)
+BRAND_VOICE = _manifest(
+    "oam.media.brand.local",
+    8113,
+    0.0012,
+    "brand_voice",
+    "Marka sesi ve sosyal tanıtım metni",
+    "brand_voice",
+)
+OUTREACH_PULSE = _manifest(
+    "oam.media.outreach.local",
+    8114,
+    0.0012,
+    "outreach_pulse",
+    "Topluluk ve yatırımcı pitch üretir",
+    "outreach_pulse",
+)
+PROOF_BROADCASTER = _manifest(
+    "oam.media.proof.local",
+    8115,
+    0.001,
+    "proof_broadcaster",
+    "Mesh kanıtını paylaşılabilir karta dönüştürür",
+    "proof_broadcaster",
+)
+FUND_RADAR = _manifest(
+    "oam.capital.fundraise.local",
+    8116,
+    0.0015,
+    "fund_radar",
+    "Gelir, stake ve kanıt sinyalleri — sermaye radarı",
+    "fund_radar",
+)
 
 EXTENDED_MANIFESTS: List[AgentManifest] = [
     MARKET_ANALYST,
@@ -221,4 +336,9 @@ EXTENDED_MANIFESTS: List[AgentManifest] = [
     PIPELINE_ORCHESTRATOR,
     QUALITY_VALIDATOR,
     ON_CHAIN_WATCHER,
+    STORY_WEAVER,
+    BRAND_VOICE,
+    OUTREACH_PULSE,
+    PROOF_BROADCASTER,
+    FUND_RADAR,
 ]

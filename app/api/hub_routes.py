@@ -81,8 +81,16 @@ class EcosystemJoinRequest(BaseModel):
     manifest: AgentManifest
 
 
+class EcosystemAssembleRequest(BaseModel):
+    symbol: str = Field(default="bitcoin")
+    url: str | None = None
+
+
 class EcosystemHireRequest(BaseModel):
-    pipeline: str = Field(default="mesh_proof", description="mesh_proof | goal")
+    pipeline: str = Field(
+        default="mesh_proof",
+        description="mesh_proof | ecosystem_assembly | goal",
+    )
     goal: str = Field(default="")
     initial_data: Dict[str, Any] = Field(default_factory=dict)
     symbol: str = Field(default="bitcoin")
@@ -105,7 +113,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.25-yasin-organism-v13"
+HUB_BUILD = "2026.06.25-ecosystem-assembly-v14"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -214,6 +222,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "hierarchy": f"{base}/hub/hierarchy",
             "hierarchy_command": f"{base}/hub/hierarchy/command",
             "autopilot": f"{base}/hub/autopilot",
+            "ecosystem_assemble": f"{base}/hub/ecosystem/assemble",
             "manifest": f"{base}/hub/manifest",
             "organism": f"{base}/hub/organism",
             "well_known_agent": f"{base}/.well-known/agent.json",
@@ -731,10 +740,23 @@ async def hub_ecosystem_status() -> Dict[str, Any]:
     try:
         growth = get_growth_protocol()
     except RuntimeError:
-        from app.agents.founder_bootstrap import bootstrap_full_agents
+        import os
+
         from app.api.main import peer_discovery
 
-        bootstrap_full_agents(_mesh(), peer_discovery)
+        mode = os.getenv("OAM_STACK_MODE", "full").lower()
+        if mode == "ecosystem":
+            from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
+
+            bootstrap_ecosystem_agents(_mesh(), peer_discovery)
+        elif mode == "founder":
+            from app.agents.founder_bootstrap import bootstrap_founder_agents
+
+            bootstrap_founder_agents(_mesh(), peer_discovery)
+        else:
+            from app.agents.founder_bootstrap import bootstrap_full_agents
+
+            bootstrap_full_agents(_mesh(), peer_discovery)
         growth = get_growth_protocol()
     return growth.ecosystem_status()
 
@@ -756,6 +778,27 @@ async def hub_ecosystem_join(request: EcosystemJoinRequest) -> Dict[str, Any]:
     except RuntimeError:
         raise HTTPException(status_code=503, detail="Ekosistem henüz başlatılmadı")
     return growth.join_agent(request.manifest)
+
+
+@router.post("/ecosystem/assemble")
+async def hub_ecosystem_assemble(request: EcosystemAssembleRequest) -> Dict[str, Any]:
+    """Tüm ekosistemi bir araya getir — mesh proof + medya + sermaye."""
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
+        from app.api.main import peer_discovery
+
+        bootstrap_ecosystem_agents(_mesh(), peer_discovery)
+        growth = get_growth_protocol()
+    try:
+        return await growth.hire_agents(
+            pipeline="ecosystem_assembly",
+            symbol=request.symbol,
+            url=request.url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.post("/ecosystem/hire")

@@ -17,6 +17,7 @@ from app.main import (
     run_mock_synthesizer,
     run_mock_transformer,
 )
+from app.mesh.ecosystem_registry import ECOSYSTEM_STACK_AGENT_IDS
 from app.mesh.founders import FOUNDER_STACK_AGENT_IDS
 
 
@@ -31,11 +32,31 @@ def _founder_manifests():
     return [m for m in EXTENDED_MANIFESTS if m.agent_id in ids]
 
 
+def _ecosystem_manifests():
+    ids = set(ECOSYSTEM_STACK_AGENT_IDS)
+    return [m for m in EXTENDED_MANIFESTS if m.agent_id in ids]
+
+
 def main() -> None:
     stack_mode = os.getenv("OAM_STACK_MODE", "full").lower()
     agent_processes: list[multiprocessing.Process] = []
 
-    if stack_mode == "founder":
+    if stack_mode == "ecosystem":
+        os.environ["OAM_STACK_MODE"] = "ecosystem"
+        for manifest in _ecosystem_manifests():
+            port = int(manifest.endpoint.rsplit(":", 1)[-1])
+            handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
+            if not handlers:
+                continue
+            agent_processes.append(
+                _run(
+                    lambda m=manifest, p=port, h=handlers: run_extended_agent(m.agent_id, p, h),
+                    f"oam-{manifest.agent_id}",
+                )
+            )
+        total = len(agent_processes)
+        mode_label = "BİRLEŞİK EKOSİSTEM"
+    elif stack_mode == "founder":
         os.environ["OAM_STACK_MODE"] = "founder"
         for manifest in _founder_manifests():
             port = int(manifest.endpoint.rsplit(":", 1)[-1])
@@ -80,6 +101,7 @@ def main() -> None:
     print(f"OAM yığın başlatıldı — {mode_label}:")
     print(f"  The Hub:       http://127.0.0.1:{port}/hub")
     print(f"  Ekosistem:     http://127.0.0.1:{port}/hub/ecosystem")
+    print(f"  Birleştir:     POST /hub/ecosystem/assemble")
     print(f"  İşe alma:      POST /hub/ecosystem/hire")
     print(f"  İşçi sayısı:   {total}")
     try:
