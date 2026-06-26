@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# axium.com.tr — birleşik ekosistem (10 ajan + otopilot)
+# axium.com.tr — birleşik ekosistem (15 mikro ajan + otopilot)
 # Sunucuda root: curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/deploy_axium_production.sh | bash
 set -euo pipefail
 
@@ -11,7 +11,7 @@ BRANCH="${BRANCH:-main}"
 
 echo ""
 echo "  Axium Ekosistem deploy — ${DOMAIN}"
-echo "  10 ajan · arena · synapse · otopilot 60s"
+echo "  15 mikro ajan · 3 departman · arena · makale · otopilot 60s"
 echo ""
 
 export DEBIAN_FRONTEND=noninteractive
@@ -50,6 +50,7 @@ OAM_X402_MARKET_PULSE_PRICE=0.05
 OAM_X402_SENTIMENT_PRICE=0.04
 OAM_X402_MESH_PROOF_PRICE=0.10
 OAM_X402_ARENA_PRICE=0.10
+OAM_PURGE_EVERY_CYCLES=12
 OAM_CORS_ORIGINS=https://${DOMAIN},https://www.${DOMAIN},http://${DOMAIN},http://www.${DOMAIN}
 OAM_EMBED_FRAME_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}
 OAM_ONCHAIN_ENABLED=false
@@ -58,7 +59,7 @@ EOF
 chmod +x scripts/*.sh
 
 # Eski hub süreçlerini kapat
-for port in ${HUB_PORT} 8101 8102 8103 8104 8105 8106 8107 8108 8109 8110 8111 8112 8113 8114 8115 8116; do
+for port in ${HUB_PORT} 8101 8102 8103 8104 8105 8106 8107 8108 8109 8110 8111 8112 8113 8114 8115 8116 8117 8118 8119 8120 8121; do
   lsof -ti ":${port}" 2>/dev/null | xargs -r kill -9 || true
 done
 sleep 2
@@ -77,7 +78,7 @@ systemctl restart oam-ecosystem
 
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
   ufw allow "${HUB_PORT}/tcp" || true
-  ufw allow 8104:8116/tcp || true
+  ufw allow 8104:8121/tcp || true
 fi
 
 echo "  Ajanlar ayağa kalkıyor (20s)…"
@@ -94,6 +95,9 @@ if curl -sf "http://127.0.0.1:${HUB_PORT}/hub/version" >/dev/null; then
   curl -sf -X POST "http://127.0.0.1:${HUB_PORT}/hub/ecosystem/assemble" \
     -H 'Content-Type: application/json' \
     -d '{"symbol":"bitcoin"}' >/dev/null && echo "  ✓ İlk ekosistem birleştirme tamam" || true
+
+  DEPTS=$(curl -s "http://127.0.0.1:${HUB_PORT}/hub/departments" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null || echo 0)
+  echo "  ✓ Departmanlar: ${DEPTS} kategori"
 
   echo ""
   echo "  aaPanel / Nginx:"

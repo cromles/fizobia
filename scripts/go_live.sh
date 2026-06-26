@@ -11,7 +11,7 @@ echo "  Axium — Go Live"
 echo ""
 
 # Eski gateway-only süreçleri kapat
-for port in ${PORT} 8104 8105 8106 8107 8108 8109 8110 8111 8112 8113 8114 8115 8116; do
+for port in ${PORT} 8104 8105 8106 8107 8108 8109 8110 8111 8112 8113 8114 8115 8116 8117 8118 8119 8120 8121; do
   lsof -ti ":${port}" 2>/dev/null | xargs -r kill -9 || true
 done
 sleep 1
@@ -54,6 +54,14 @@ print('  Sermaye:', d.get('capital_readiness','—'))
 
 AP=$(curl -s "${BASE}/hub/autopilot" | python3 -c "import sys,json; d=json.load(sys.stdin); print(('aktif' if d.get('running') else 'kapalı') + ' · ' + str(d.get('cycles_completed',0)) + ' döngü')")
 echo "  Otopilot: ${AP}"
+
+DEPTS=$(curl -s "${BASE}/hub/departments" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('count',0))")
+echo "  Departmanlar: ${DEPTS} kategori"
+
+if command -v python3 >/dev/null 2>&1 && [[ -f scripts/demo_departments_simulation.py ]]; then
+  echo "  Departman simülasyonu…"
+  PYTHONPATH="${PWD}" python3 scripts/demo_departments_simulation.py 2>/dev/null | tail -8 || true
+fi
 echo ""
 echo "  → ${BASE}/hub"
 echo ""

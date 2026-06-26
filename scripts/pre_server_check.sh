@@ -25,16 +25,21 @@ assert 'agentDialoguePanel' in html
 print('  ✓ UI render OK')
 "
 
-echo "[3/5] x402 + mesh proof imports…"
+echo "[3/5] x402 + mesh proof + departman imports…"
 python3 -c "
 from app.mesh.proof_pipeline import run_mesh_proof_pipeline
 from app.mesh.arena_pipeline import run_arena_pipeline
+from app.mesh.article_pipeline import run_article_pipeline
+from app.mesh.departments import list_departments, DEPARTMENT_COPYWRITING
 from app.mesh.synapse_manifest import get_synapse_manifest
 from app.investment.x402_gateway import list_x402_services, arena_price_usd
+from app.mesh.ecosystem_registry import ECOSYSTEM_STACK_AGENT_IDS
 assert len(list_x402_services()['services']) >= 3
 assert arena_price_usd() > 0
 assert get_synapse_manifest()['code'] == 'THE_SYNAPSE_NET'
-print('  ✓ x402 + arena + synapse OK')
+assert list_departments()['count'] == 3
+assert len(ECOSYSTEM_STACK_AGENT_IDS) == 15
+print('  ✓ x402 + arena + departmanlar OK')
 "
 
 echo "[4/5] On-chain config…"
@@ -46,12 +51,13 @@ print('  ✓ on-chain deploy scripts OK')
 "
 
 echo "[5/5] Demo scripts (syntax)…"
-python3 -m py_compile scripts/demo_mesh_proof.py scripts/demo_x402_all.py
+python3 -m py_compile scripts/demo_mesh_proof.py scripts/demo_x402_all.py scripts/demo_departments_simulation.py
+chmod +x scripts/ready_for_server.sh scripts/go_live.sh
 echo "  ✓ demo scripts OK"
 
 echo ""
 echo "  Hazır — sunucuya deploy edilebilir."
-echo "  Lokal demo: bash scripts/start_hub.sh && python3 scripts/demo_mesh_proof.py"
-echo "  Arena:    POST /hub/prompt (tek girdi gladyatör)"
-echo "  On-chain: bash scripts/deploy_base_sepolia.sh"
+echo "  Lokal demo: bash scripts/go_live.sh"
+echo "  Simülasyon: PYTHONPATH=. python3 scripts/demo_departments_simulation.py"
+echo "  Sunucu:     bash scripts/ready_for_server.sh"
 echo ""

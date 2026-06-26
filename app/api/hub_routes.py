@@ -46,6 +46,7 @@ from app.investment.x402_gateway import (
     sentiment_radar_price_usd,
 )
 from app.mesh.arena_pipeline import run_arena_pipeline
+from app.mesh.article_pipeline import run_article_pipeline
 from app.mesh.agent_wallets import credit_agent, list_ledger, list_wallets, record_loss
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
@@ -86,6 +87,12 @@ class UserPromptRequest(BaseModel):
     prompt: str = Field(..., min_length=8, max_length=4000, description="Tek girdi — doğal dil istem")
     background_music: bool = Field(default=True)
     duration_sec: int = Field(default=30, ge=15, le=90)
+
+
+class ArticleRequest(BaseModel):
+    topic: str = Field(..., min_length=8, max_length=4000, description="Makale konusu")
+    tone: str = Field(default="corporate", description="corporate | humorous | technical")
+    url: str | None = Field(default=None, description="Opsiyonel RSS/HTML kaynağı")
 
 
 class EcosystemJoinRequest(BaseModel):
@@ -228,6 +235,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "arena_wallets": f"{base}/hub/arena/wallets",
             "leaderboard": f"{base}/hub/leaderboard",
             "departments": f"{base}/hub/departments",
+            "article": f"{base}/hub/article",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
@@ -791,6 +799,45 @@ async def hub_departments() -> Dict[str, Any]:
 
     registered = [m.agent_id for m in mesh.list_agents()]
     return list_departments(registered_agent_ids=registered)
+
+
+@router.get("/article")
+async def article_pipeline_discover() -> Dict[str, Any]:
+    """Yazılı basın departmanı — makale mikro-ajan zinciri keşfi."""
+    from app.mesh.departments import ARTICLE_PIPELINE_AGENTS, DEPARTMENT_COPYWRITING
+
+    return {
+        "service": "synapse-article",
+        "department": DEPARTMENT_COPYWRITING,
+        "tagline": "Tek makale bile dört ayrı mikro ajan zincirinden geçer.",
+        "method": "POST",
+        "url": f"{settings.public_base_url.rstrip('/')}/hub/article",
+        "hire_url": f"{settings.public_base_url.rstrip('/')}/hub/ecosystem/hire",
+        "pipeline": [
+            "Web-Crawler (araştırma)",
+            "Story-Weaver (taslak)",
+            "Brand-Voice (üslup)",
+            "Immune-Critic (onay)",
+        ],
+        "agents": list(ARTICLE_PIPELINE_AGENTS),
+        "tones": ["corporate", "humorous", "technical"],
+    }
+
+
+@router.post("/article")
+async def article_pipeline_run(request: ArticleRequest) -> Dict[str, Any]:
+    """Makale pipeline — copywriting departmanı mikro işçi hücreleri."""
+    try:
+        result = await run_article_pipeline(
+            topic=request.topic,
+            tone=request.tone,
+            url=request.url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Makale pipeline hatası: {exc}") from exc
+    return {"pipeline": "article", "result": result, "real_data": True}
 
 
 @router.get("/leaderboard")

@@ -20,7 +20,7 @@ fi
 
 echo ""
 echo "  Axium — Birleşik Ekosistem"
-echo "  10 ajan: kurucular + medya dalgası + sermaye radarı"
+echo "  15 mikro ajan: kurucular + medya + sermaye + departman işçileri"
 echo "  Birleştir: POST /hub/ecosystem/assemble"
 echo ""
 

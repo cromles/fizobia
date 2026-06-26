@@ -346,7 +346,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (net && net.mesh_offline) {{
       el.innerHTML = `<div class="feed-item feed-setup">
         <span class="feed-agent">İşçi süreçleri kapalı</span>
-        <div class="feed-meta">Gateway çalışıyor ama 10 ajan başlamadı. <code>${{net.setup_command || 'python3 -m app.run_stack'}}</code> ile tam mesh'i açın. x402 ödemesi gateway üzerinden çalışmaya devam eder.</div>
+        <div class="feed-meta">Gateway çalışıyor ama tam ekosistem başlamadı. <code>${{net.setup_command || 'python3 -m app.run_stack'}}</code> ile 15 mikro ajanı açın. x402 ödemesi gateway üzerinden çalışmaya devam eder.</div>
       </div>`;
       return;
     }}

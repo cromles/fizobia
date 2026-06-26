@@ -97,6 +97,16 @@ def test_hub_departments_endpoint():
     assert body["article_pipeline"]["pipeline"] == "article"
 
 
+def test_hub_article_discover():
+    client = TestClient(app)
+    res = client.get("/hub/article")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["service"] == "synapse-article"
+    assert body["department"] == DEPARTMENT_COPYWRITING
+    assert len(body.get("agents", [])) == len(ARTICLE_PIPELINE_AGENTS)
+
+
 def test_hub_leaderboard_department_filter():
     client = TestClient(app)
     res = client.get("/hub/leaderboard?department_code=technical")

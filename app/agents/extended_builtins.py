@@ -176,6 +176,41 @@ def _capital_handler(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": str(exc), "real_data": False, "agent_id": "oam.capital.fundraise.local"}
 
 
+def _critic_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.mesh.critic import audit_article
+
+    text = str(data.get("text") or data.get("draft") or data.get("query") or "")
+    try:
+        return audit_article(text)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.critic.immune.local"}
+
+
+def _text_competitor_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.text_competitors import draft_for_agent
+
+    agent_id = str(data.get("agent_id") or "oam.text.hook.local")
+    prompt = str(data.get("prompt") or data.get("query") or data.get("text") or "")
+    try:
+        return draft_for_agent(agent_id, user_prompt=prompt)
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": agent_id}
+
+
+def _render_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.media_render import render_reels_spec
+
+    try:
+        return render_reels_spec(
+            script=str(data.get("script") or data.get("text") or ""),
+            user_prompt=str(data.get("prompt") or data.get("query") or ""),
+            background_music=bool(data.get("background_music", True)),
+            duration_sec=int(data.get("duration_sec", 30)),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.media.render.local"}
+
+
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.analyst.market.local": {"market_analyst": _market_analyst_handler},
     "oam.validator.compliance.local": {"compliance_validator": _validator_handler},
@@ -190,6 +225,11 @@ EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.media.outreach.local": {"outreach_pulse": _outreach_handler},
     "oam.media.proof.local": {"proof_broadcaster": _proof_media_handler},
     "oam.capital.fundraise.local": {"fund_radar": _capital_handler},
+    "oam.critic.immune.local": {"immune_critic": _critic_handler},
+    "oam.text.hook.local": {"hook_master": lambda d: _text_competitor_handler({**d, "agent_id": "oam.text.hook.local"})},
+    "oam.text.story.local": {"story_forge": lambda d: _text_competitor_handler({**d, "agent_id": "oam.text.story.local"})},
+    "oam.text.data.local": {"data_pulse": lambda d: _text_competitor_handler({**d, "agent_id": "oam.text.data.local"})},
+    "oam.media.render.local": {"reels_renderer": _render_handler},
 }
 
 
@@ -326,6 +366,46 @@ FUND_RADAR = _manifest(
     "Gelir, stake ve kanıt sinyalleri — sermaye radarı",
     "fund_radar",
 )
+IMMUNE_CRITIC = _manifest(
+    "oam.critic.immune.local",
+    8117,
+    0.001,
+    "immune_critic",
+    "Makale ve metin kalite kapısı — kör denetim",
+    "immune_critic",
+)
+HOOK_MASTER = _manifest(
+    "oam.text.hook.local",
+    8118,
+    0.0012,
+    "hook_master",
+    "Kanca odaklı kısa video metni üretir",
+    "hook_master",
+)
+STORY_FORGE = _manifest(
+    "oam.text.story.local",
+    8119,
+    0.0012,
+    "story_forge",
+    "Hikaye arkı ile metin taslağı üretir",
+    "story_forge",
+)
+DATA_PULSE = _manifest(
+    "oam.text.data.local",
+    8120,
+    0.001,
+    "data_pulse",
+    "Veri yoğun metin taslağı üretir",
+    "data_pulse",
+)
+REELS_RENDERER = _manifest(
+    "oam.media.render.local",
+    8121,
+    0.002,
+    "reels_renderer",
+    "Kazanan metni dikey Reels üretim spec'ine dönüştürür",
+    "reels_renderer",
+)
 
 EXTENDED_MANIFESTS: List[AgentManifest] = [
     MARKET_ANALYST,
@@ -341,4 +421,9 @@ EXTENDED_MANIFESTS: List[AgentManifest] = [
     OUTREACH_PULSE,
     PROOF_BROADCASTER,
     FUND_RADAR,
+    IMMUNE_CRITIC,
+    HOOK_MASTER,
+    STORY_FORGE,
+    DATA_PULSE,
+    REELS_RENDERER,
 ]

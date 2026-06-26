@@ -26,7 +26,7 @@ def _reset():
 
 
 def test_ecosystem_stack_agent_count():
-    assert len(ECOSYSTEM_STACK_AGENT_IDS) == 10
+    assert len(ECOSYSTEM_STACK_AGENT_IDS) == 15
 
 
 @pytest.mark.asyncio
@@ -95,3 +95,6 @@ def test_extended_manifests_include_media():
     ids = {m.agent_id for m in EXTENDED_MANIFESTS}
     assert "oam.media.story.local" in ids
     assert "oam.capital.fundraise.local" in ids
+    assert "oam.critic.immune.local" in ids
+    assert "oam.text.hook.local" in ids
+    assert "oam.media.render.local" in ids

@@ -146,6 +146,20 @@ class MeshAutopilot:
 
         self._last_result = result
         self._last_error = None
+
+        purge_every = int(os.getenv("OAM_PURGE_EVERY_CYCLES", "12"))
+        if purge_every > 0 and cycle % purge_every == 0:
+            from app.mesh.purge import run_daily_purge
+
+            purge = run_daily_purge()
+            growth._emit(
+                "daily_purge",
+                f"Günlük eleme — {purge.get('purged_count', 0)} ajan elendi",
+                agent_id=ORCHESTRATOR_ID,
+                detail=purge,
+            )
+            result["purge"] = purge
+
         logger.info(
             "[Autopilot] Döngü #%d tamam — pipeline=%s proof=%s",
             cycle,
