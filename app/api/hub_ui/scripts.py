@@ -17,6 +17,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   ];
   const POOL_ABI = [
     'function stake(uint256 amount)',
+    'function unstake(uint256 shareAmount)',
     'function claimRewards()',
     'function pendingReward(address user) view returns (uint256)',
   ];
@@ -448,14 +449,25 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const target = BigInt(ONCHAIN_CONFIG.chain_id);
     if (network.chainId === target) return;
     const hexId = '0x' + target.toString(16);
+    const rpcUrls = ONCHAIN_CONFIG.rpc_urls?.length
+      ? ONCHAIN_CONFIG.rpc_urls
+      : ['http://127.0.0.1:8545'];
+    const chainParams = {{
+      chainId: hexId,
+      chainName: ONCHAIN_CONFIG.chain_name || 'OAM Chain',
+      rpcUrls,
+      nativeCurrency: {{ name: 'ETH', symbol: 'ETH', decimals: 18 }},
+    }};
+    if (ONCHAIN_CONFIG.block_explorer_urls?.length) {{
+      chainParams.blockExplorerUrls = ONCHAIN_CONFIG.block_explorer_urls;
+    }}
     try {{
       await window.ethereum.request({{ method: 'wallet_switchEthereumChain', params: [{{ chainId: hexId }}] }});
     }} catch (err) {{
       if (err.code === 4902) {{
         await window.ethereum.request({{
           method: 'wallet_addEthereumChain',
-          params: [{{ chainId: hexId, chainName: 'OAM Local', rpcUrls: ['http://127.0.0.1:8545'],
-            nativeCurrency: {{ name: 'ETH', symbol: 'ETH', decimals: 18 }} }}],
+          params: [chainParams],
         }});
       }} else throw err;
     }}
@@ -529,6 +541,16 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     return receipt.hash;
   }}
 
+  async function onchainUnstake(poolAddress, shares) {{
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await ensureTargetChain(provider);
+    const signer = await provider.getSigner();
+    const pool = new ethers.Contract(poolAddress, POOL_ABI, signer);
+    const wei = ethers.parseUnits(String(shares), ONCHAIN_CONFIG.usdc_decimals || 6);
+    const receipt = await (await pool.unstake(wei)).wait();
+    return receipt.hash;
+  }}
+
   function resolvePoolAddress(agentId, card) {{
     const fromCard = card?.dataset?.pool;
     if (fromCard && fromCard.startsWith('0x') && fromCard.length > 10) return fromCard;
@@ -589,6 +611,40 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (res.ok) showToast('Ödül: $' + (data.claimed_usdc?.toFixed(4) || '0'));
       else showToast(data.detail || 'Hata', true);
     }} catch (err) {{ showToast(err.message || 'Hata', true); }}
+  }};
+
+  window.unstake = async function(agentId, btn) {{
+    const w = getWallet();
+    const card = btn.closest('.worker-card');
+    const shares = parseFloat(card.querySelector('.amount').value);
+    if (!w) {{ openWalletModal(); return; }}
+    if (!shares) {{ showToast('Çekilecek miktar girin', true); return; }}
+    btn.classList.add('loading');
+    try {{
+      let txHash = null;
+      if (ONCHAIN_CONFIG.ready && ONCHAIN_CONFIG.require_tx && window.ethereum) {{
+        const pool = resolvePoolAddress(agentId, card);
+        if (!pool) throw new Error('Havuz bulunamadı');
+        showToast('MetaMask unstake onayı…');
+        txHash = await onchainUnstake(pool, shares);
+      }}
+      const res = await fetch('/hub/unstake', {{
+        method: 'POST',
+        headers: {{'Content-Type':'application/json'}},
+        body: JSON.stringify({{ investor_id: w, agent_id: agentId, shares, tx_hash: txHash }}),
+      }});
+      const data = await res.json();
+      if (res.ok) {{
+        showToast('Çekildi: $' + (data.usdc_returned?.toFixed(2) || '0'));
+        setTimeout(() => location.reload(), 1600);
+      }} else {{
+        showToast(data.detail || 'Hata', true);
+        btn.classList.remove('loading');
+      }}
+    }} catch (err) {{
+      showToast(err.message || 'Başarısız', true);
+      btn.classList.remove('loading');
+    }}
   }};
 
   window.triggerLiveRun = triggerLiveRun;

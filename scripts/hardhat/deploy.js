@@ -2,14 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const hre = require("hardhat");
 
-const AGENT_POOLS = [
-  { agentId: "oam.fetcher.local", tokenSymbol: "BMF-TKN" },
-  { agentId: "oam.synthesizer.local", tokenSymbol: "CAV4-TKN" },
-  { agentId: "oam.transformer.local", tokenSymbol: "DN-TKN" },
-  { agentId: "oam.analyst.market.local", tokenSymbol: "MP-TKN" },
-  { agentId: "oam.analyst.sentiment.local", tokenSymbol: "SR-TKN" },
-  { agentId: "oam.fetcher.web.local", tokenSymbol: "WCP-TKN" },
-];
+const AGENT_POOLS = require("./agent-pools");
 
 const USDC_DECIMALS = 6;
 const MINT_TO_DEPLOYER = 1_000_000n * 10n ** BigInt(USDC_DECIMALS);

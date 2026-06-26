@@ -101,6 +101,7 @@ if curl -sf "http://127.0.0.1:${HUB_PORT}/hub/version" >/dev/null; then
   echo ""
   echo "  Durum: systemctl status oam-ecosystem"
   echo "  Log:   journalctl -u oam-ecosystem -f"
+  echo "  On-chain: .env.onchain.example dosyasını .env.server ile birleştirin"
   echo ""
 else
   echo "  HATA: Hub yanıt vermiyor"

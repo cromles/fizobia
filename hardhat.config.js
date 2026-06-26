@@ -1,10 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
-
-const AGENT_POOLS = [
-  { agentId: "oam.fetcher.local", tokenSymbol: "BMF-TKN" },
-  { agentId: "oam.synthesizer.local", tokenSymbol: "CAV4-TKN" },
-  { agentId: "oam.transformer.local", tokenSymbol: "DN-TKN" },
-];
+require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -16,6 +11,11 @@ module.exports = {
     },
     hardhat: {
       chainId: 31337,
+    },
+    baseSepolia: {
+      url: process.env.OAM_ONCHAIN_RPC_URL || "https://sepolia.base.org",
+      chainId: 84532,
+      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
     },
   },
   paths: {

@@ -185,6 +185,7 @@ def render_worker_card(
         <span class="btn-loader"></span>
       </button>
       <button type="button" class="btn-claim" onclick="claim('{agent_id}', this)">Ödül Al</button>
+      <button type="button" class="btn-unstake" onclick="unstake('{agent_id}', this)">Çek</button>
     </div>
     {x402_demo}
   </div>

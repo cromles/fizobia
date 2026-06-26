@@ -22,6 +22,7 @@ from app.investment.onchain import (
     is_onchain_ready,
     verify_claim_tx,
     verify_stake_tx,
+    verify_unstake_tx,
 )
 from app.investment.schemas import (
     ClaimRewardsRequest,
@@ -1018,11 +1019,41 @@ async def stake(request: StakeRequest) -> Dict[str, Any]:
 @router.post("/unstake")
 async def unstake(request: UnstakeRequest) -> Dict[str, Any]:
     hub = get_investment_hub()
+    onchain = settings.onchain_enabled and is_onchain_ready()
+    usdc_override: float | None = None
+    if onchain and settings.onchain_require_tx:
+        if not request.tx_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="On-chain unstake için MetaMask işlem hash'i gerekli",
+            )
+        try:
+            proof = verify_unstake_tx(
+                request.tx_hash,
+                request.investor_id,
+                request.agent_id,
+                request.shares,
+            )
+            usdc_override = proof["usdc_returned"]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     try:
-        usdc_out = hub.pools.unstake(request.investor_id, request.agent_id, request.shares)
+        usdc_out = hub.pools.unstake(
+            request.investor_id,
+            request.agent_id,
+            request.shares,
+            tx_hash=request.tx_hash,
+            usdc_override=usdc_override,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"unstaked": True, "usdc_returned": usdc_out}
+    return {
+        "unstaked": True,
+        "usdc_returned": usdc_out,
+        "onchain": onchain,
+        "tx_hash": request.tx_hash,
+    }
 
 
 @router.post("/claim")

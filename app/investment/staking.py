@@ -95,7 +95,15 @@ class StakingPoolManager:
         )
         return position
 
-    def unstake(self, investor_id: str, agent_id: str, shares: float) -> float:
+    def unstake(
+        self,
+        investor_id: str,
+        agent_id: str,
+        shares: float,
+        *,
+        tx_hash: str | None = None,
+        usdc_override: float | None = None,
+    ) -> float:
         pool = self._pools.get(agent_id)
         key = (investor_id, agent_id)
         position = self._positions.get(key)
@@ -105,7 +113,7 @@ class StakingPoolManager:
             raise ValueError("Yetersiz pay")
 
         curve = BondingCurve(pool.curve)
-        usdc_out = curve.burn_value(pool.total_supply, shares)
+        usdc_out = usdc_override if usdc_override is not None else curve.burn_value(pool.total_supply, shares)
 
         pool.total_supply -= shares
         pool.reserve_usdc = max(0.0, pool.reserve_usdc - usdc_out)
@@ -121,7 +129,7 @@ class StakingPoolManager:
                 action="unstake",
                 amount_usdc=usdc_out,
                 shares_delta=-shares,
-                tx_hash=f"0x{uuid.uuid4().hex}",
+                tx_hash=tx_hash or f"0x{uuid.uuid4().hex}",
             )
         )
         return usdc_out
