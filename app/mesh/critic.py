@@ -36,18 +36,35 @@ def anonymize_submissions(drafts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return blind
 
 
+_MIN_REELS_WORDS = 35
+
+
 def _score_reels_script(text: str, word_count: int) -> Tuple[float, Dict[str, float]]:
     lower = text.lower()
     hook_hits = sum(1 for p in _HOOK_PATTERNS if re.search(p, lower))
     flow_hits = sum(1 for w in _FLOW_WORDS if w in lower)
 
     hook_score = min(1.0, hook_hits / 3.0)
-    length_score = 1.0 if 35 <= word_count <= 90 else (0.6 if word_count < 120 else 0.4)
+    if word_count < 20:
+        length_score = 0.08
+    elif word_count < _MIN_REELS_WORDS:
+        length_score = 0.28
+    elif word_count <= 90:
+        length_score = 1.0
+    elif word_count <= 120:
+        length_score = 0.65
+    else:
+        length_score = 0.4
     flow_score = min(1.0, flow_hits / 3.0)
-    clarity = 0.85 if len(text) > 40 else 0.3
+    if word_count >= _MIN_REELS_WORDS:
+        clarity = 0.9
+    elif word_count >= 20:
+        clarity = 0.45
+    else:
+        clarity = 0.12
 
     total = round(
-        hook_score * 0.35 + length_score * 0.25 + flow_score * 0.25 + clarity * 0.15,
+        hook_score * 0.35 + length_score * 0.3 + flow_score * 0.25 + clarity * 0.1,
         4,
     )
     return total, {
@@ -70,7 +87,11 @@ def blind_audit(submissions: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "submission_id": sub["submission_id"],
                 "critic_score": total,
                 "breakdown": breakdown,
-                "verdict": "pass" if total >= 0.55 else "reject",
+                "verdict": (
+                    "pass"
+                    if total >= 0.55 and wc >= _MIN_REELS_WORDS
+                    else "reject"
+                ),
                 "rationale": (
                     f"Kanca:{breakdown['hook']:.2f} · Akış:{breakdown['flow']:.2f} · "
                     f"Uzunluk:{breakdown['length']:.2f}"

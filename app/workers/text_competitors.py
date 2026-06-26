@@ -1,4 +1,4 @@
-"""Metin gladyatörleri — LLM veya şablon taslak üreticiler."""
+"""Metin gladyatörleri — uzman LLM veya şablon taslak üreticiler."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any, Dict, List
 
-from app.llm.prompts import ARENA_STYLES, ARENA_SYSTEM
+from app.llm.prompts import ARENA_AGENT_SYSTEMS, ARENA_STYLE_HINTS, HOOK_MASTER_SYSTEM
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,8 @@ AGENT_STORY_ID = "oam.text.story.local"
 AGENT_DATA_ID = "oam.text.data.local"
 
 ARENA_TEXT_COMPETITORS = (AGENT_HOOK_ID, AGENT_STORY_ID, AGENT_DATA_ID)
+
+_MIN_REELS_WORDS = 35
 
 _COMPETITOR_META = {
     AGENT_HOOK_ID: {"display_name": "Hook-Master", "style": "hook_first", "model": "gpt-4o-mini"},
@@ -36,7 +38,9 @@ def _hook_draft(prompt: str) -> str:
     return (
         f"Dur! {topic} hakkında 30 saniyede bilmen gereken tek şey bu. "
         f"Algoritma ilk 3 saniyede kaydırırsa kaybedersin — bu yüzden kanca: "
-        f"'{topic}' artık eskisi gibi değil. İşte kanıt…"
+        f"'{topic}' artık eskisi gibi değil. İşte kanıt: erken görenler pozisyon aldı, "
+        f"geç kalanlar ise aynı hatayı tekrarlıyor. Şimdi sana üç net sinyal vereceğim — "
+        f"son cümleye kadar kal, çünkü orada asıl fark yatıyor."
     )
 
 
@@ -45,16 +49,19 @@ def _story_draft(prompt: str) -> str:
     return (
         f"Geçen hafta {topic} dünyasında sessiz bir değişim başladı. "
         f"Çoğu kişi fark etmedi ama erken görenler pozisyon aldı. "
-        f"30 saniyelik Reels için hikaye: problem → dönüm → net sonuç."
+        f"30 saniyelik Reels için hikaye: önce problem — herkes aynı eski yönteme bağlı kaldı. "
+        f"Sonra dönüm noktası — küçük bir ekip farklı bir açı denedi ve sonuçlar değişti. "
+        f"Net sonuç: bugün hâlâ bekleyenler, dün harekete geçenlerin gerisinde."
     )
 
 
 def _data_draft(prompt: str) -> str:
     topic = _topic_from_prompt(prompt)
     return (
-        f"{topic}: 3 veri noktası. (1) Talep artışı sinyali. "
-        f"(2) Maliyet düşüş eğilimi. (3) Dikey video tüketimi +%18. "
-        f"Sonuç: kısa formatta veri + görsel = en yüksek tutma."
+        f"{topic}: üç veri noktası. Birincisi, talep sinyali son çeyrekte belirgin şekilde yükseldi. "
+        f"İkincisi, maliyet eğrisi aşağı yönlü kırıldı — bu da erişimi kolaylaştırıyor. "
+        f"Üçüncüsü, dikey video tüketimi yüzde on sekiz arttı; tutma süresi kısa metinlerde daha yüksek. "
+        f"Sonuç net: veri artı görsel hikâye, Reels formatında en güçlü kombinasyon."
     )
 
 
@@ -71,15 +78,34 @@ async def _llm_draft(agent_id: str, *, user_prompt: str, model: str) -> tuple[st
     from app.llm.client import chat_completion
 
     meta = _COMPETITOR_META[agent_id]
-    style_hint = ARENA_STYLES.get(meta["style"], "")
+    style = meta["style"]
+    system = ARENA_AGENT_SYSTEMS.get(style, HOOK_MASTER_SYSTEM)
+    style_hint = ARENA_STYLE_HINTS.get(style, "")
     user = f"İstem: {user_prompt}\n\n{style_hint}"
     text, llm_meta = await chat_completion(
-        system=ARENA_SYSTEM,
+        system=system,
         user=user,
         model=model,
         temperature=0.85,
-        max_tokens=120,
+        max_tokens=400,
+        timeout=35.0,
     )
+
+    if len(text.split()) < _MIN_REELS_WORDS:
+        text, retry_meta = await chat_completion(
+            system=system + " ÖNCEKİ METİN ÇOK KISA. En az 40 kelimelik tam Reels konuşma metni yaz.",
+            user=(
+                f"İstem: {user_prompt}\n\n"
+                f"Kısa taslak (yetersiz):\n{text}\n\n"
+                "Şimdi tam, akıcı Reels metnini yaz."
+            ),
+            model=model,
+            temperature=0.88,
+            max_tokens=450,
+            timeout=35.0,
+        )
+        llm_meta = {**llm_meta, "retry": retry_meta}
+
     return text, llm_meta
 
 

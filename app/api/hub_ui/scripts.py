@@ -454,17 +454,19 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   function isQuickComposePrompt(text) {{
     const t = (text || '').toLowerCase();
-    if (/reels|instagram|tiktok|video|30 saniye|dikey/.test(t)) return false;
-    return /şiir|siir|poem|makale|hikaye|metin yaz|yaz bana|blog|aşk/.test(t);
+    if (/reels|instagram|tiktok|shorts|\bvideo\b|30\s*saniye|dikey|reel\b/.test(t)) return false;
+    return true;
   }}
 
   function startSynapseProgress(monitor, prompt) {{
     if (!monitor) return null;
-    const quick = isQuickComposePrompt(prompt) && !/reels|instagram|tiktok|video/.test((prompt||'').toLowerCase());
+    const quick = isQuickComposePrompt(prompt);
     const steps = quick
       ? [
           '[x402] Ödeme doğrulandı',
-          '[Story-Weaver] Gemini metin üretiyor…',
+          '[Lyric-Weaver] Uzman taslak üretiyor…',
+          '[Brand-Voice] Üslup düzenlemesi…',
+          '[Immune-Critic] Kalite denetimi…',
           '[Orkestratör] Tamamlanıyor…',
         ]
       : [

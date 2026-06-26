@@ -48,6 +48,24 @@ def test_blind_critic_picks_winner():
     audit = blind_audit(blind)
     assert audit["winner_submission_id"]
     assert audit["reviews"][0]["critic_score"] >= audit["reviews"][-1]["critic_score"]
+    for d in drafts:
+        assert d["word_count"] >= 35
+
+
+def test_critic_rejects_too_short_reels():
+    blind = anonymize_submissions(
+        [
+            {
+                "agent_id": "x",
+                "draft": "Kalbim eskiden bir harabe",
+                "word_count": 4,
+                "target_format": "instagram_reels_vertical_30s",
+            }
+        ]
+    )
+    audit = blind_audit(blind)
+    assert audit["reviews"][0]["verdict"] == "reject"
+    assert audit["reviews"][0]["critic_score"] < 0.35
 
 
 def test_micro_wallet_credit():
