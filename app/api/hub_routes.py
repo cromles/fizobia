@@ -133,7 +133,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-free-apis-v20"
+HUB_BUILD = "2026.06.26-rich-invest-v21"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 

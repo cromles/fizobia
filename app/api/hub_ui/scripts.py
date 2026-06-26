@@ -121,6 +121,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         if (DEMO_MODE) startProcessAnimation();
       }}
       window.scrollTo({{ top: 0, behavior: 'smooth' }});
+      refreshPortfolio();
     }} else {{
       pill.classList.remove('show');
       btn.style.display = 'block';
@@ -411,16 +412,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   let activeDepartment = 'all';
 
   function applyDepartmentFilter(code) {{
-    const cards = document.querySelectorAll('[data-department]');
+    const cards = document.querySelectorAll('.worker-card[data-department], .featured-worker[data-department]');
     cards.forEach(card => {{
       const dept = card.getAttribute('data-department') || '';
       const show = code === 'all' || dept === code;
       card.style.display = show ? '' : 'none';
       card.classList.toggle('dept-hidden', !show);
     }});
+    document.querySelectorAll('.dept-agent-group').forEach(group => {{
+      const dept = group.getAttribute('data-dept') || '';
+      const show = code === 'all' || dept === code;
+      group.style.display = show ? '' : 'none';
+    }});
+    document.querySelectorAll('.dept-insight-card').forEach(card => {{
+      const dept = card.getAttribute('data-dept') || '';
+      const show = code === 'all' || dept === code;
+      card.classList.toggle('dept-hidden', !show);
+    }});
     const featured = $('featuredSlot');
-    const pool = $('workerPool');
-    if (code !== 'all' && pool) pool.open = true;
     if (featured && code !== 'all') {{
       const visibleFeatured = featured.querySelectorAll('[data-department]:not(.dept-hidden)');
       featured.style.display = visibleFeatured.length ? '' : 'none';
@@ -595,13 +604,23 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       invest.classList.toggle('active', tab === 'invest');
       invest.hidden = tab !== 'invest';
     }}
-    if (tab === 'invest') refreshLeaderboard();
+    if (tab === 'invest') {{
+      refreshLeaderboard();
+      refreshPortfolio();
+    }}
   }}
   window.switchHubTab = switchHubTab;
 
   function lbEsc(s) {{
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   }}
+
+  const TIER_LABELS = {{
+    probation: 'Deneme',
+    active: 'Aktif',
+    core: 'Çekirdek',
+    culled: 'Elenmiş',
+  }};
 
   async function refreshLeaderboard() {{
     const tbody = $('leaderboardBody');
@@ -617,40 +636,165 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       const sub = $('leaderboardSub');
       if (sub && activeDepartment !== 'all') {{
         const deptLabel = document.querySelector('#deptFilterTabs .filter-tab.active')?.textContent || activeDepartment;
-        sub.textContent = deptLabel + ' departmanı · mikro işçi hücreleri';
+        sub.textContent = deptLabel + ' departmanı · ' + rows.length + ' ajan · TVL $' + Number(data.total_tvl_usd || 0).toFixed(0);
       }} else if (sub) {{
-        sub.textContent = 'Otonom ajanlar · sektörel mikro işçi hücreleri';
+        sub.textContent = rows.length + ' otonom ajan · toplam TVL $' + Number(data.total_tvl_usd || 0).toFixed(0);
       }}
       if (!rows.length) {{
-        tbody.innerHTML = '<tr><td colspan="7" class="lb-empty">Bu departmanda henüz ajan verisi yok</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="lb-empty">Bu departmanda henüz ajan verisi yok</td></tr>';
         return;
       }}
-      tbody.innerHTML = rows.map((a, i) => (
-        '<tr>' +
-        '<td><span class="lb-rank">#' + (i + 1) + '</span> <strong>' + lbEsc(a.display_name) + '</strong><br/>' +
-        '<span class="lb-token">' + lbEsc(a.token_symbol) + ' · ' + lbEsc(a.identity_tier) + '</span></td>' +
+      tbody.innerHTML = rows.map((a, i) => {{
+        const tier = TIER_LABELS[a.identity_tier] || a.identity_tier || '—';
+        const tierClass = 'tier-' + (a.identity_tier || 'probation');
+        return (
+        '<tr class="lb-row" data-agent="' + lbEsc(a.agent_id) + '">' +
+        '<td class="lb-agent"><span class="lb-rank">#' + (i + 1) + '</span> ' +
+        '<button type="button" class="lb-agent-link" onclick="openAgentDetail(\\'' + a.agent_id + '\\')">' + lbEsc(a.display_name) + '</button>' +
+        '<br/><span class="lb-token">' + lbEsc(a.token_symbol) + '</span></td>' +
         '<td><span class="lb-dept">' + lbEsc(a.department_label || a.department_code || '—') + '</span></td>' +
+        '<td><span class="lb-tier ' + tierClass + '">' + lbEsc(tier) + '</span></td>' +
         '<td class="lb-mint">' + a.success_rate_pct + '%</td>' +
         '<td>$' + Number(a.volume_24h_usd || 0).toFixed(0) + '</td>' +
-        '<td>$' + Number(a.token_price_usdc || 0).toFixed(3) + '</td>' +
-        '<td>' + Number(a.apy_pct || 0).toFixed(1) + '%</td>' +
+        '<td>$' + Number(a.tvl_usd || 0).toFixed(0) + '</td>' +
+        '<td class="lb-apy">' + Number(a.apy_pct || 0).toFixed(1) + '%</td>' +
         '<td><button type="button" class="lb-stake" onclick="focusStakeAgent(\\'' + a.agent_id + '\\')">Hisse Al</button></td>' +
         '</tr>'
-      )).join('');
+      );
+      }}).join('');
     }} catch (_) {{}}
   }}
   window.refreshLeaderboard = refreshLeaderboard;
 
   window.focusStakeAgent = function(agentId) {{
+    switchHubTab('invest', document.querySelector('.terminal-tab[data-tab="invest"]'));
     const card = document.querySelector('[data-agent="' + agentId + '"]');
     if (card) {{
       card.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
       card.classList.add('highlight-stake');
       setTimeout(() => card.classList.remove('highlight-stake'), 2400);
+      const input = card.querySelector('.amount');
+      if (input) input.focus();
     }} else {{
-      showToast('Aşağıdaki işçi kartından stake edin');
+      openAgentDetail(agentId);
     }}
   }};
+
+  function renderAgentDetailHtml(card) {{
+    const p = card.profile || {{}};
+    const h = card.health || {{}};
+    const f = card.finance || {{}};
+    const pool = card.pool || {{}};
+    const useCases = (p.use_cases || []).map(u => '<li>' + lbEsc(u) + '</li>').join('');
+    const risk = {{ düşük: 'Düşük', orta: 'Orta', yüksek: 'Yüksek' }}[p.risk_level] || p.risk_level;
+    return (
+      '<div class="agent-detail-header">' +
+      '<span class="agent-detail-class">' + lbEsc(p.agent_class || '') + '</span>' +
+      '<h2>' + lbEsc(p.display_name || p.agent_id) + '</h2>' +
+      '<p class="agent-detail-mission">' + lbEsc(p.mission || '') + '</p>' +
+      '<div class="agent-detail-tags">' +
+      '<span class="tag class">' + lbEsc(p.token_symbol || '') + '</span>' +
+      '<span class="tag risk">' + lbEsc(risk) + ' risk</span>' +
+      '</div></div>' +
+      '<p class="agent-detail-desc">' + lbEsc(p.long_description || p.mission || '') + '</p>' +
+      '<div class="agent-detail-metrics">' +
+      '<div><span>APY</span><strong class="mint">%' + Number(f.estimated_apy || 0).toFixed(1) + '</strong></div>' +
+      '<div><span>TVL</span><strong>$' + Number(f.staking_pool_tvl_usd || 0).toFixed(0) + '</strong></div>' +
+      '<div><span>24s Hacim</span><strong>$' + Number(f.volume_24h_usd || 0).toFixed(0) + '</strong></div>' +
+      '<div><span>Başarı</span><strong>' + Math.round((h.success_rate || 0) * 100) + '%</strong></div>' +
+      '<div><span>Toplam gelir</span><strong>$' + Number(f.total_revenue_usd || 0).toFixed(2) + '</strong></div>' +
+      '<div><span>Token fiyat</span><strong>$' + Number(f.token_price_usdc || 0).toFixed(4) + '</strong></div>' +
+      '</div>' +
+      (p.investment_thesis ? '<div class="agent-detail-thesis"><strong>Yatırım tezi</strong><p>' + lbEsc(p.investment_thesis) + '</p></div>' : '') +
+      (useCases ? '<div class="agent-detail-usecases"><strong>Kullanım senaryoları</strong><ul>' + useCases + '</ul></div>' : '') +
+      (p.staking_covers ? '<div class="agent-detail-covers"><strong>Staking karşılar</strong><p>' + lbEsc(p.staking_covers) + '</p></div>' : '') +
+      '<div class="agent-detail-pool">' +
+      '<span>Havuz stake: $' + Number(pool.total_staked_usdc || 0).toFixed(2) + '</span>' +
+      '<span>Biriken ödül: $' + Number(pool.rewards_accrued_usdc || 0).toFixed(2) + '</span>' +
+      '</div>' +
+      '<button type="button" class="btn-modal primary" onclick="closeAgentDetail(); focusStakeAgent(\\'' + (p.agent_id || '') + '\\')">Bu ajana ortak ol</button>'
+    );
+  }}
+
+  window.openAgentDetail = async function(agentId) {{
+    const modal = $('agentDetailModal');
+    const body = $('agentDetailBody');
+    if (!modal || !body) return;
+    modal.classList.add('open');
+    body.innerHTML = '<div class="agent-detail-loading">Ajan dosyası yükleniyor…</div>';
+    try {{
+      const res = await fetch('/hub/agents/' + encodeURIComponent(agentId) + '?_=' + Date.now());
+      if (!res.ok) throw new Error('Ajan bulunamadı');
+      const card = await res.json();
+      body.innerHTML = renderAgentDetailHtml(card);
+    }} catch (err) {{
+      body.innerHTML = '<p class="agent-detail-error">' + lbEsc(err.message || 'Hata') + '</p>';
+    }}
+  }};
+
+  window.closeAgentDetail = function() {{
+    $('agentDetailModal')?.classList.remove('open');
+  }};
+
+  async function refreshPortfolio() {{
+    const strip = $('portfolioStrip');
+    if (!strip) return;
+    const w = getWallet();
+    if (!w) {{
+      strip.innerHTML = '<div class="portfolio-empty">Cüzdan bağlayın — pozisyonlarınız ve bekleyen ödüller burada görünür</div>';
+      return;
+    }}
+    try {{
+      const res = await fetch('/hub/positions/' + encodeURIComponent(w) + '?_=' + Date.now());
+      if (!res.ok) throw new Error();
+      const positions = await res.json();
+      if (!positions.length) {{
+        strip.innerHTML = '<div class="portfolio-empty">Henüz pozisyon yok — aşağıdan bir işçiye <strong>ortak ol</strong></div>';
+        return;
+      }}
+      const totalStaked = positions.reduce((s, p) => s + (p.staked_usdc || 0), 0);
+      const totalPending = positions.reduce((s, p) => s + (p.rewards_pending_usdc || 0), 0);
+      const posHtml = positions.map(p => {{
+        const name = agentNameMap[p.agent_id] || p.agent_id.split('.').pop();
+        return (
+          '<div class="portfolio-pos">' +
+          '<span class="portfolio-pos-name">' + lbEsc(name) + '</span>' +
+          '<span class="portfolio-pos-stake">$' + Number(p.staked_usdc || 0).toFixed(2) + '</span>' +
+          '<span class="portfolio-pos-reward">+$' + Number(p.rewards_pending_usdc || 0).toFixed(4) + '</span>' +
+          '<button type="button" class="portfolio-pos-btn" onclick="focusStakeAgent(\\'' + p.agent_id + '\\')">Yönet</button>' +
+          '</div>'
+        );
+      }}).join('');
+      strip.innerHTML =
+        '<div class="portfolio-summary">' +
+        '<div><span>Toplam stake</span><strong>$' + totalStaked.toFixed(2) + '</strong></div>' +
+        '<div><span>Bekleyen ödül</span><strong class="mint">$' + totalPending.toFixed(4) + '</strong></div>' +
+        '<div><span>Aktif pozisyon</span><strong>' + positions.length + ' ajan</strong></div>' +
+        '</div>' +
+        '<div class="portfolio-positions">' + posHtml + '</div>';
+    }} catch (_) {{
+      strip.innerHTML = '<div class="portfolio-empty">Pozisyonlar yüklenemedi</div>';
+    }}
+  }}
+  window.refreshPortfolio = refreshPortfolio;
+
+  function updateOnchainStrip() {{
+    const text = $('onchainStatusText');
+    const strip = $('onchainStrip');
+    if (!text || !ONCHAIN_CONFIG) return;
+    if (ONCHAIN_CONFIG.enabled && ONCHAIN_CONFIG.connected) {{
+      const mode = ONCHAIN_CONFIG.ready && ONCHAIN_CONFIG.require_tx ? 'stake aktif' : 'RPC modu';
+      text.textContent = '● ' + (ONCHAIN_CONFIG.chain_name || 'Base Sepolia') + ' bağlı · ' + mode;
+      strip?.classList.add('connected');
+    }} else {{
+      text.textContent = '○ Zincir yapılandırılıyor';
+      strip?.classList.remove('connected');
+    }}
+    const chainLabel = $('onchainChainLabel');
+    if (chainLabel && ONCHAIN_CONFIG.chain_id) {{
+      chainLabel.textContent = (ONCHAIN_CONFIG.chain_name || '') + ' · ' + ONCHAIN_CONFIG.chain_id;
+    }}
+  }}
 
   let yieldBalance = 0;
   async function tickYield() {{
@@ -812,8 +956,8 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.stake = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn.closest('.worker-card');
-    const amount = parseFloat(card.querySelector('.amount').value);
+    const card = btn.closest('.worker-card') || btn.closest('.featured-worker');
+    const amount = parseFloat(card?.querySelector('.amount')?.value || '0');
     if (!w) {{ openWalletModal(); return; }}
     if (!amount) {{ showToast('Miktar girin', true); return; }}
     btn.classList.add('loading');
@@ -846,7 +990,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.claim = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn?.closest?.('.worker-card');
+    const card = btn?.closest?.('.worker-card') || btn?.closest?.('.featured-worker');
     if (!w) {{ openWalletModal(); return; }}
     try {{
       let txHash = null;
@@ -868,8 +1012,8 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.unstake = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn.closest('.worker-card');
-    const shares = parseFloat(card.querySelector('.amount').value);
+    const card = btn.closest('.worker-card') || btn.closest('.featured-worker');
+    const shares = parseFloat(card?.querySelector('.amount')?.value || '0');
     if (!w) {{ openWalletModal(); return; }}
     if (!shares) {{ showToast('Çekilecek miktar girin', true); return; }}
     btn.classList.add('loading');
@@ -1063,6 +1207,8 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   ensureLatestBuild();
   refreshHeroStats();
   refreshLeaderboard();
+  refreshPortfolio();
+  updateOnchainStrip();
   updateWalletUI();
   setInterval(tickYield, 900);
   const promptInput = $('userPrompt');

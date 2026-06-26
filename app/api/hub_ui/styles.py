@@ -332,10 +332,169 @@ body {{
 .lb-empty {{ text-align: center; color: var(--dim); padding: 1.5rem !important; }}
 .invest-section-title {{
   font-family: 'Syne', sans-serif;
-  font-size: 0.95rem;
-  margin-bottom: 0.85rem;
-  color: var(--muted);
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
 }}
+.invest-section-desc {{
+  font-size: 0.82rem; color: var(--dim); line-height: 1.6; margin-bottom: 1rem; max-width: 72ch;
+}}
+.invest-section-spaced {{ margin-top: 2rem; }}
+
+.invest-hero {{
+  display: grid; grid-template-columns: 1.4fr 0.8fr; gap: 1.5rem; align-items: center;
+  padding: 1.5rem; margin-bottom: 1.25rem; border-radius: calc(var(--radius) + 4px);
+  background: linear-gradient(135deg, rgba(0,255,163,0.06), rgba(8,8,15,0.9));
+  border: 1px solid var(--border-bright);
+}}
+.invest-kicker {{
+  display: block; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--mint); margin-bottom: 0.5rem;
+}}
+.invest-hero h3 {{
+  font-family: 'Syne', sans-serif; font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+  font-weight: 800; line-height: 1.25; margin-bottom: 0.65rem;
+}}
+.invest-hero-copy p {{ color: var(--muted); line-height: 1.65; font-size: 0.88rem; }}
+.invest-hero-copy strong {{ color: var(--mint); }}
+.invest-split-bar {{ margin-bottom: 0.65rem; }}
+
+.onchain-strip {{
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.65rem 1rem; margin-bottom: 1rem; border-radius: 12px;
+  background: rgba(0,0,0,0.35); border: 1px solid var(--border); font-size: 0.78rem;
+}}
+.onchain-strip.connected {{ border-color: var(--border-bright); background: rgba(0,255,163,0.06); }}
+.onchain-dot {{
+  width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex-shrink: 0;
+}}
+.onchain-strip.connected .onchain-dot {{
+  background: var(--mint); box-shadow: 0 0 10px var(--mint); animation: livePulse 1.5s infinite;
+}}
+.onchain-chain {{ margin-left: auto; color: var(--dim); font-size: 0.72rem; }}
+
+.portfolio-strip {{
+  margin-bottom: 1.25rem; padding: 1rem 1.25rem; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+}}
+.portfolio-empty {{ font-size: 0.82rem; color: var(--dim); text-align: center; padding: 0.5rem; }}
+.portfolio-summary {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 0.85rem;
+}}
+.portfolio-summary div {{
+  padding: 0.65rem; border-radius: 10px; background: rgba(0,0,0,0.28); text-align: center;
+}}
+.portfolio-summary span {{ display: block; font-size: 0.62rem; color: var(--dim); text-transform: uppercase; }}
+.portfolio-summary strong {{ font-family: 'Syne', sans-serif; font-size: 1.1rem; }}
+.portfolio-summary strong.mint {{ color: var(--mint); }}
+.portfolio-positions {{ display: flex; flex-direction: column; gap: 0.4rem; }}
+.portfolio-pos {{
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.75rem; align-items: center;
+  padding: 0.5rem 0.65rem; border-radius: 8px; background: rgba(0,0,0,0.22); font-size: 0.78rem;
+}}
+.portfolio-pos-name {{ font-weight: 600; }}
+.portfolio-pos-stake {{ color: var(--text); }}
+.portfolio-pos-reward {{ color: var(--gold); font-weight: 600; }}
+.portfolio-pos-btn {{
+  border: 1px solid var(--border); background: transparent; color: var(--mint);
+  border-radius: 6px; padding: 0.25rem 0.55rem; font-size: 0.68rem; cursor: pointer; font-family: inherit;
+}}
+
+.dept-insights {{ margin: 1.5rem 0; }}
+.dept-insights-grid {{
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.85rem;
+}}
+.dept-insight-card {{
+  padding: 1.1rem; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--border); transition: border-color 0.3s, transform 0.3s;
+}}
+.dept-insight-card:hover {{ border-color: var(--border-bright); transform: translateY(-2px); }}
+.dept-insight-card.dept-hidden {{ display: none; }}
+.dept-insight-kicker {{
+  font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan);
+}}
+.dept-insight-card h4 {{
+  font-family: 'Syne', sans-serif; font-size: 0.95rem; margin: 0.35rem 0 0.5rem;
+}}
+.dept-insight-card p {{ font-size: 0.78rem; color: var(--muted); line-height: 1.55; margin-bottom: 0.65rem; }}
+.dept-insight-hint {{ display: block; font-size: 0.72rem; color: var(--gold); margin-bottom: 0.35rem; }}
+.dept-insight-count {{ font-size: 0.68rem; color: var(--dim); }}
+
+.dept-agent-groups {{ display: flex; flex-direction: column; gap: 2rem; }}
+.dept-agent-group {{ }}
+.dept-group-head {{
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;
+  margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+}}
+.dept-group-head h4 {{
+  font-family: 'Syne', sans-serif; font-size: 1.05rem; margin-bottom: 0.25rem;
+}}
+.dept-group-head p {{ font-size: 0.78rem; color: var(--dim); line-height: 1.5; max-width: 55ch; }}
+.dept-invest-hint {{
+  flex-shrink: 0; font-size: 0.72rem; color: var(--gold); padding: 0.4rem 0.75rem;
+  border-radius: 999px; background: rgba(255,209,102,0.08); border: 1px solid rgba(255,209,102,0.2);
+}}
+.dept-grid {{ grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }}
+
+.lb-agent-link {{
+  background: none; border: none; color: var(--text); font-weight: 700; font-family: inherit;
+  font-size: inherit; cursor: pointer; padding: 0; text-align: left;
+}}
+.lb-agent-link:hover {{ color: var(--mint); }}
+.lb-tier {{
+  font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 6px; font-weight: 600;
+}}
+.tier-probation {{ background: rgba(100,116,139,0.2); color: var(--dim); }}
+.tier-active {{ background: var(--mint-dim); color: var(--mint); }}
+.tier-core {{ background: rgba(255,209,102,0.15); color: var(--gold); }}
+.tier-culled {{ background: rgba(251,113,133,0.12); color: var(--danger); }}
+.lb-apy {{ color: var(--mint); font-weight: 700; }}
+.lb-row:hover {{ background: rgba(0,255,163,0.03); }}
+
+.agent-detail-overlay .agent-detail-modal {{
+  max-width: 560px; max-height: 90vh; overflow-y: auto;
+}}
+.agent-detail-loading, .agent-detail-error {{
+  text-align: center; color: var(--dim); padding: 2rem 1rem;
+}}
+.agent-detail-header {{ margin-bottom: 1rem; }}
+.agent-detail-class {{
+  font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cyan);
+}}
+.agent-detail-header h2 {{
+  font-family: 'Syne', sans-serif; font-size: 1.5rem; margin: 0.35rem 0;
+}}
+.agent-detail-mission {{ color: var(--muted); font-size: 0.88rem; line-height: 1.55; }}
+.agent-detail-tags {{ display: flex; gap: 0.4rem; margin-top: 0.65rem; flex-wrap: wrap; }}
+.agent-detail-desc {{
+  font-size: 0.85rem; color: var(--muted); line-height: 1.65; margin-bottom: 1rem;
+}}
+.agent-detail-metrics {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;
+}}
+.agent-detail-metrics div {{
+  padding: 0.6rem; border-radius: 10px; background: rgba(0,0,0,0.28); text-align: center;
+}}
+.agent-detail-metrics span {{ display: block; font-size: 0.6rem; color: var(--dim); text-transform: uppercase; }}
+.agent-detail-metrics strong {{ font-family: 'Syne', sans-serif; font-size: 1rem; }}
+.agent-detail-metrics strong.mint {{ color: var(--mint); }}
+.agent-detail-thesis, .agent-detail-usecases, .agent-detail-covers {{
+  margin-bottom: 0.85rem; font-size: 0.82rem; line-height: 1.6;
+}}
+.agent-detail-thesis strong, .agent-detail-usecases strong, .agent-detail-covers strong {{
+  display: block; color: var(--gold); margin-bottom: 0.35rem; font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}}
+.agent-detail-usecases ul {{ list-style: none; display: flex; flex-wrap: wrap; gap: 0.35rem; }}
+.agent-detail-usecases li {{
+  font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: 6px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+}}
+.agent-detail-pool {{
+  display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--dim);
+  margin-bottom: 1rem; padding: 0.65rem; border-radius: 8px; background: rgba(0,0,0,0.2);
+}}
+
 .stats-compact {{ margin-bottom: 0.5rem; }}
 .terminal-advanced {{
   margin-top: 1.5rem;
@@ -984,7 +1143,39 @@ body.arena-frozen .dash-main > *:not(.synapse-prompt) {{ opacity: 0.45; pointer-
 .featured-copy p {{ color: var(--muted); line-height: 1.6; margin-bottom: 0.85rem; }}
 .featured-tags {{ display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }}
 .featured-metrics {{
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem;
+}}
+.featured-mission {{ color: var(--text); font-weight: 500; margin-bottom: 0.5rem; }}
+.featured-desc {{
+  font-size: 0.82rem; color: var(--muted); line-height: 1.65; margin-bottom: 0.85rem;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}}
+.featured-thesis {{
+  font-size: 0.78rem; color: var(--gold); line-height: 1.55; margin-top: 0.75rem;
+  padding: 0.65rem; border-radius: 10px; background: rgba(255,209,102,0.06);
+  border-left: 2px solid var(--gold);
+}}
+.tag.dept {{ background: rgba(56,189,248,0.12); color: var(--cyan); }}
+.tag.apy-tag {{ background: var(--mint-dim); color: var(--mint); border: 1px solid var(--border-bright); }}
+.wc-use-cases {{
+  list-style: none; display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.65rem 0;
+}}
+.wc-use-cases li {{
+  font-size: 0.68rem; padding: 0.2rem 0.55rem; border-radius: 6px;
+  background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border);
+}}
+.wc-caps-compact {{ font-size: 0.68rem; margin-top: 0.5rem; }}
+.btn-agent-detail {{
+  width: 100%; padding: 0.65rem; border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04); color: var(--muted); font-family: inherit;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.25s;
+}}
+.btn-agent-detail:hover {{ border-color: var(--cyan); color: var(--cyan); }}
+.btn-agent-detail.inline {{ width: auto; margin: 0.75rem 0 0.5rem; }}
+.wc-compact-apy {{ font-size: 0.68rem; color: var(--mint); font-weight: 700; }}
+.wc-compact-detail {{
+  width: 100%; margin-top: 0.5rem; padding: 0.4rem; border: none; background: none;
+  color: var(--cyan); font-size: 0.72rem; cursor: pointer; font-family: inherit;
 }}
 .featured-metrics div {{
   padding: 0.65rem; border-radius: 12px; background: rgba(0,0,0,0.28);
@@ -1187,7 +1378,14 @@ body.arena-frozen .dash-main > *:not(.synapse-prompt) {{ opacity: 0.45; pointer-
 }}
 .stake-input-wrap input::placeholder {{ color: var(--dim); font-weight: 400; }}
 .token-tag {{ font-size: 0.65rem; color: var(--gold); font-weight: 700; }}
-.stake-actions {{ display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }}
+.stake-actions {{ display: grid; grid-template-columns: 1fr auto auto; gap: 0.5rem; }}
+.btn-unstake {{
+  padding: 0.75rem 0.85rem; border-radius: 12px;
+  border: 1px solid rgba(251,113,133,0.35); background: rgba(251,113,133,0.08);
+  color: var(--danger); font-family: inherit; font-weight: 600; font-size: 0.75rem;
+  cursor: pointer; transition: all 0.25s; white-space: nowrap;
+}}
+.btn-unstake:hover {{ border-color: var(--danger); background: rgba(251,113,133,0.15); }}
 .btn-stake {{
   position: relative; padding: 0.75rem; border-radius: 12px; border: none; cursor: pointer;
   font-family: inherit; font-weight: 700; font-size: 0.85rem;
@@ -1329,9 +1527,14 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 @keyframes modalIn {{ from {{ transform: scale(0.92) translateY(10px); opacity: 0; }} to {{ transform: none; opacity: 1; }} }}
 
 @media (max-width: 900px) {{
+  .invest-hero {{ grid-template-columns: 1fr; }}
+  .portfolio-summary {{ grid-template-columns: 1fr; }}
   .featured-body {{ grid-template-columns: 1fr; }}
+  .featured-metrics {{ grid-template-columns: repeat(2, 1fr); }}
   .mesh-proof-hero {{ grid-template-columns: 1fr; }}
   .wc-compact-main {{ grid-template-columns: auto 1fr; }}
   .wc-compact-meta {{ grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }}
+  .dept-group-head {{ flex-direction: column; }}
+  .agent-detail-metrics {{ grid-template-columns: repeat(2, 1fr); }}
 }}
 """

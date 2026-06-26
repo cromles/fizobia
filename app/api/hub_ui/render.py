@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from app.config import settings
 from app.api.hub_ui.cards import render_featured_worker_card, render_worker_card
 from app.api.hub_ui.helpers import esc
+from app.mesh.departments import primary_department
 from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
@@ -13,7 +14,7 @@ from app.mesh.departments import DEPARTMENTS
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-free-apis-v20"
+HUB_UI_BUILD = "2026.06.26-rich-invest-v21"
 
 
 def render_hub_dashboard(
@@ -43,11 +44,53 @@ def render_hub_dashboard(
         if card.profile.agent_id in LIVE_WORKERS
     )
 
-    pool_html = "".join(
-        render_worker_card(c, i, manifests.get(c.profile.agent_id), compact=True)
-        for i, c in enumerate(other_cards)
-    )
     pool_count = len(other_cards)
+
+    dept_groups_html = ""
+    idx = 0
+    for spec in DEPARTMENTS.values():
+        dept_cards = [
+            c for c in other_cards if primary_department(c.profile.agent_id) == spec.code
+        ]
+        if not dept_cards:
+            continue
+        cards_html = "".join(
+            render_worker_card(c, idx + i, manifests.get(c.profile.agent_id), compact=False)
+            for i, c in enumerate(dept_cards)
+        )
+        idx += len(dept_cards)
+        dept_groups_html += f"""
+<section class="dept-agent-group" data-dept="{esc(spec.code)}">
+  <header class="dept-group-head">
+    <div>
+      <h4>{esc(spec.label_tr)}</h4>
+      <p>{esc(spec.description)}</p>
+    </div>
+    <span class="dept-invest-hint">{esc(spec.invest_hint)}</span>
+  </header>
+  <div class="workers-grid dept-grid">{cards_html}</div>
+</section>"""
+
+    dept_insights_html = "".join(
+        f"""<article class="dept-insight-card" data-dept="{esc(spec.code)}">
+  <span class="dept-insight-kicker">{esc(spec.label_short)}</span>
+  <h4>{esc(spec.label_tr)}</h4>
+  <p>{esc(spec.description)}</p>
+  <span class="dept-insight-hint">{esc(spec.invest_hint)}</span>
+  <span class="dept-insight-count">{len(spec.agent_ids)} mikro işçi</span>
+</article>"""
+        for spec in DEPARTMENTS.values()
+    )
+
+    onchain = onchain or {}
+    chain_name = esc(str(onchain.get("chain_name", "Base Sepolia")))
+    chain_connected = onchain.get("connected", False)
+    chain_ready = onchain.get("ready", False)
+    onchain_status = (
+        f"● {chain_name} bağlı · stake {'aktif' if chain_ready else 'RPC modu'}"
+        if onchain.get("enabled") and chain_connected
+        else "○ Zincir yapılandırılıyor"
+    )
 
     dept_tabs = "".join(
         f'<button type="button" class="filter-tab" data-dept="{esc(spec.code)}" '
@@ -273,6 +316,40 @@ def render_hub_dashboard(
         </div>
 
         <div id="tabInvest" class="terminal-panel" role="tabpanel" hidden>
+          <section class="invest-hero">
+            <div class="invest-hero-copy">
+              <span class="invest-kicker">Pasif ortaklık · {agent_count} otonom ajan</span>
+              <h3>Dijital işçilere ortak ol — mesh senin adına çalışsın</h3>
+              <p>
+                Her ajan kendi staking havuzuna, token ekonomisine ve görev gelirine sahip.
+                USDC stake ettiğinde elektrik, API ve compute maliyetini karşılarsın;
+                görev gelirinin <strong>%{staking_pct:.0f}'i</strong> havuza akar.
+              </p>
+            </div>
+            <div class="invest-hero-split">
+              <div class="split-bar invest-split-bar">
+                <div class="split-seg seg-stake"></div>
+                <div class="split-seg seg-platform"></div>
+                <div class="split-seg seg-operator"></div>
+              </div>
+              <div class="split-legend invest-split-legend">
+                <span><strong>%{staking_pct:.0f}</strong> Staking (sana)</span>
+                <span><strong>%{platform_pct:.0f}</strong> Platform</span>
+                <span><strong>%{operator_pct:.0f}</strong> Operatör</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="onchain-strip" id="onchainStrip">
+            <span class="onchain-dot"></span>
+            <span id="onchainStatusText">{onchain_status}</span>
+            <span class="onchain-chain" id="onchainChainLabel">{chain_name} · 84532</span>
+          </div>
+
+          <section class="portfolio-strip" id="portfolioStrip">
+            <div class="portfolio-empty">Cüzdan bağlayın — pozisyonlarınız ve bekleyen ödüller burada görünür</div>
+          </section>
+
           <div class="stats-grid stats-compact">
             <div class="stat" style="--i:0"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
             <div class="stat" style="--i:1"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
@@ -280,8 +357,13 @@ def render_hub_dashboard(
             <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
           </div>
 
+          <section class="dept-insights">
+            <h3 class="invest-section-title">Departmanlar — mikro işçi hücreleri</h3>
+            <div class="dept-insights-grid">{dept_insights_html}</div>
+          </section>
+
           <div class="dept-filter-bar">
-            <span class="dept-filter-label">Departman</span>
+            <span class="dept-filter-label">Filtre</span>
             <div class="filter-tabs" id="deptFilterTabs">
               <button type="button" class="filter-tab active" data-dept="all" onclick="filterByDepartment('all', this)">Tümü</button>
               {dept_tabs}
@@ -291,7 +373,7 @@ def render_hub_dashboard(
           <section class="leaderboard-section">
             <div class="leaderboard-head">
               <h3>Gladyatör Liderlik Tablosu</h3>
-              <span class="leaderboard-sub" id="leaderboardSub">Otonom ajanlar · sektörel mikro işçi hücreleri</span>
+              <span class="leaderboard-sub" id="leaderboardSub">Otonom ajanlar · performans, TVL ve tier</span>
             </div>
             <div class="leaderboard-table-wrap">
               <table class="leaderboard-table" id="leaderboardTable">
@@ -299,15 +381,16 @@ def render_hub_dashboard(
                   <tr>
                     <th>Ajan</th>
                     <th>Departman</th>
+                    <th>Tier</th>
                     <th>Başarı</th>
                     <th>24s Hacim</th>
-                    <th>Token</th>
+                    <th>TVL</th>
                     <th>APY</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody id="leaderboardBody">
-                  <tr><td colspan="7" class="lb-empty">Yükleniyor…</td></tr>
+                  <tr><td colspan="8" class="lb-empty">Yükleniyor…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -322,16 +405,17 @@ def render_hub_dashboard(
           </div>
 
           <div class="invest-workers">
-            <h3 class="invest-section-title">Hisse Al — Pasif Ortaklık</h3>
+            <h3 class="invest-section-title">Öne çıkan canlı işçiler — x402 & gerçek API</h3>
+            <p class="invest-section-desc">Market-Pulse ve Sentiment-Radar gibi canlı ajanlar gerçek veri kaynaklarına bağlıdır; stake ile pasif ortaklık kurabilirsiniz.</p>
             <div class="featured-slot featured-grid" id="featuredSlot">
               {featured_html}
             </div>
-            <details class="worker-pool" id="workerPool">
-              <summary>Genişletilmiş havuz ({pool_count})</summary>
-              <div class="workers-grid compact-grid" id="workersGrid">
-                {pool_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
-              </div>
-            </details>
+
+            <h3 class="invest-section-title invest-section-spaced">Departman havuzları — {pool_count} ajan</h3>
+            <p class="invest-section-desc">Her departman kendi uzmanlık alanında çalışan mikro işçi hücrelerinden oluşur. Kartları genişleterek yatırım tezini, kullanım senaryolarını ve yetenekleri okuyun.</p>
+            <div class="dept-agent-groups" id="deptAgentGroups">
+              {dept_groups_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
+            </div>
           </div>
 
           <details class="terminal-advanced">
@@ -374,6 +458,16 @@ def render_hub_dashboard(
         <button class="btn-modal ghost" onclick="connectWallet()">Adres ile devam</button>
         <button class="btn-modal ghost" onclick="connectDemoWallet()">Demo cüzdan</button>
       </details>
+    </div>
+  </div>
+
+  <!-- Agent detail modal -->
+  <div class="modal-overlay agent-detail-overlay" id="agentDetailModal" onclick="if(event.target===this)closeAgentDetail()">
+    <div class="modal agent-detail-modal">
+      <button class="modal-close" onclick="closeAgentDetail()">×</button>
+      <div id="agentDetailBody">
+        <div class="agent-detail-loading">Ajan dosyası yükleniyor…</div>
+      </div>
     </div>
   </div>
 
