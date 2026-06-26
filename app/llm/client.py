@@ -22,6 +22,7 @@ def llm_public_status() -> Dict[str, Any]:
         "fallback_mode": "template" if not settings.llm_enabled else "llm_with_template_fallback",
         "env_keys": ["OAM_LLM_API_KEY", "OPENAI_API_KEY"],
         "cheap_providers": [
+            {"name": "Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.0-flash"},
             {"name": "Groq", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.1-8b-instant"},
             {"name": "OpenRouter", "base_url": "https://openrouter.ai/api/v1", "model": "openai/gpt-4o-mini"},
             {"name": "OpenAI", "base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini"},
@@ -31,6 +32,8 @@ def llm_public_status() -> Dict[str, Any]:
 
 def _provider_label(base_url: str) -> str:
     lower = base_url.lower()
+    if "generativelanguage.googleapis.com" in lower or "google" in lower:
+        return "gemini"
     if "groq" in lower:
         return "groq"
     if "openrouter" in lower:
@@ -57,6 +60,9 @@ async def chat_completion(
         raise RuntimeError("LLM API anahtarı yapılandırılmamış")
 
     use_model = model or settings.llm_model
+    # Gemini / özel sağlayıcıda arena ajanlarının gpt-* model adlarını geçersiz kıl
+    if _provider_label(settings.llm_base_url) == "gemini" and use_model.startswith("gpt-"):
+        use_model = settings.llm_model
     headers = {
         "Authorization": f"Bearer {settings.llm_api_key}",
         "Content-Type": "application/json",

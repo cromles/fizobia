@@ -67,7 +67,7 @@ def _template_draft(agent_id: str, user_prompt: str) -> str:
     return _data_draft(user_prompt)
 
 
-async def _llm_draft(agent_id: str, *, user_prompt: str) -> tuple[str, Dict[str, Any]]:
+async def _llm_draft(agent_id: str, *, user_prompt: str, model: str) -> tuple[str, Dict[str, Any]]:
     from app.llm.client import chat_completion
 
     meta = _COMPETITOR_META[agent_id]
@@ -76,7 +76,7 @@ async def _llm_draft(agent_id: str, *, user_prompt: str) -> tuple[str, Dict[str,
     text, llm_meta = await chat_completion(
         system=ARENA_SYSTEM,
         user=user,
-        model=meta["model"],
+        model=model,
         temperature=0.85,
         max_tokens=220,
     )
@@ -108,7 +108,14 @@ async def draft_for_agent_async(agent_id: str, *, user_prompt: str) -> Dict[str,
         from app.config import settings
 
         if settings.llm_enabled:
-            body, llm_meta = await _llm_draft(agent_id, user_prompt=user_prompt)
+            from app.llm.client import _provider_label
+
+            llm_model = (
+                settings.llm_model
+                if _provider_label(settings.llm_base_url) == "gemini"
+                else meta["model"]
+            )
+            body, llm_meta = await _llm_draft(agent_id, user_prompt=user_prompt, model=llm_model)
             source = "llm"
         else:
             body = _template_draft(agent_id, user_prompt)
