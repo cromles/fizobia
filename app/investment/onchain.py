@@ -169,10 +169,18 @@ def build_public_config() -> Dict[str, Any]:
         ui_meta.setdefault("rpc_urls", [settings.onchain_rpc_url])
     if deployment and deployment.network and "chain_name" not in ui_meta:
         ui_meta["chain_name"] = deployment.network.replace("-", " ").title()
+    pools = deployment.pools if deployment else {}
+    has_pools = bool(pools)
+    if ready and has_pools and deployment and deployment.factory:
+        stake_mode = "onchain"
+    else:
+        stake_mode = "ledger_demo"
+
     return {
         "enabled": settings.onchain_enabled,
         "connected": connected,
         "ready": ready,
+        "stake_mode": stake_mode,
         "chain_id": chain_id,
         "network": deployment.network if deployment else settings.x402_network,
         "chain_name": ui_meta.get("chain_name", "Base Sepolia"),
@@ -180,9 +188,10 @@ def build_public_config() -> Dict[str, Any]:
         "block_explorer_urls": ui_meta.get("block_explorer_urls", ["https://sepolia.basescan.org"]),
         "usdc": deployment.usdc if deployment and deployment.usdc else settings.x402_usdc_contract,
         "factory": deployment.factory if deployment else None,
-        "pools": deployment.pools if deployment else {},
+        "pools": pools,
+        "pool_count": len(pools),
         "usdc_decimals": deployment.usdc_decimals if deployment else 6,
-        "require_tx": settings.onchain_require_tx and ready,
+        "require_tx": settings.onchain_require_tx and ready and stake_mode == "onchain",
         "wallet_mode": "metamask",
     }
 

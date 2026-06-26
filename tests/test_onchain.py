@@ -105,6 +105,7 @@ def test_build_public_config_base_sepolia_metadata():
         cfg = build_public_config()
         assert cfg["chain_id"] == 84532
         assert cfg["chain_name"] == "Base Sepolia"
+        assert cfg["stake_mode"] in ("ledger_demo", "onchain")
         assert "https://sepolia.base.org" in cfg["rpc_urls"]
         assert "https://sepolia.basescan.org" in cfg["block_explorer_urls"]
     finally:
