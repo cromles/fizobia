@@ -30,7 +30,7 @@ def test_ecosystem_hire_mesh_proof():
     assert response.status_code == 200
     body = response.json()
     assert body["pipeline"] == "mesh_proof"
-    assert len(body.get("hired_agents", [])) == 3
+    assert len(body.get("hired_agents", [])) == 4
     assert body.get("proof_id")
     assert body.get("real_data") is True
 

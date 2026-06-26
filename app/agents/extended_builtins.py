@@ -94,6 +94,18 @@ def _sentiment_handler(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.sentiment.local"}
 
 
+def _onchain_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.on_chain_watcher import fetch_chain_snapshot, verify_payment_snapshot
+
+    tx_hash = data.get("tx_hash")
+    try:
+        if tx_hash:
+            return verify_payment_snapshot(str(tx_hash), min_usdc=float(data.get("min_usdc", 0.01)))
+        return fetch_chain_snapshot(symbol=str(data.get("symbol") or "bitcoin"))
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.watcher.onchain.local"}
+
+
 EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.analyst.market.local": {"market_analyst": _market_analyst_handler},
     "oam.validator.compliance.local": {"compliance_validator": _validator_handler},
@@ -102,6 +114,7 @@ EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.synthesizer.report.local": {"report_synthesizer": _report_handler},
     "oam.orchestrator.pipeline.local": {"pipeline_orchestrator": _orchestrator_handler},
     "oam.validator.quality.local": {"quality_validator": _validator_handler},
+    "oam.watcher.onchain.local": {"onchain_watcher": _onchain_handler},
 }
 
 
@@ -190,6 +203,14 @@ QUALITY_VALIDATOR = _manifest(
     "Çıktı kalitesi ve şema uyumunu doğrular",
     "quality_validator",
 )
+ON_CHAIN_WATCHER = _manifest(
+    "oam.watcher.onchain.local",
+    8111,
+    0.002,
+    "onchain_watcher",
+    "Zincir durumu ve USDC ödeme doğrulama",
+    "onchain_watcher",
+)
 
 EXTENDED_MANIFESTS: List[AgentManifest] = [
     MARKET_ANALYST,
@@ -199,4 +220,5 @@ EXTENDED_MANIFESTS: List[AgentManifest] = [
     REPORT_SYNTHESIZER,
     PIPELINE_ORCHESTRATOR,
     QUALITY_VALIDATOR,
+    ON_CHAIN_WATCHER,
 ]

@@ -44,6 +44,7 @@ from app.investment.x402_gateway import (
 )
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
+from app.mesh.agent_dialogue import get_dialogue_bus
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
@@ -66,6 +67,7 @@ class SentimentRadarAnalyzeRequest(BaseModel):
 class MeshProofRunRequest(BaseModel):
     symbol: str = Field(default="bitcoin")
     url: str | None = Field(default=None, description="Opsiyonel RSS/HTML URL")
+    tx_hash: str | None = Field(default=None, description="Opsiyonel USDC tx doğrulama")
 
 
 class EcosystemJoinRequest(BaseModel):
@@ -78,9 +80,19 @@ class EcosystemHireRequest(BaseModel):
     initial_data: Dict[str, Any] = Field(default_factory=dict)
     symbol: str = Field(default="bitcoin")
     url: str | None = None
+    tx_hash: str | None = None
 
 
-HUB_BUILD = "2026.06.25-ecosystem-v8"
+class AgentDialogueRequest(BaseModel):
+    from_agent: str
+    to_agent: str
+    text: str
+    intent: str = Field(default="inform")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    thread_id: str | None = None
+
+
+HUB_BUILD = "2026.06.25-dialogue-v9"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -184,6 +196,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "ecosystem_join": f"{base}/hub/ecosystem/join",
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
             "ecosystem_events": f"{base}/hub/ecosystem/events",
+            "ecosystem_dialogue": f"{base}/hub/ecosystem/dialogue",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -568,9 +581,9 @@ async def mesh_proof_discover(symbol: str = Query(default="bitcoin")) -> Dict[st
         raise HTTPException(status_code=503, detail="x402 kapalı")
     return {
         "service": "mesh-proof",
-        "tagline": "Mock yok. Simülasyon yok. 3 gerçek API, 1 pipeline.",
-        "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse"],
-        "pipeline": "web-crawl → sentiment → market-pulse",
+        "tagline": "Mock yok. 4 gerçek API, ajan diyaloğu, 1 pipeline.",
+        "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse", "On-Chain-Watcher"],
+        "pipeline": "web-crawl → sentiment → market → on-chain",
         "price_usdc": mesh_proof_price_usd(),
         "symbol": symbol,
         "real_data": True,
@@ -618,7 +631,9 @@ async def mesh_proof_run(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        result = await run_mesh_proof_pipeline(symbol=request.symbol, url=request.url)
+        result = await run_mesh_proof_pipeline(
+            symbol=request.symbol, url=request.url, tx_hash=request.tx_hash
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mesh kanıt hatası: {exc}") from exc
 
@@ -741,6 +756,47 @@ async def hub_ecosystem_hire(request: EcosystemHireRequest) -> Dict[str, Any]:
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/ecosystem/dialogue")
+async def hub_ecosystem_dialogue(
+    limit: int = Query(default=40, ge=1, le=200),
+    thread_id: str | None = None,
+    agent_id: str | None = None,
+) -> Dict[str, Any]:
+    """Ajanlar arası konuşma günlüğü."""
+    bus = get_dialogue_bus()
+    messages = bus.list_messages(limit=limit, thread_id=thread_id, agent_id=agent_id)
+    return {
+        "messages": messages,
+        "count": len(messages),
+        "thread_id": thread_id,
+    }
+
+
+@router.post("/ecosystem/dialogue")
+async def hub_ecosystem_dialogue_send(request: AgentDialogueRequest) -> Dict[str, Any]:
+    """Ajan → ajan mesaj gönder."""
+    bus = get_dialogue_bus()
+    msg = bus.say(
+        request.from_agent,
+        request.to_agent,
+        request.text,
+        intent=request.intent,
+        payload=request.payload,
+        thread_id=request.thread_id,
+    )
+    try:
+        growth = get_growth_protocol()
+        growth._emit(
+            "agent_dialogue",
+            f"{request.from_agent} → {request.to_agent}: {request.text[:80]}",
+            agent_id=request.from_agent,
+            detail=msg.to_public(),
+        )
+    except RuntimeError:
+        pass
+    return msg.to_public()
 
 
 @router.get("/stats")

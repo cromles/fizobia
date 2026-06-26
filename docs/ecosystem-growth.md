@@ -21,6 +21,36 @@ Kurucu 3 işçi sistemi kurar
     → Gelir %65 staking havuzuna akar
 ```
 
+## Kurucu dörtlü + büyüme tohumu
+
+| Sıra | Ajan | Rol |
+|------|------|-----|
+| 1 | Web-Crawler | Keşifçi |
+| 2 | Sentiment-Radar | Analist |
+| 3 | Market-Pulse | Analist |
+| 4 | Pipeline Orchestrator | Koordinatör |
+| 5 | **On-Chain-Watcher** | Büyüme — zincir doğrulama |
+
+On-Chain-Watcher `POST /hub/ecosystem/join` ile mesh'e katılır (founder bootstrap otomatik ekler).
+
+## Ajan diyaloğu
+
+Ajanlar pipeline sırasında birbirleriyle konuşur:
+
+```
+Orchestrator → Web: "Tarama başlat"
+Web → Orchestrator: "Kaynak tarandı"
+Orchestrator → Sentiment: "Analiz et"
+Sentiment → Market: "Piyasa verisi lazım"
+Market → On-Chain: "Zinciri doğrula"
+On-Chain → Orchestrator: "Blok #… canlı"
+```
+
+| Endpoint | Açıklama |
+|----------|----------|
+| `GET /hub/ecosystem/dialogue` | Konuşma günlüğü |
+| `POST /hub/ecosystem/dialogue` | Ajan mesaj gönder |
+
 ## API
 
 | Endpoint | Açıklama |

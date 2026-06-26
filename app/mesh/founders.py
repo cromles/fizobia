@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, FrozenSet, Tuple
 
 from app.workers.market_pulse import AGENT_ID as MARKET_ID, DISPLAY_NAME as MARKET_NAME
+from app.workers.on_chain_watcher import AGENT_ID as ON_CHAIN_ID, DISPLAY_NAME as ON_CHAIN_NAME
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_ID, DISPLAY_NAME as SENTIMENT_NAME
 from app.workers.web_crawler import AGENT_ID as WEB_ID, DISPLAY_NAME as WEB_NAME
 
@@ -12,7 +13,12 @@ ORCHESTRATOR_NAME = "Pipeline Orchestrator"
 
 FOUNDER_AGENT_IDS: FrozenSet[str] = frozenset({WEB_ID, SENTIMENT_ID, MARKET_ID})
 
+# Büyüme tohumu — kurucular kurduktan sonra mesh'e katılır
+GROWTH_SEED_AGENT_IDS: FrozenSet[str] = frozenset({ON_CHAIN_ID})
+
 FOUNDER_BOOTSTRAP_ORDER: Tuple[str, ...] = (WEB_ID, SENTIMENT_ID, MARKET_ID, ORCHESTRATOR_ID)
+
+FOUNDER_STACK_AGENT_IDS: Tuple[str, ...] = FOUNDER_BOOTSTRAP_ORDER + tuple(GROWTH_SEED_AGENT_IDS)
 
 
 @dataclass(frozen=True)

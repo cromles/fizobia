@@ -17,7 +17,7 @@ fi
 
 echo ""
 echo "  Axium — Kurucu Ajan Ekosistemi"
-echo "  3 kurucu işçi + 1 koordinatör → mesh büyür"
+echo "  3 kurucu işçi + koordinatör + On-Chain → mesh büyür"
 echo ""
 
 exec python3 -m app.run_stack

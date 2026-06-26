@@ -17,7 +17,7 @@ from app.main import (
     run_mock_synthesizer,
     run_mock_transformer,
 )
-from app.mesh.founders import FOUNDER_BOOTSTRAP_ORDER
+from app.mesh.founders import FOUNDER_STACK_AGENT_IDS
 
 
 def _run(proc_target, name: str) -> multiprocessing.Process:
@@ -27,7 +27,7 @@ def _run(proc_target, name: str) -> multiprocessing.Process:
 
 
 def _founder_manifests():
-    ids = set(FOUNDER_BOOTSTRAP_ORDER)
+    ids = set(FOUNDER_STACK_AGENT_IDS)
     return [m for m in EXTENDED_MANIFESTS if m.agent_id in ids]
 
 

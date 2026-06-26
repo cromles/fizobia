@@ -7,7 +7,11 @@ import logging
 from app.agents.extended_builtins import EXTENDED_MANIFESTS
 from app.core.router import OpenAgentMeshRouter
 from app.discovery.base import PeerDiscovery
-from app.mesh.founders import FOUNDER_BOOTSTRAP_ORDER, ORCHESTRATOR_ID
+from app.mesh.founders import (
+    FOUNDER_BOOTSTRAP_ORDER,
+    GROWTH_SEED_AGENT_IDS,
+    ORCHESTRATOR_ID,
+)
 from app.mesh.growth_protocol import get_growth_protocol, init_growth_protocol
 
 logger = logging.getLogger(__name__)
@@ -34,6 +38,10 @@ def bootstrap_founder_agents(router: OpenAgentMeshRouter, discovery: PeerDiscove
 
     growth = init_growth_protocol(router, discovery)
     growth.bootstrap_founders()
+    # Büyüme tohumu — On-Chain-Watcher mesh'e katılır
+    for manifest in EXTENDED_MANIFESTS:
+        if manifest.agent_id in GROWTH_SEED_AGENT_IDS:
+            growth.join_agent(manifest)
     return linked
 
 

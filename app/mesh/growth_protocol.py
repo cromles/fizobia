@@ -16,7 +16,7 @@ from app.mesh.founders import (
     founder_tier,
     is_founder,
 )
-from app.mesh.proof_pipeline import run_mesh_proof_pipeline
+from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
 
 
@@ -154,14 +154,17 @@ class MeshGrowthProtocol:
         result: Dict[str, Any]
 
         if pipeline == "mesh_proof":
-            hired = list(FOUNDER_AGENT_IDS)
+            hired = list(MESH_PROOF_AGENTS)
             self._emit(
                 "hire_started",
-                f"Koordinatör {len(hired)} kurucu ajanı işe aldı (mesh proof)",
+                f"Koordinatör {len(hired)} ajanı işe aldı — aralarında konuşarak (mesh proof)",
                 agent_id=hired_by,
                 detail={"pipeline": pipeline, "agents": hired},
             )
             proof = await run_mesh_proof_pipeline(symbol=symbol, url=url)
+            from app.mesh.agent_dialogue import get_dialogue_bus
+
+            dialogue = get_dialogue_bus()
             result = {
                 "pipeline": pipeline,
                 "hired_agents": hired,
@@ -169,6 +172,11 @@ class MeshGrowthProtocol:
                 "verdict": proof.get("verdict"),
                 "total_latency_ms": proof.get("total_latency_ms"),
                 "steps": len(proof.get("steps", [])),
+                "dialogue_thread": proof.get("dialogue_thread"),
+                "dialogue_messages": proof.get("dialogue_messages"),
+                "dialogue": dialogue.list_messages(
+                    thread_id=proof.get("dialogue_thread"), limit=20
+                ),
                 "real_data": True,
             }
         elif pipeline == "goal":
@@ -240,8 +248,8 @@ class MeshGrowthProtocol:
             "recent_events": self.list_events(15),
             "pipelines": {
                 "mesh_proof": {
-                    "agents": list(FOUNDER_AGENT_IDS),
-                    "description": "Kurucu üçlü: crawl → sentiment → market",
+                    "agents": list(MESH_PROOF_AGENTS),
+                    "description": "4 ajan konuşarak: crawl → sentiment → market → on-chain",
                 },
                 "goal": {
                     "description": "Koordinatör hedefe göre mesh'ten ajan işe alır",
