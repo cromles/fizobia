@@ -233,6 +233,27 @@ def render_hub_dashboard(
           <span style="font-size:0.7rem;color:var(--dim)" id="liveDataLabel">{agent_count} işçi</span>
         </header>
 
+        <section class="synapse-prompt" id="synapsePrompt">
+          <div class="synapse-prompt-head">
+            <span class="synapse-prompt-kicker">Tek girdi · Gladyatör Arenası</span>
+            <h3>Ne üretelim?</h3>
+            <p>Yazın — arka plandaki organizma uyanır. Metin ajanları yarışır, denetçi kör puanlar, kazanan render alır.</p>
+          </div>
+          <textarea id="userPrompt" class="synapse-prompt-input" rows="3"
+            placeholder="Örn: Son teknoloji haberleriyle ilgili 30 saniyelik, dikey, arkada fon müziği olan bir Instagram Reels videosu üret."></textarea>
+          <div class="synapse-prompt-actions">
+            <button type="button" class="btn-prompt" id="btnPrompt" onclick="submitUserPrompt()">
+              <span class="btn-text">Üret</span>
+              <span class="btn-loader"></span>
+            </button>
+          </div>
+          <div class="arena-overlay hidden" id="arenaOverlay" aria-live="polite">
+            <div class="arena-pulse"></div>
+            <p>Organizma çalışıyor — metin gladyatörleri arenada…</p>
+          </div>
+          <div class="arena-result hidden" id="arenaResult"></div>
+        </section>
+
         <div class="stats-grid">
           <div class="stat" style="--i:0"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">0 / {agent_count}</span></div>
           <div class="stat" style="--i:1"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>

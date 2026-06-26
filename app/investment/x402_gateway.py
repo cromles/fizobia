@@ -63,7 +63,12 @@ def mesh_proof_price_usd() -> float:
     return settings.x402_mesh_proof_price_usd
 
 
+def arena_price_usd() -> float:
+    return settings.x402_arena_price_usd
+
+
 MESH_PROOF_RESOURCE = "/hub/proof/mesh/run"
+ARENA_RESOURCE = "/hub/prompt"
 
 
 def service_price_usd(service_id: str) -> float:
@@ -109,6 +114,43 @@ def build_mesh_proof_payment_required(*, symbol: str = "bitcoin") -> Dict[str, A
             "name": "OAM Mesh Proof",
             "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse"],
             "real_data_source": "coindesk+alternative.me+coingecko",
+            "revenue_split_staking_pct": 65,
+        },
+    }
+
+
+def build_arena_payment_required(*, prompt_preview: str = "") -> Dict[str, Any]:
+    amount = arena_price_usd()
+    base = settings.public_base_url.rstrip("/")
+    pay_to = settings.x402_payee_address or "0x0000000000000000000000000000000000000000"
+    preview = (prompt_preview or "tek girdi üretim")[:80]
+    return {
+        "x402Version": 1,
+        "error": "payment_required",
+        "message": "Synapse Arena — gladyatör ajan yarışı için USDC ödemesi gerekli",
+        "accepts": [
+            {
+                "scheme": "exact",
+                "network": settings.x402_network,
+                "maxAmountRequired": usdc_atomic_amount(amount),
+                "resource": f"{base}{ARENA_RESOURCE}",
+                "description": f"Metin arena → kör denetim → Reels spec — {preview}",
+                "mimeType": "application/json",
+                "payTo": pay_to,
+                "maxTimeoutSeconds": 300,
+                "asset": "USDC",
+                "extra": {
+                    "service_id": "synapse-arena",
+                    "price_usd": amount,
+                    "payout_text_winner_usd": round(amount * 0.10, 4),
+                    "payout_render_usd": round(amount * 0.40, 4),
+                },
+            }
+        ],
+        "service": {
+            "service_id": "synapse-arena",
+            "name": "Synapse Gladiator Arena",
+            "pipeline": "parallel_text → blind_critic → render",
             "revenue_split_staking_pct": 65,
         },
     }

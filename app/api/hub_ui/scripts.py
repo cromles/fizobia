@@ -423,6 +423,59 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}, 2600);
   }}
 
+  async function submitUserPrompt() {{
+    const input = $('userPrompt');
+    const btn = $('btnPrompt');
+    const overlay = $('arenaOverlay');
+    const resultEl = $('arenaResult');
+    const prompt = (input?.value || '').trim();
+    if (!prompt || prompt.length < 8) {{
+      showToast('En az 8 karakterlik bir istem yazın', true);
+      return;
+    }}
+    btn?.classList.add('loading');
+    overlay?.classList.remove('hidden');
+    resultEl?.classList.add('hidden');
+    document.body.classList.add('arena-frozen');
+    try {{
+      const res = await fetch('/hub/prompt', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ prompt, background_music: true, duration_sec: 30 }}),
+      }});
+      const data = await res.json();
+      if (res.status === 402) {{
+        showToast('x402 ödeme gerekli — demo modda ücretsiz', true);
+        return;
+      }}
+      if (!res.ok) {{
+        showToast(data.detail || 'Arena hatası', true);
+        return;
+      }}
+      const w = data.result?.winner;
+      const render = data.result?.render;
+      if (resultEl) {{
+        resultEl.classList.remove('hidden');
+        resultEl.innerHTML = (
+          '<strong>Kazanan:</strong> ' + (w?.display_name || w?.agent_id || '—') +
+          ' · skor ' + (w?.critic_score?.toFixed?.(2) || '0') +
+          '<br/><strong>Script:</strong> ' + (w?.script || '').slice(0, 200) + '…' +
+          '<br/><strong>Render:</strong> ' + (render?.format || '') + ' · ' + (render?.duration_sec || 30) + 's'
+        );
+      }}
+      showToast(data.message || 'Ürün hazır');
+      refreshDialogue();
+      refreshHierarchy();
+    }} catch (err) {{
+      showToast(err.message || 'Bağlantı hatası', true);
+    }} finally {{
+      btn?.classList.remove('loading');
+      overlay?.classList.add('hidden');
+      document.body.classList.remove('arena-frozen');
+    }}
+  }}
+  window.submitUserPrompt = submitUserPrompt;
+
   async function triggerLiveRun() {{
     try {{
       const res = await fetch('/hub/trigger-run', {{ method: 'POST' }});
