@@ -21,8 +21,17 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     'function pendingReward(address user) view returns (uint256)',
   ];
 
-  let liveTimer = null, processTimer = null, liveSocket = null, lastEventCount = 0;
+  let liveTimer = null, processTimer = null, liveSocket = null, dialogueTimer = null;
+  let lastEventCount = 0, lastDialogueCount = 0, dialogueThreadId = null;
   const agentNameMap = {{}};
+  const AGENT_LABELS = {{
+    'oam.orchestrator.pipeline.local': 'Koordinatör',
+    'oam.fetcher.web.local': 'Web-Crawler',
+    'oam.analyst.sentiment.local': 'Sentiment',
+    'oam.analyst.market.local': 'Market',
+    'oam.watcher.onchain.local': 'On-Chain',
+    '*': 'Mesh',
+  }};
 
   function $(id) {{ return document.getElementById(id); }}
   function getWallet() {{ return localStorage.getItem(WALLET_KEY) || ''; }}
@@ -99,6 +108,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         showSplash();
       }} else {{
         startLiveFeed();
+        startDialoguePoll();
         if (DEMO_MODE) startProcessAnimation();
       }}
       window.scrollTo({{ top: 0, behavior: 'smooth' }});
@@ -117,6 +127,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     setTimeout(() => {{
       s.classList.remove('show');
       startLiveFeed();
+      startDialoguePoll();
       if (DEMO_MODE) startProcessAnimation();
     }}, 1400);
   }}
@@ -124,8 +135,69 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   function stopLiveFeed() {{
     if (liveTimer) clearInterval(liveTimer);
     if (processTimer) clearInterval(processTimer);
+    if (dialogueTimer) clearInterval(dialogueTimer);
     if (liveSocket) {{ liveSocket.close(); liveSocket = null; }}
-    liveTimer = processTimer = null;
+    liveTimer = processTimer = dialogueTimer = null;
+  }}
+
+  function labelAgent(id) {{
+    if (!id) return '—';
+    if (id === '*') return AGENT_LABELS['*'];
+    return AGENT_LABELS[id] || agentNameMap[id] || id.split('.').slice(-2, -1)[0] || id;
+  }}
+
+  function escapeHtml(s) {{
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }}
+
+  function renderDialogueMessages(messages) {{
+    const thread = $('dialogueThread');
+    if (!thread) return;
+    if (!messages || !messages.length) {{
+      thread.innerHTML = '<div class="dialogue-empty">Henüz mesaj yok — Mesh Kanıtı çalıştırın</div>';
+      return;
+    }}
+    const ordered = [...messages].reverse();
+    thread.innerHTML = ordered.map((m, i) => {{
+      const isCoord = m.from === 'oam.orchestrator.pipeline.local';
+      const intent = (m.intent || 'inform').replace(/[^a-z_]/g, '');
+      return (
+        '<div class="dialogue-msg ' + (isCoord ? 'coord ' : '') + 'intent-' + intent + '" style="--delay:' + (i * 0.04) + 's">' +
+          '<div class="dialogue-meta">' +
+            '<span class="dialogue-from">' + escapeHtml(labelAgent(m.from)) + '</span>' +
+            '<span class="dialogue-arrow">→</span>' +
+            '<span class="dialogue-to">' + escapeHtml(labelAgent(m.to)) + '</span>' +
+            '<span class="dialogue-intent">' + escapeHtml(intent) + '</span>' +
+          '</div>' +
+          '<div class="dialogue-bubble">' + escapeHtml(m.text) + '</div>' +
+        '</div>'
+      );
+    }}).join('');
+    thread.scrollTop = thread.scrollHeight;
+  }}
+
+  async function refreshDialogue(forceThread) {{
+    try {{
+      let url = '/hub/ecosystem/dialogue?limit=40';
+      const tid = forceThread || dialogueThreadId;
+      if (tid) url += '&thread_id=' + encodeURIComponent(tid);
+      const res = await fetch(url + '&_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!forceThread && data.count === lastDialogueCount) return;
+      lastDialogueCount = data.count;
+      renderDialogueMessages(data.messages);
+    }} catch (_) {{}}
+  }}
+
+  function startDialoguePoll() {{
+    refreshDialogue();
+    if (dialogueTimer) clearInterval(dialogueTimer);
+    dialogueTimer = setInterval(refreshDialogue, 3500);
   }}
 
   function startLiveFeed() {{
@@ -143,7 +215,9 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   function pollLiveFallback() {{
     refreshLive();
+    refreshDialogue();
     liveTimer = setInterval(refreshLive, 4000);
+    if (!dialogueTimer) dialogueTimer = setInterval(refreshDialogue, 3500);
   }}
 
   async function refreshLive() {{
@@ -467,7 +541,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const resultEl = $('meshProofResult');
     if (resultEl) {{
       resultEl.className = 'mesh-proof-result';
-      resultEl.textContent = '3 işçi çalışıyor…';
+      resultEl.textContent = '4 işçi konuşarak çalışıyor…';
     }}
     const proof = JSON.stringify({{
       amount_usdc: {settings.x402_mesh_proof_price_usd},
@@ -508,6 +582,14 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         }}
       }}
       showToast('Mesh kanıtı OK · paylaşım linki hazır');
+      if (data.proof?.dialogue_thread) {{
+        dialogueThreadId = data.proof.dialogue_thread;
+        lastDialogueCount = 0;
+        await refreshDialogue(dialogueThreadId);
+      }} else {{
+        lastDialogueCount = 0;
+        await refreshDialogue();
+      }}
       refreshLive();
       refreshHeroStats();
     }} catch (err) {{
@@ -605,9 +687,9 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (!el) return;
       const proofs = s.mesh_proofs?.proofs_recorded || 0;
       const rev = s.total_revenue_usd || 0;
-      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 3) + ' gerçek API</span>';
+      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 4) + ' API · diyalog</span>';
       const badge = $('heroLiveBadge');
-      if (badge) badge.textContent = (s.live_workers || 3) + ' canlı API · mesh kanıtı';
+      if (badge) badge.textContent = (s.live_workers || 4) + ' canlı API · ajan diyaloğu';
     }} catch (_) {{}}
   }}
 

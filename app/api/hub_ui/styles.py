@@ -299,7 +299,9 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim);
 }}
 .feed-list {{
-  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;
+  flex: 0 1 auto;
+  max-height: 180px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;
   scrollbar-width: thin; scrollbar-color: var(--border) transparent;
 }}
 .feed-item {{
@@ -314,6 +316,103 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .feed-item.feed-fail {{ border-left-color: var(--danger); opacity: 0.75; }}
 .feed-agent {{ color: var(--text); font-weight: 600; display: block; }}
 .feed-meta {{ color: var(--dim); font-size: 0.65rem; margin-top: 0.2rem; }}
+
+/* Agent dialogue */
+.dialogue-panel {{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}}
+.dialogue-header {{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}}
+.dialogue-live-badge {{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mint);
+  font-weight: 700;
+}}
+.dialogue-thread {{
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-right: 0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}}
+.dialogue-empty {{
+  font-size: 0.72rem;
+  color: var(--dim);
+  line-height: 1.5;
+  padding: 0.5rem 0;
+}}
+.dialogue-msg {{
+  animation: dialogueIn 0.45s var(--ease) both;
+  animation-delay: var(--delay, 0s);
+}}
+.dialogue-meta {{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  margin-bottom: 0.25rem;
+}}
+.dialogue-from {{ color: var(--cyan); font-weight: 700; }}
+.dialogue-to {{ color: var(--gold); font-weight: 700; }}
+.dialogue-arrow {{ opacity: 0.45; font-size: 0.55rem; }}
+.dialogue-intent {{
+  margin-left: auto;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  font-size: 0.52rem;
+}}
+.dialogue-bubble {{
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text);
+}}
+.dialogue-msg.coord .dialogue-bubble {{
+  border-color: rgba(255,209,102,0.35);
+  background: linear-gradient(135deg, rgba(255,209,102,0.08), rgba(0,0,0,0.4));
+}}
+.dialogue-msg.intent-hire_request .dialogue-bubble {{
+  border-left: 2px solid var(--gold);
+}}
+.dialogue-msg.intent-handoff .dialogue-bubble {{
+  border-left: 2px solid var(--cyan);
+}}
+.dialogue-msg.intent-task_done .dialogue-bubble,
+.dialogue-msg.intent-pipeline_complete .dialogue-bubble {{
+  border-left: 2px solid var(--mint);
+}}
+@keyframes dialogueIn {{
+  from {{ opacity: 0; transform: translateY(8px); }}
+  to {{ opacity: 1; transform: translateY(0); }}
+}}
 
 /* Main */
 .dash-main {{ padding: 1.5rem 1.75rem 3rem; overflow: hidden; }}

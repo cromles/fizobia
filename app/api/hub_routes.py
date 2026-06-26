@@ -92,7 +92,7 @@ class AgentDialogueRequest(BaseModel):
     thread_id: str | None = None
 
 
-HUB_BUILD = "2026.06.25-dialogue-v9"
+HUB_BUILD = "2026.06.25-dialogue-ui-v10"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
