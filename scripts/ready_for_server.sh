@@ -22,6 +22,12 @@ echo ""
 
 if [[ -n "${SERVER_IP}" ]]; then
   echo "  [1/3] SSH bağlantı testi → ${SERVER_USER}@${SERVER_IP}"
+  if [[ -n "${AXIUM_SSH_PASSWORD:-}" ]] && command -v sshpass >/dev/null 2>&1; then
+    export AXIUM_SERVER_IP="${SERVER_IP}"
+    export AXIUM_SERVER_USER="${SERVER_USER}"
+    bash scripts/deploy_remote_axium.sh
+    exit $?
+  fi
   if ssh -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "${SERVER_USER}@${SERVER_IP}" "echo ok" 2>/dev/null; then
     echo "  ✓ SSH erişilebilir"
     echo ""

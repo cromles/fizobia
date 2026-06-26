@@ -1,5 +1,5 @@
 [Unit]
-Description=Axium Birleşik Ekosistem (15 mikro ajan + Hub + otopilot)
+Description=Axium Birleşik Ekosistem (18 mikro ajan + Hub + otopilot)
 After=network.target
 
 [Service]
