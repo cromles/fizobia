@@ -39,9 +39,21 @@ curl -s https://axium.com.tr/hub/apis
 
 Build `free-apis-v20` veya üzeri olmalı.
 
-### 4. Eski sunucu
+### 4. Eski sunucu — Axium'u kaldır
 
-DNS yayıldıktan sonra eski VPS’i kapatabilir veya sadece durdurun.
+DNS yeni IP'ye geçtikten sonra eski VPS'ten Axium'u tamamen çıkarın (RAM boşalır, Zinesh/aaPanel kalır):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/uninstall_axium.sh | bash
+```
+
+Kod klasörünü de silmek için:
+
+```bash
+REMOVE_DATA=1 bash -c 'curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/uninstall_axium.sh | bash'
+```
+
+Eski VPS'i tamamen kapatabilir veya sadece durdurun.
 
 ---
 
