@@ -18,7 +18,7 @@ from app.mesh.founders import (
 )
 from app.mesh.founder_profile import FOUNDER_NAME
 from app.mesh.hierarchy import announce_chain_of_command
-from app.mesh.organism import broadcast_organism_manifest, record_mesh_proof_steps
+from app.mesh.organism import broadcast_organism_manifest, filter_eligible_agents, record_mesh_proof_steps
 from app.mesh.mission import (
     broadcast_mission_to_mesh,
     emit_mission_growth_event,
@@ -175,7 +175,16 @@ class MeshGrowthProtocol:
         result: Dict[str, Any]
 
         if pipeline == "mesh_proof":
-            hired = list(MESH_PROOF_AGENTS)
+            hired = filter_eligible_agents(list(MESH_PROOF_AGENTS))
+            culled = [a for a in MESH_PROOF_AGENTS if a not in hired]
+            if culled:
+                self._emit(
+                    "agent_culled_skip",
+                    f"Elenen ajanlar pipeline dışı: {', '.join(culled)}",
+                    detail={"culled": culled, "pipeline": pipeline},
+                )
+            if not hired:
+                raise ValueError("Tüm mesh proof ajanları elendi — pipeline çalıştırılamaz")
             self._emit(
                 "hire_started",
                 f"Koordinatör {len(hired)} ajanı işe aldı — aralarında konuşarak (mesh proof)",
@@ -190,6 +199,16 @@ class MeshGrowthProtocol:
                 proof.get("steps", []),
                 verdict=proof.get("verdict", ""),
             )
+            for row in standings:
+                change = row.get("tier_change")
+                if not change:
+                    continue
+                self._emit(
+                    "agent_tier_changed",
+                    f"{change['agent_id']}: {change['from_tier']} → {change['to_tier']}",
+                    agent_id=change["agent_id"],
+                    detail=change,
+                )
             result = {
                 "pipeline": pipeline,
                 "hired_agents": hired,
@@ -206,7 +225,7 @@ class MeshGrowthProtocol:
                 "real_data": True,
             }
         elif pipeline == "ecosystem_assembly":
-            hired = list(ECOSYSTEM_ASSEMBLY_AGENTS)
+            hired = filter_eligible_agents(list(ECOSYSTEM_ASSEMBLY_AGENTS))
             self._emit(
                 "hire_started",
                 f"Ekosistem birleştirme — {len(hired)} ajan (mesh + medya + sermaye)",

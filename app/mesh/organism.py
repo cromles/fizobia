@@ -13,6 +13,7 @@ from app.mesh.founder_profile import (
     founder_broadcast_text,
     get_founder_manifest,
 )
+from app.mesh.synapse_manifest import get_synapse_manifest, synapse_broadcast_text
 from app.mesh.ecosystem_registry import ECOSYSTEM_GROWTH_IDS_SET, MEDIA_AGENT_IDS_SET
 from app.mesh.founders import ORCHESTRATOR_ID
 from app.mesh.hierarchy import ASSISTANT_ID, FOUNDER_OPERATOR_ID
@@ -130,6 +131,18 @@ def _standing(agent_id: str, display_name: str = "") -> AgentStanding:
     return _governance[agent_id]
 
 
+def is_agent_eligible(agent_id: str) -> bool:
+    """Elenmiş (culled) ajanlar pipeline'a alınmaz."""
+    standing = _governance.get(agent_id)
+    if standing is None:
+        return True
+    return standing.identity_tier != "culled"
+
+
+def filter_eligible_agents(agent_ids: List[str]) -> List[str]:
+    return [aid for aid in agent_ids if is_agent_eligible(aid)]
+
+
 def record_pipeline_outcome(
     *,
     agent_id: str,
@@ -164,6 +177,12 @@ def record_pipeline_outcome(
     return s
 
 
+def tier_change_event(agent_id: str, before: str, after: str) -> Optional[Dict[str, str]]:
+    if before == after:
+        return None
+    return {"agent_id": agent_id, "from_tier": before, "to_tier": after}
+
+
 def record_mesh_proof_steps(steps: List[Dict[str, Any]], *, verdict: str = "") -> List[Dict[str, Any]]:
     """Pipeline adımlarından tüm işçilerin skorunu güncelle."""
     overall_ok = verdict in ("ok", "bullish", "bearish", "neutral", "")
@@ -174,13 +193,19 @@ def record_mesh_proof_steps(steps: List[Dict[str, Any]], *, verdict: str = "") -
             continue
         output = step.get("output") or {}
         step_ok = overall_ok and output.get("real_data", True) is not False
+        before = _governance.get(agent_id)
+        prev_tier = before.identity_tier if before else "probation"
         standing = record_pipeline_outcome(
             agent_id=agent_id,
             display_name=step.get("worker", ""),
             success=step_ok,
             verdict=verdict,
         )
-        results.append(standing.to_public())
+        pub = standing.to_public()
+        change = tier_change_event(agent_id, prev_tier, standing.identity_tier)
+        if change:
+            pub["tier_change"] = change
+        results.append(pub)
     return results
 
 
@@ -193,10 +218,13 @@ def list_standings(*, include_culled: bool = False) -> List[Dict[str, Any]]:
 
 def get_organism_status() -> Dict[str, Any]:
     manifest = get_founder_manifest()
+    synapse = get_synapse_manifest()
     planned_count = sum(len(d["agents"]) for d in PLANNED_DIVISIONS.values())
     return {
         "founder": manifest,
+        "synapse_net": synapse,
         "organism": manifest["organism"],
+        "synapse_vision": synapse["vision"],
         "current_phase": manifest["current_phase"],
         "phases": GROWTH_PHASES,
         "divisions": PLANNED_DIVISIONS,
@@ -207,7 +235,9 @@ def get_organism_status() -> Dict[str, Any]:
             "cull_after_failures": CULL_AFTER_FAILURES,
             "core_after_successes": CORE_AFTER_SUCCESSES,
             "min_active_score": MIN_ACTIVE_SCORE,
+            "merit_criteria": list(synapse["merit_criteria"]),
         },
+        "architecture": synapse["architecture_layers"],
         "thread_id": ORGANISM_THREAD_ID,
         "announced": _organism_announced,
     }
@@ -253,6 +283,13 @@ def broadcast_organism_manifest(*, force: bool = False) -> Dict[str, Any]:
         ORCHESTRATOR_ID,
         "Her ajan bütünün parçasıdır. Başarılı olan kalır, başarısız elenir. Bahane yok.",
         intent="organism_law",
+        thread_id=ORGANISM_THREAD_ID,
+    )
+    bus.broadcast(
+        ORCHESTRATOR_ID,
+        synapse_broadcast_text(),
+        intent="synapse_manifest",
+        payload={"code": "THE_SYNAPSE_NET"},
         thread_id=ORGANISM_THREAD_ID,
     )
 

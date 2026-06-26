@@ -855,8 +855,16 @@ async def hub_hierarchy_command(request: FounderCommandRequest) -> Dict[str, Any
 
 @router.get("/manifest")
 async def hub_founder_manifest() -> Dict[str, Any]:
-    """Yasin Karademir — kurucu manifestosu ve büyüme fazları."""
+    """Yasin Karademir — kurucu manifestosu, Synapse Net ve büyüme fazları."""
     return get_organism_status()
+
+
+@router.get("/synapse")
+async def hub_synapse_manifest() -> Dict[str, Any]:
+    """Synapse Net (Ortak Bilinç) — teknik charter ve mimari katmanlar."""
+    from app.mesh.synapse_manifest import get_synapse_manifest
+
+    return get_synapse_manifest()
 
 
 @router.get("/organism")

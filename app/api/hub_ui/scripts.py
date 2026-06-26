@@ -194,7 +194,9 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
           phase.textContent = 'Faz: ' + (m.founder.current_phase_name || 'Sıfır Noktası');
         }}
         const el = $('familyMissionText');
-        if (el && m.organism) {{
+        if (el && m.synapse_vision) {{
+          el.textContent = String(m.synapse_vision).slice(0, 140) + '…';
+        }} else if (el && m.organism) {{
           el.textContent = String(m.organism).slice(0, 120) + '…';
         }}
       }}
