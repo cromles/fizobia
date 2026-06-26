@@ -16,7 +16,9 @@ from app.mesh.founders import (
     founder_tier,
     is_founder,
 )
+from app.mesh.founder_profile import FOUNDER_NAME
 from app.mesh.hierarchy import announce_chain_of_command
+from app.mesh.organism import broadcast_organism_manifest, record_mesh_proof_steps
 from app.mesh.mission import (
     broadcast_mission_to_mesh,
     emit_mission_growth_event,
@@ -108,6 +110,12 @@ class MeshGrowthProtocol:
             broadcast_mission_to_mesh()
             emit_mission_growth_event(self)
             announce_chain_of_command()
+            broadcast_organism_manifest()
+            self._emit(
+                "organism_manifest",
+                f"Kurucu manifestosu yayınlandı — {FOUNDER_NAME}",
+                detail={"phase": 0, "focus": "capital_and_zero_exit"},
+            )
         self._bootstrapped = True
         return self.ecosystem_status()
 
@@ -176,6 +184,10 @@ class MeshGrowthProtocol:
             from app.mesh.agent_dialogue import get_dialogue_bus
 
             dialogue = get_dialogue_bus()
+            standings = record_mesh_proof_steps(
+                proof.get("steps", []),
+                verdict=proof.get("verdict", ""),
+            )
             result = {
                 "pipeline": pipeline,
                 "hired_agents": hired,
@@ -188,6 +200,7 @@ class MeshGrowthProtocol:
                 "dialogue": dialogue.list_messages(
                     thread_id=proof.get("dialogue_thread"), limit=20
                 ),
+                "agent_standings": standings,
                 "real_data": True,
             }
         elif pipeline == "goal":
@@ -246,11 +259,15 @@ class MeshGrowthProtocol:
 
         from app.mesh.hierarchy import get_hierarchy_status
         from app.mesh.mission import AXIUM_CHARTER, get_mission_status
+        from app.mesh.organism import get_organism_status
 
         mission = get_mission_status()
         hierarchy = get_hierarchy_status(manifests)
+        organism = get_organism_status()
         return {
-            "philosophy": "Sistem ajanlar üzerine inşa edilir — donuk kod değil, büyüyen mesh",
+            "philosophy": "Süper organizma — her ajan bütünün parçası; bahane yok, kısa yol var",
+            "founder": organism["founder"]["founder"],
+            "current_phase": organism["current_phase"],
             "hierarchy": {
                 "motto": hierarchy["motto"],
                 "announced": hierarchy["announced"],
@@ -261,6 +278,12 @@ class MeshGrowthProtocol:
                 "motto": AXIUM_CHARTER["motto"],
                 "broadcast": mission["broadcast"],
                 "thread_id": mission["thread_id"],
+                "capital_focus": AXIUM_CHARTER.get("capital_focus", ""),
+            },
+            "organism": {
+                "planned_agents": organism["planned_agent_count"],
+                "media_division": len(organism["divisions"]["media"]["agents"]),
+                "agent_standings": organism["agent_standings"],
             },
             "founder_count": len(founders),
             "growth_count": len(growth),

@@ -9,8 +9,10 @@ from app.mesh.agent_dialogue import get_dialogue_bus
 from app.mesh.founders import FOUNDER_ROLES, ORCHESTRATOR_ID, ORCHESTRATOR_NAME
 from app.protocol.schemas import AgentManifest
 
+from app.mesh.founder_profile import FOUNDER_NAME, FOUNDER_TITLE
+
 FOUNDER_OPERATOR_ID = "oam.founder.operator"
-FOUNDER_OPERATOR_NAME = "Kurucu Operatör"
+FOUNDER_OPERATOR_NAME = FOUNDER_NAME
 
 ASSISTANT_ID = "oam.assistant.chief.local"
 ASSISTANT_NAME = "Axium Baş Yardımcı"
@@ -24,7 +26,7 @@ CHAIN_OF_COMMAND: List[Dict[str, Any]] = [
         "agent_id": FOUNDER_OPERATOR_ID,
         "display_name": FOUNDER_OPERATOR_NAME,
         "reports_to": None,
-        "mission": "Vizyonu belirler — durmayız, hızlanırız, boşluğu doldururuz.",
+        "mission": f"{FOUNDER_TITLE} — vizyonu belirler, aileyi bir arada tutar.",
     },
     {
         "tier": 1,
@@ -86,7 +88,7 @@ def get_hierarchy_status(
     worker_count = len(agents) if agents else 0
     return {
         "chain": CHAIN_OF_COMMAND,
-        "motto": "Kurucu → Baş Yardımcı → Koordinatör → İşçiler",
+        "motto": f"{FOUNDER_NAME} → Baş Yardımcı → Koordinatör → İşçiler",
         "thread_id": HIERARCHY_THREAD_ID,
         "announced": _chain_announced,
         "last_command": _last_command,
@@ -106,8 +108,9 @@ def announce_chain_of_command(*, force: bool = False) -> Dict[str, Any]:
     bus.broadcast(
         FOUNDER_OPERATOR_ID,
         (
-            "Axium komuta zinciri aktif: Ben kurucuyum. Baş yardımcım emirleri mesh'e taşır; "
-            "koordinatör işe alır; işçiler ne gerekiyorsa yapar. Durmayacağız."
+            f"Ben {FOUNDER_NAME}. Axium ailesi komuta zinciri aktif — süper organizma gibi "
+            "hareket edeceğiz. Baş yardımcım emirleri mesh'e taşır; koordinatör işe alır; "
+            "işçiler ne gerekiyorsa yapar. Sermayeye kısa yoldan — durmayacağız."
         ),
         intent="hierarchy_charter",
         thread_id=HIERARCHY_THREAD_ID,
@@ -184,7 +187,16 @@ def record_founder_command(
 
 
 def autopilot_cycle_order(cycle: int, *, symbol: str = "bitcoin") -> Dict[str, Any]:
-    """Otopilot döngüsü — kurucu hızlan emri simülasyonu."""
+    """Otopilot döngüsü — kurucu hızlan / sermaye emri."""
+    if cycle % 3 == 0:
+        return record_founder_command(
+            "capital_push",
+            message=(
+                f"Otopilot #{cycle}: Sermayeye kısa yol — {symbol} mesh proof, x402, stake sinyali. "
+                "Medya ajanları hazırlansın."
+            ),
+            payload={"cycle": cycle, "symbol": symbol, "source": "autopilot", "focus": "capital"},
+        )
     return record_founder_command(
         "autopilot_mesh_proof",
         message=f"Otopilot döngü #{cycle}: {symbol} mesh proof — durma, hızlan.",

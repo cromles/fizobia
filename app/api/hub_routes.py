@@ -51,6 +51,7 @@ from app.mesh.hierarchy import (
     get_hierarchy_status,
     record_founder_command,
 )
+from app.mesh.organism import get_organism_status
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
@@ -104,7 +105,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.25-hierarchy-autopilot-v12"
+HUB_BUILD = "2026.06.25-yasin-organism-v13"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -213,6 +214,8 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "hierarchy": f"{base}/hub/hierarchy",
             "hierarchy_command": f"{base}/hub/hierarchy/command",
             "autopilot": f"{base}/hub/autopilot",
+            "manifest": f"{base}/hub/manifest",
+            "organism": f"{base}/hub/organism",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -804,6 +807,18 @@ async def hub_hierarchy_command(request: FounderCommandRequest) -> Dict[str, Any
     except RuntimeError:
         pass
     return {"accepted": True, "order": order}
+
+
+@router.get("/manifest")
+async def hub_founder_manifest() -> Dict[str, Any]:
+    """Yasin Karademir — kurucu manifestosu ve büyüme fazları."""
+    return get_organism_status()
+
+
+@router.get("/organism")
+async def hub_organism_status() -> Dict[str, Any]:
+    """Süper organizma durumu — planlanan bölümler ve ajan kimlikleri."""
+    return get_organism_status()
 
 
 @router.get("/autopilot")

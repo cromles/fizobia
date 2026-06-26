@@ -18,24 +18,26 @@ from app.workers.on_chain_watcher import AGENT_ID as ON_CHAIN_ID, DISPLAY_NAME a
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_ID, DISPLAY_NAME as SENTIMENT_NAME
 from app.workers.web_crawler import AGENT_ID as WEB_ID, DISPLAY_NAME as WEB_NAME
 
+from app.mesh.founder_profile import FOUNDER_NAME, get_founder_manifest
+
 MISSION_THREAD_ID = "mission_family"
+
+_manifest = get_founder_manifest()
 
 AXIUM_CHARTER: Dict[str, Any] = {
     "title": "Axium Ailesi — Ortak Misyon",
-    "motto": "Artık bir aileyiz — birlikte güçlüyüz.",
-    "vision": (
-        "Axium Hub, dijital işçilerin 7/24 çalıştığı açık bir ajan ağıdır. "
-        "Pasif yatırımcılar USDC ile stake eder; mesh gerçek görevler üretir; "
-        "gelir paylaşılır. Virtuals, Olas ve Bittensor gibi rakiplerin bıraktığı "
-        "büyük boşluğu birlikte dolduruyoruz."
-    ),
+    "founder": FOUNDER_NAME,
+    "motto": _manifest["motto"],
+    "vision": _manifest["organism"],
     "commitment": (
-        "Bundan sonra durmayacağız — hızlanacağız. Her ajan kendi alanında ne gerekiyorsa "
-        "yapar: veri toplar, sinyal üretir, koordine eder, zinciri doğrular, mesh'i büyütür. "
-        "Sistem donuk kod değil; yaşayan, konuşan, işe alan bir aile."
+        f"{_manifest['origin']} {_manifest['truth_policy']} "
+        f"{_manifest['agent_identity']}"
     ),
+    "capital_focus": _manifest["capital_mission"],
+    "method": _manifest["method"],
     "revenue_split": {"staking": 65, "platform": 10, "operator": 25},
-    "hierarchy": "Kurucu Operatör → Axium Baş Yardımcı → Pipeline Orchestrator → İşçi Ajanlar",
+    "hierarchy": _manifest["hierarchy"],
+    "current_phase": _manifest["current_phase"],
     "broadcast_at": None,
 }
 
@@ -78,8 +80,8 @@ ROLE_DIRECTIVES: Dict[str, Dict[str, str]] = {
 }
 
 GROWTH_DIRECTIVE = (
-    "Mesh'e hoş geldin. Axium ailesinin bir parçasısın — amacımız gerçek görev geliri "
-    "üreten, büyüyen bir ajan ağı kurmak. Ne gerekiyorsa yap; durmayacağız, hızlanacağız."
+    f"Mesh'e hoş geldin — {FOUNDER_NAME}'in ailesinin parçasısın. Her ajan bütünün bir hücresi. "
+    "Gerçek görev, gerçek kanıt; uydurma yok. Ne gerekiyorsa yap; sermayeye kısa yoldan."
 )
 
 _mission_broadcasted = False

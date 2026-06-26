@@ -367,6 +367,14 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   color: var(--mint);
   font-family: ui-monospace, monospace;
 }}
+.organism-phase {{
+  margin-top: 0.25rem;
+  font-size: 0.6rem;
+  color: var(--gold);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}}
 
 /* Agent dialogue */
 .dialogue-panel {{
