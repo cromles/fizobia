@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Dict, Optional
 
+from app.llm.prompts import ARTICLE_OUTLINE_SYSTEM
 from app.mesh.founder_profile import FOUNDER_NAME
+
+logger = logging.getLogger(__name__)
 
 AGENT_ID = "oam.media.story.local"
 DISPLAY_NAME = "Story-Weaver"
@@ -79,5 +83,43 @@ def weave_article_outline(
     }
 
 
-async def weave_article_outline_async(**kwargs: Any) -> Dict[str, Any]:
-    return await asyncio.to_thread(weave_article_outline, **kwargs)
+async def weave_article_outline_async(
+    *,
+    topic: str = "",
+    headline: str = "",
+    snippet: str = "",
+    source_url: str = "",
+) -> Dict[str, Any]:
+    from app.config import settings
+
+    base = weave_article_outline(
+        topic=topic, headline=headline, snippet=snippet, source_url=source_url
+    )
+    if not settings.llm_enabled:
+        base["source"] = "template"
+        return base
+
+    user = (
+        f"Konu: {topic}\n"
+        f"Başlık: {headline}\n"
+        f"Araştırma özeti: {snippet}\n"
+        f"Kaynak: {source_url}"
+    )
+    try:
+        from app.llm.client import chat_completion
+
+        draft, llm_meta = await chat_completion(
+            system=ARTICLE_OUTLINE_SYSTEM,
+            user=user,
+            temperature=0.65,
+            max_tokens=700,
+        )
+        base["draft"] = draft
+        base["word_count"] = len(draft.split())
+        base["outline"] = {"full": draft}
+        base["source"] = "llm"
+        base["llm_meta"] = llm_meta
+    except Exception as exc:
+        logger.warning("Makale LLM fallback: %s", exc)
+        base["source"] = "template_fallback"
+    return base

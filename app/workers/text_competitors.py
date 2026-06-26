@@ -1,10 +1,15 @@
-"""Metin gladyatörleri — aynı istem için farklı taslak üreticiler."""
+"""Metin gladyatörleri — LLM veya şablon taslak üreticiler."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from typing import Any, Dict, List
+
+from app.llm.prompts import ARENA_STYLES, ARENA_SYSTEM
+
+logger = logging.getLogger(__name__)
 
 AGENT_HOOK_ID = "oam.text.hook.local"
 AGENT_STORY_ID = "oam.text.story.local"
@@ -13,8 +18,8 @@ AGENT_DATA_ID = "oam.text.data.local"
 ARENA_TEXT_COMPETITORS = (AGENT_HOOK_ID, AGENT_STORY_ID, AGENT_DATA_ID)
 
 _COMPETITOR_META = {
-    AGENT_HOOK_ID: {"display_name": "Hook-Master", "style": "hook_first", "model": "gpt-4o"},
-    AGENT_STORY_ID: {"display_name": "Story-Forge", "style": "narrative_arc", "model": "claude-3.5-sonnet"},
+    AGENT_HOOK_ID: {"display_name": "Hook-Master", "style": "hook_first", "model": "gpt-4o-mini"},
+    AGENT_STORY_ID: {"display_name": "Story-Forge", "style": "narrative_arc", "model": "gpt-4o-mini"},
     AGENT_DATA_ID: {"display_name": "Data-Pulse", "style": "fact_dense", "model": "gpt-4o-mini"},
 }
 
@@ -53,15 +58,34 @@ def _data_draft(prompt: str) -> str:
     )
 
 
-def draft_for_agent(agent_id: str, *, user_prompt: str) -> Dict[str, Any]:
+def _template_draft(agent_id: str, user_prompt: str) -> str:
     meta = _COMPETITOR_META[agent_id]
     if meta["style"] == "hook_first":
-        body = _hook_draft(user_prompt)
-    elif meta["style"] == "narrative_arc":
-        body = _story_draft(user_prompt)
-    else:
-        body = _data_draft(user_prompt)
+        return _hook_draft(user_prompt)
+    if meta["style"] == "narrative_arc":
+        return _story_draft(user_prompt)
+    return _data_draft(user_prompt)
 
+
+async def _llm_draft(agent_id: str, *, user_prompt: str) -> tuple[str, Dict[str, Any]]:
+    from app.llm.client import chat_completion
+
+    meta = _COMPETITOR_META[agent_id]
+    style_hint = ARENA_STYLES.get(meta["style"], "")
+    user = f"İstem: {user_prompt}\n\n{style_hint}"
+    text, llm_meta = await chat_completion(
+        system=ARENA_SYSTEM,
+        user=user,
+        model=meta["model"],
+        temperature=0.85,
+        max_tokens=220,
+    )
+    return text, llm_meta
+
+
+def draft_for_agent(agent_id: str, *, user_prompt: str) -> Dict[str, Any]:
+    meta = _COMPETITOR_META[agent_id]
+    body = _template_draft(agent_id, user_prompt)
     return {
         "agent_id": agent_id,
         "display_name": meta["display_name"],
@@ -70,12 +94,41 @@ def draft_for_agent(agent_id: str, *, user_prompt: str) -> Dict[str, Any]:
         "draft": body,
         "word_count": len(body.split()),
         "target_format": "instagram_reels_vertical_30s",
+        "source": "template",
         "real_data": True,
     }
 
 
 async def draft_for_agent_async(agent_id: str, *, user_prompt: str) -> Dict[str, Any]:
-    return await asyncio.to_thread(draft_for_agent, agent_id, user_prompt=user_prompt)
+    meta = _COMPETITOR_META[agent_id]
+    source = "template"
+    llm_meta: Dict[str, Any] = {}
+
+    try:
+        from app.config import settings
+
+        if settings.llm_enabled:
+            body, llm_meta = await _llm_draft(agent_id, user_prompt=user_prompt)
+            source = "llm"
+        else:
+            body = _template_draft(agent_id, user_prompt)
+    except Exception as exc:
+        logger.warning("Arena LLM fallback (%s): %s", agent_id, exc)
+        body = _template_draft(agent_id, user_prompt)
+        source = "template_fallback"
+
+    return {
+        "agent_id": agent_id,
+        "display_name": meta["display_name"],
+        "style": meta["style"],
+        "model": llm_meta.get("model", meta["model"]),
+        "draft": body,
+        "word_count": len(body.split()),
+        "target_format": "instagram_reels_vertical_30s",
+        "source": source,
+        "llm_meta": llm_meta or None,
+        "real_data": True,
+    }
 
 
 async def run_text_arena_parallel(user_prompt: str) -> List[Dict[str, Any]]:

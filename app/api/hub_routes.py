@@ -235,6 +235,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "arena_wallets": f"{base}/hub/arena/wallets",
             "leaderboard": f"{base}/hub/leaderboard",
             "departments": f"{base}/hub/departments",
+            "llm": f"{base}/hub/llm",
             "article": f"{base}/hub/article",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
@@ -791,6 +792,14 @@ async def arena_wallets(limit: int = Query(default=30, ge=1, le=100)) -> Dict[st
     return {"wallets": list_wallets(limit=limit)}
 
 
+@router.get("/llm")
+async def hub_llm_status() -> Dict[str, Any]:
+    """LLM API durumu — anahtar olmadan şablon, anahtar ile gerçek model."""
+    from app.llm.client import llm_public_status
+
+    return llm_public_status()
+
+
 @router.get("/departments")
 async def hub_departments() -> Dict[str, Any]:
     """Dikey uzmanlık departmanları — yatırım kategorileri ve mikro ajan hücreleri."""
@@ -806,6 +815,9 @@ async def article_pipeline_discover() -> Dict[str, Any]:
     """Yazılı basın departmanı — makale mikro-ajan zinciri keşfi."""
     from app.mesh.departments import ARTICLE_PIPELINE_AGENTS, DEPARTMENT_COPYWRITING
 
+    from app.llm.client import llm_public_status
+
+    status = llm_public_status()
     return {
         "service": "synapse-article",
         "department": DEPARTMENT_COPYWRITING,
@@ -821,6 +833,11 @@ async def article_pipeline_discover() -> Dict[str, Any]:
         ],
         "agents": list(ARTICLE_PIPELINE_AGENTS),
         "tones": ["corporate", "humorous", "technical"],
+        "llm": {
+            "enabled": status["enabled"],
+            "provider": status["provider"],
+            "model": status["default_model"],
+        },
     }
 
 

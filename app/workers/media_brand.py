@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Dict
+
+from app.llm.prompts import BRAND_TONE_SYSTEM
+
+logger = logging.getLogger(__name__)
 
 AGENT_ID = "oam.media.brand.local"
 DISPLAY_NAME = "Brand-Voice"
@@ -73,5 +78,35 @@ def polish_article_tone(
     }
 
 
-async def polish_article_tone_async(**kwargs: Any) -> Dict[str, Any]:
-    return await asyncio.to_thread(polish_article_tone, **kwargs)
+async def polish_article_tone_async(
+    *,
+    draft: str = "",
+    topic: str = "",
+    tone: str = "corporate",
+) -> Dict[str, Any]:
+    from app.config import settings
+
+    base = polish_article_tone(draft=draft, topic=topic, tone=tone)
+    if not settings.llm_enabled:
+        base["source"] = "template"
+        return base
+
+    system = BRAND_TONE_SYSTEM.get(tone, BRAND_TONE_SYSTEM["corporate"])
+    user = f"Konu: {topic}\n\nDüzenlenecek taslak:\n{draft}"
+    try:
+        from app.llm.client import chat_completion
+
+        polished, llm_meta = await chat_completion(
+            system=system,
+            user=user,
+            temperature=0.6,
+            max_tokens=900,
+        )
+        base["polished_draft"] = polished
+        base["word_count"] = len(polished.split())
+        base["source"] = "llm"
+        base["llm_meta"] = llm_meta
+    except Exception as exc:
+        logger.warning("Brand-Voice LLM fallback: %s", exc)
+        base["source"] = "template_fallback"
+    return base
