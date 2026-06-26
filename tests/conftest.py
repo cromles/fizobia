@@ -7,3 +7,5 @@ import os
 # app.config yüklenmeden önce
 os.environ.setdefault("OAM_DISCOVERY_SYNC_INTERVAL", "0")
 os.environ.setdefault("OAM_HUB_LIVE_INTERVAL", "0")
+os.environ.setdefault("OAM_AUTOPILOT_INTERVAL", "0")
+os.environ.setdefault("OAM_AUTOPILOT_ENABLED", "false")

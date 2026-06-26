@@ -4,7 +4,6 @@ import multiprocessing
 import os
 import time
 
-# Gerçek entegrasyon: demo kapalı, canlı görev döngüsü açık
 os.environ.setdefault("OAM_HUB_DEMO", "false")
 os.environ.setdefault("OAM_HUB_LIVE_INTERVAL", "30")
 os.environ.setdefault("OAM_X402_ENABLED", "true")
@@ -18,6 +17,8 @@ from app.main import (
     run_mock_synthesizer,
     run_mock_transformer,
 )
+from app.mesh.ecosystem_registry import ECOSYSTEM_STACK_AGENT_IDS
+from app.mesh.founders import FOUNDER_STACK_AGENT_IDS
 
 
 def _run(proc_target, name: str) -> multiprocessing.Process:
@@ -26,40 +27,83 @@ def _run(proc_target, name: str) -> multiprocessing.Process:
     return process
 
 
-def main() -> None:
-    agent_processes = [
-        _run(run_mock_fetcher, "oam-fetcher"),
-        _run(run_mock_synthesizer, "oam-synthesizer"),
-        _run(run_mock_transformer, "oam-transformer"),
-    ]
-    for manifest in EXTENDED_MANIFESTS:
-        port = int(manifest.endpoint.rsplit(":", 1)[-1])
-        handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
-        if not handlers:
-            continue
-        agent_processes.append(
-            _run(
-                lambda m=manifest, p=port, h=handlers: run_extended_agent(m.agent_id, p, h),
-                f"oam-{manifest.agent_id}",
-            )
-        )
+def _founder_manifests():
+    ids = set(FOUNDER_STACK_AGENT_IDS)
+    return [m for m in EXTENDED_MANIFESTS if m.agent_id in ids]
 
-    print("Ajanlar başlatılıyor (4s)…")
+
+def _ecosystem_manifests():
+    ids = set(ECOSYSTEM_STACK_AGENT_IDS)
+    return [m for m in EXTENDED_MANIFESTS if m.agent_id in ids]
+
+
+def main() -> None:
+    stack_mode = os.getenv("OAM_STACK_MODE", "full").lower()
+    agent_processes: list[multiprocessing.Process] = []
+
+    if stack_mode == "ecosystem":
+        os.environ["OAM_STACK_MODE"] = "ecosystem"
+        for manifest in _ecosystem_manifests():
+            port = int(manifest.endpoint.rsplit(":", 1)[-1])
+            handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
+            if not handlers:
+                continue
+            agent_processes.append(
+                _run(
+                    lambda m=manifest, p=port, h=handlers: run_extended_agent(m.agent_id, p, h),
+                    f"oam-{manifest.agent_id}",
+                )
+            )
+        total = len(agent_processes)
+        mode_label = "BİRLEŞİK EKOSİSTEM"
+    elif stack_mode == "founder":
+        os.environ["OAM_STACK_MODE"] = "founder"
+        for manifest in _founder_manifests():
+            port = int(manifest.endpoint.rsplit(":", 1)[-1])
+            handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
+            if not handlers:
+                continue
+            agent_processes.append(
+                _run(
+                    lambda m=manifest, p=port, h=handlers: run_extended_agent(m.agent_id, p, h),
+                    f"oam-{manifest.agent_id}",
+                )
+            )
+        total = len(agent_processes)
+        mode_label = "KURUCU EKOSİSTEM"
+    else:
+        agent_processes = [
+            _run(run_mock_fetcher, "oam-fetcher"),
+            _run(run_mock_synthesizer, "oam-synthesizer"),
+            _run(run_mock_transformer, "oam-transformer"),
+        ]
+        for manifest in EXTENDED_MANIFESTS:
+            port = int(manifest.endpoint.rsplit(":", 1)[-1])
+            handlers = EXTENDED_HANDLERS.get(manifest.agent_id, {})
+            if not handlers:
+                continue
+            agent_processes.append(
+                _run(
+                    lambda m=manifest, p=port, h=handlers: run_extended_agent(m.agent_id, p, h),
+                    f"oam-{manifest.agent_id}",
+                )
+            )
+        total = 3 + len(EXTENDED_MANIFESTS)
+        mode_label = "TAM YIĞIN"
+
+    print(f"Ajanlar başlatılıyor ({mode_label}, 4s)…")
     time.sleep(4)
 
     gateway = _run(run_gateway, "oam-gateway")
     processes = agent_processes + [gateway]
 
     port = settings.gateway_port
-    total = 3 + len(EXTENDED_MANIFESTS)
-    print("OAM canlı yığın başlatıldı (GERÇEK MOD):")
-    print(f"  The Hub:     http://127.0.0.1:{port}/hub")
-    print(f"  Discovery:   http://127.0.0.1:{port}/hub/discovery")
-    print(f"  x402:        http://127.0.0.1:{port}/hub/revenue/x402")
-    print(f"  Gateway:     http://127.0.0.1:{port}")
-    print(f"  Hub Live:    http://127.0.0.1:{port}/hub/live")
-    print(f"  İşçi sayısı: {total} dijital işçi")
-    print(f"  Otomatik görev: her {settings.hub_live_interval}s")
+    print(f"OAM yığın başlatıldı — {mode_label}:")
+    print(f"  The Hub:       http://127.0.0.1:{port}/hub")
+    print(f"  Ekosistem:     http://127.0.0.1:{port}/hub/ecosystem")
+    print(f"  Birleştir:     POST /hub/ecosystem/assemble")
+    print(f"  İşe alma:      POST /hub/ecosystem/hire")
+    print(f"  İşçi sayısı:   {total}")
     try:
         while True:
             time.sleep(1)

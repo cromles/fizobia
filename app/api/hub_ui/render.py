@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-proof-share-v7"
+HUB_UI_BUILD = "2026.06.25-ecosystem-assembly-v14"
 
 
 def render_hub_dashboard(
@@ -116,7 +116,7 @@ def render_hub_dashboard(
         <button class="btn-hero ghost" onclick="document.getElementById('meshProofHero')?.scrollIntoView({{behavior:'smooth'}})">Mesh kanıtını gör</button>
       </div>
       <div class="hero-proof-stats" id="heroProofStats">
-        <span>— kanıt</span><span>— gelir</span><span>3 gerçek API</span>
+        <span>— kanıt</span><span>— gelir</span><span>4 gerçek API · ajan diyaloğu</span>
       </div>
     </section>
 
@@ -196,6 +196,32 @@ def render_hub_dashboard(
         <div class="feed-list" id="activityFeed">
           <div class="feed-item"><span class="feed-meta">Bağlanıyor…</span></div>
         </div>
+
+        <div class="family-mission-banner" id="familyMissionBanner">
+          <span class="family-mission-kicker">Yasin Karademir · Axium Ailesi</span>
+          <div class="hierarchy-chain" id="hierarchyChain">
+            <span class="h-tier founder">Yasin</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier assistant">Baş Yardımcı</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier coord">Koordinatör</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier workers">İşçiler</span>
+          </div>
+          <p class="family-mission-text" id="familyMissionText">Süper organizma — sıfır noktasından çıkıyoruz. Sermayeye kısa yol.</p>
+          <div class="autopilot-status" id="autopilotStatus">Otopilot: —</div>
+          <div class="organism-phase" id="organismPhase">Faz: Sıfır Noktasından Çıkış</div>
+        </div>
+
+        <div class="dialogue-panel" id="agentDialoguePanel">
+          <div class="dialogue-header">
+            <span class="feed-title" style="margin:0">Ajan diyaloğu</span>
+            <span class="dialogue-live-badge"><span class="pulse-dot"></span> Canlı</span>
+          </div>
+          <div class="dialogue-thread" id="dialogueThread">
+            <div class="dialogue-empty">Mesh çalışınca ajanlar birbirleriyle konuşur…</div>
+          </div>
+        </div>
       </aside>
 
       <div class="dash-main">
@@ -234,11 +260,12 @@ def render_hub_dashboard(
           <div class="mesh-proof-copy">
             <span class="mesh-proof-kicker">Skeptiklere cevap</span>
             <h3>Mesh Kanıtı</h3>
-            <p>3 gerçek dijital işçi ardışık çalışır — <strong>mock yok</strong>, simülasyon yok.</p>
+            <p>4 gerçek dijital işçi <strong>konuşarak</strong> ardışık çalışır — mock yok.</p>
             <ol class="mesh-proof-steps">
               <li>Web-Crawler → canlı haber çeker</li>
               <li>Sentiment-Radar → Fear &amp; Greed + NLP</li>
               <li>Market-Pulse → CoinGecko fiyat</li>
+              <li>On-Chain-Watcher → zincir doğrulama</li>
             </ol>
           </div>
           <div class="mesh-proof-action">

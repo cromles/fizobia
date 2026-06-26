@@ -26,6 +26,10 @@ class OAMSettings:
     turn_servers: List[str]
     hub_demo_mode: bool
     hub_live_interval: float
+    hub_autopilot_enabled: bool
+    hub_autopilot_interval: float
+    hub_autopilot_warmup: float
+    hub_autopilot_min_agents: int
     onchain_enabled: bool
     onchain_require_tx: bool
     onchain_rpc_url: str
@@ -59,6 +63,12 @@ class OAMSettings:
         turn_servers = [item.strip() for item in turn_raw.split(",") if item.strip()]
         demo_mode = os.getenv("OAM_HUB_DEMO", "false").lower() in ("1", "true", "yes")
         live_interval = float(os.getenv("OAM_HUB_LIVE_INTERVAL", "30" if not demo_mode else "0"))
+        autopilot_enabled = os.getenv("OAM_AUTOPILOT_ENABLED", "true").lower() in ("1", "true", "yes")
+        autopilot_interval = float(
+            os.getenv("OAM_AUTOPILOT_INTERVAL", "60" if not demo_mode else "0")
+        )
+        autopilot_warmup = float(os.getenv("OAM_AUTOPILOT_WARMUP", "12"))
+        autopilot_min_agents = int(os.getenv("OAM_AUTOPILOT_MIN_AGENTS", "3"))
         onchain_enabled = os.getenv("OAM_ONCHAIN_ENABLED", "false").lower() in ("1", "true", "yes")
         onchain_require_tx = os.getenv("OAM_ONCHAIN_REQUIRE_TX", "true").lower() in ("1", "true", "yes")
         cors_raw = os.getenv(
@@ -110,6 +120,10 @@ class OAMSettings:
             turn_servers=turn_servers,
             hub_demo_mode=demo_mode,
             hub_live_interval=live_interval,
+            hub_autopilot_enabled=autopilot_enabled,
+            hub_autopilot_interval=autopilot_interval,
+            hub_autopilot_warmup=autopilot_warmup,
+            hub_autopilot_min_agents=autopilot_min_agents,
             onchain_enabled=onchain_enabled,
             onchain_require_tx=onchain_require_tx,
             onchain_rpc_url=os.getenv("OAM_ONCHAIN_RPC_URL", "http://127.0.0.1:8545"),

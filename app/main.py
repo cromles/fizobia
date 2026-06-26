@@ -1,5 +1,6 @@
 """OAM örnek ajanları ve mesh gateway başlatıcıları."""
 
+import os
 from typing import Any, Dict
 
 import uvicorn
@@ -18,7 +19,11 @@ from app.discovery.factory import create_discovery
 
 
 def bootstrap_default_mesh() -> None:
+    mode = os.getenv("OAM_STACK_MODE", "full").lower()
     router_mesh.registry = create_registry()
+    if mode in ("founder", "ecosystem"):
+        # Lifespan doğru bootstrap'ı yapar — burada sadece boş registry
+        return
     discovery = create_discovery()
     bootstrap_default_agents(router_mesh, discovery)
 

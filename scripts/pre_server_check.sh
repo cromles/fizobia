@@ -19,6 +19,8 @@ h = InvestmentHub()
 html = render_hub_dashboard([], h.split, demo_mode=False)
 assert 'mesh-proof-hero' in html or 'meshProofHero' in html
 assert 'featured-worker' in html
+assert 'dialogueThread' in html
+assert 'agentDialoguePanel' in html
 print('  ✓ UI render OK')
 "
 

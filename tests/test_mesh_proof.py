@@ -52,22 +52,26 @@ async def test_mesh_proof_pipeline_mocked():
         patch("app.mesh.proof_pipeline.fetch_web_snapshot_async", AsyncMock(return_value=web)),
         patch("app.mesh.proof_pipeline.fetch_sentiment_snapshot_async", AsyncMock(return_value=sentiment)),
         patch("app.mesh.proof_pipeline.fetch_market_snapshot_async", AsyncMock(return_value=market)),
+        patch(
+            "app.mesh.proof_pipeline.fetch_chain_snapshot_async",
+            AsyncMock(return_value={"network": "base-sepolia", "block_number": 1, "real_data": True, "analysis": "ok"}),
+        ),
     ):
         result = await run_mesh_proof_pipeline(symbol="bitcoin")
     assert result["real_data"] is True
-    assert len(result["steps"]) == 3
+    assert len(result["steps"]) == 4
     assert "Bitcoin" in result["verdict"]
 
 
 def test_mesh_proof_x402_endpoint():
     import app.investment.factory as hub_factory
-    from app.agents.extended_builtins import MARKET_ANALYST, SENTIMENT_ANALYST, WEB_FETCHER
+    from app.agents.extended_builtins import MARKET_ANALYST, ON_CHAIN_WATCHER, SENTIMENT_ANALYST, WEB_FETCHER
     from app.api.main import app, router_mesh
     from app.registry.agent_registry import InMemoryAgentRegistry
 
     hub_factory._hub = None
     router_mesh.registry = InMemoryAgentRegistry()
-    for manifest in (WEB_FETCHER, SENTIMENT_ANALYST, MARKET_ANALYST):
+    for manifest in (WEB_FETCHER, SENTIMENT_ANALYST, MARKET_ANALYST, ON_CHAIN_WATCHER):
         router_mesh.upsert_agent(manifest)
 
     client = TestClient(app)
@@ -77,6 +81,7 @@ def test_mesh_proof_x402_endpoint():
         "Web-Crawler-Pro",
         "Sentiment-Radar",
         "Market-Pulse",
+        "On-Chain-Watcher",
     ]
 
     unpaid = client.post("/hub/proof/mesh/run", json={"symbol": "bitcoin"})
@@ -108,7 +113,7 @@ def test_mesh_proof_x402_endpoint():
     assert paid.status_code == 200
     body = paid.json()
     assert body["paid"] is True
-    assert len(body["revenue"]["splits"]) == 3
+    assert len(body["revenue"]["splits"]) == 4
     assert "share" in body
     assert body["share"]["proof_id"] == "proof_test123"
 

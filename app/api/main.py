@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from typing import Any, Callable, Dict, Optional
 
@@ -8,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.hub_routes import router as hub_router
-from app.agents.bootstrap import bootstrap_default_agents
+from app.agents.founder_bootstrap import bootstrap_full_agents, bootstrap_founder_agents
+from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
 from app.core.router import OpenAgentMeshRouter
 from app.discovery.factory import create_discovery, create_discovery_sync, discovery_backend_name
 from app.protocol.schemas import (
@@ -32,9 +34,11 @@ from app.planning.factory import planner_backend_name
 from app.registry.factory import create_registry, registry_backend_name
 
 from app.investment.activity_worker import HubActivityWorker
+from app.mesh.autopilot import MeshAutopilot
 
 router_mesh = OpenAgentMeshRouter()
 hub_activity_worker = HubActivityWorker(router_mesh)
+mesh_autopilot = MeshAutopilot(router_mesh)
 peer_discovery = create_discovery()
 discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
 global_mesh = get_global_mesh()
@@ -49,11 +53,19 @@ async def lifespan(_: FastAPI):
     global peer_discovery, discovery_sync
     peer_discovery = create_discovery()
     discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
-    bootstrap_default_agents(router_mesh, peer_discovery)
+    stack_mode = os.getenv("OAM_STACK_MODE", "full").lower()
+    if stack_mode == "ecosystem":
+        bootstrap_ecosystem_agents(router_mesh, peer_discovery)
+    elif stack_mode == "founder":
+        bootstrap_founder_agents(router_mesh, peer_discovery)
+    else:
+        bootstrap_full_agents(router_mesh, peer_discovery)
     discovery_sync.sync_once()
     await discovery_sync.start()
     await hub_activity_worker.start()
+    await mesh_autopilot.start()
     yield
+    await mesh_autopilot.stop()
     await hub_activity_worker.stop()
     await discovery_sync.stop()
     registry = router_mesh.registry

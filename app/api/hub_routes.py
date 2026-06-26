@@ -43,6 +43,15 @@ from app.investment.x402_gateway import (
     sentiment_radar_price_usd,
 )
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
+from app.mesh.growth_protocol import get_growth_protocol
+from app.mesh.agent_dialogue import get_dialogue_bus
+from app.mesh.mission import get_mission_status
+from app.mesh.hierarchy import (
+    announce_chain_of_command,
+    get_hierarchy_status,
+    record_founder_command,
+)
+from app.mesh.organism import get_organism_status
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
@@ -65,9 +74,46 @@ class SentimentRadarAnalyzeRequest(BaseModel):
 class MeshProofRunRequest(BaseModel):
     symbol: str = Field(default="bitcoin")
     url: str | None = Field(default=None, description="Opsiyonel RSS/HTML URL")
+    tx_hash: str | None = Field(default=None, description="Opsiyonel USDC tx doğrulama")
 
 
-HUB_BUILD = "2026.06.25-proof-share-v7"
+class EcosystemJoinRequest(BaseModel):
+    manifest: AgentManifest
+
+
+class EcosystemAssembleRequest(BaseModel):
+    symbol: str = Field(default="bitcoin")
+    url: str | None = None
+
+
+class EcosystemHireRequest(BaseModel):
+    pipeline: str = Field(
+        default="mesh_proof",
+        description="mesh_proof | ecosystem_assembly | goal",
+    )
+    goal: str = Field(default="")
+    initial_data: Dict[str, Any] = Field(default_factory=dict)
+    symbol: str = Field(default="bitcoin")
+    url: str | None = None
+    tx_hash: str | None = None
+
+
+class AgentDialogueRequest(BaseModel):
+    from_agent: str
+    to_agent: str
+    text: str
+    intent: str = Field(default="inform")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    thread_id: str | None = None
+
+
+class FounderCommandRequest(BaseModel):
+    command: str = Field(default="accelerate", description="accelerate | mesh_proof | custom")
+    message: str = Field(default="Durma, hızlan — ne gerekiyorsa yap.")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+HUB_BUILD = "2026.06.25-ecosystem-live-v15"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -167,6 +213,18 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "x402_market_pulse": f"{base}/hub/x402/market-pulse/analyze",
             "x402_sentiment_radar": f"{base}/hub/x402/sentiment-radar/analyze",
             "mesh_proof": f"{base}/hub/proof/mesh/run",
+            "ecosystem": f"{base}/hub/ecosystem",
+            "ecosystem_join": f"{base}/hub/ecosystem/join",
+            "ecosystem_hire": f"{base}/hub/ecosystem/hire",
+            "ecosystem_events": f"{base}/hub/ecosystem/events",
+            "ecosystem_dialogue": f"{base}/hub/ecosystem/dialogue",
+            "ecosystem_mission": f"{base}/hub/ecosystem/mission",
+            "hierarchy": f"{base}/hub/hierarchy",
+            "hierarchy_command": f"{base}/hub/hierarchy/command",
+            "autopilot": f"{base}/hub/autopilot",
+            "ecosystem_assemble": f"{base}/hub/ecosystem/assemble",
+            "manifest": f"{base}/hub/manifest",
+            "organism": f"{base}/hub/organism",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -551,9 +609,9 @@ async def mesh_proof_discover(symbol: str = Query(default="bitcoin")) -> Dict[st
         raise HTTPException(status_code=503, detail="x402 kapalı")
     return {
         "service": "mesh-proof",
-        "tagline": "Mock yok. Simülasyon yok. 3 gerçek API, 1 pipeline.",
-        "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse"],
-        "pipeline": "web-crawl → sentiment → market-pulse",
+        "tagline": "Mock yok. 4 gerçek API, ajan diyaloğu, 1 pipeline.",
+        "workers": ["Web-Crawler-Pro", "Sentiment-Radar", "Market-Pulse", "On-Chain-Watcher"],
+        "pipeline": "web-crawl → sentiment → market → on-chain",
         "price_usdc": mesh_proof_price_usd(),
         "symbol": symbol,
         "real_data": True,
@@ -601,7 +659,9 @@ async def mesh_proof_run(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        result = await run_mesh_proof_pipeline(symbol=request.symbol, url=request.url)
+        result = await run_mesh_proof_pipeline(
+            symbol=request.symbol, url=request.url, tx_hash=request.tx_hash
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mesh kanıt hatası: {exc}") from exc
 
@@ -674,6 +734,198 @@ async def mesh_proof_share_card(proof_id: str) -> HTMLResponse:
     )
 
 
+@router.get("/ecosystem")
+async def hub_ecosystem_status() -> Dict[str, Any]:
+    """Kurucu ajanlar + büyüyen mesh durumu."""
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        import os
+
+        from app.api.main import peer_discovery
+
+        mode = os.getenv("OAM_STACK_MODE", "full").lower()
+        if mode == "ecosystem":
+            from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
+
+            bootstrap_ecosystem_agents(_mesh(), peer_discovery)
+        elif mode == "founder":
+            from app.agents.founder_bootstrap import bootstrap_founder_agents
+
+            bootstrap_founder_agents(_mesh(), peer_discovery)
+        else:
+            from app.agents.founder_bootstrap import bootstrap_full_agents
+
+            bootstrap_full_agents(_mesh(), peer_discovery)
+        growth = get_growth_protocol()
+    return growth.ecosystem_status()
+
+
+@router.get("/ecosystem/events")
+async def hub_ecosystem_events(limit: int = Query(default=30, ge=1, le=100)) -> Dict[str, Any]:
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Ekosistem henüz başlatılmadı")
+    return {"events": growth.list_events(limit)}
+
+
+@router.post("/ecosystem/join")
+async def hub_ecosystem_join(request: EcosystemJoinRequest) -> Dict[str, Any]:
+    """Yeni ajan mesh'e katılır — operatör / büyüme."""
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Ekosistem henüz başlatılmadı")
+    return growth.join_agent(request.manifest)
+
+
+@router.post("/ecosystem/assemble")
+async def hub_ecosystem_assemble(request: EcosystemAssembleRequest) -> Dict[str, Any]:
+    """Tüm ekosistemi bir araya getir — mesh proof + medya + sermaye."""
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        from app.agents.ecosystem_bootstrap import bootstrap_ecosystem_agents
+        from app.api.main import peer_discovery
+
+        bootstrap_ecosystem_agents(_mesh(), peer_discovery)
+        growth = get_growth_protocol()
+    try:
+        return await growth.hire_agents(
+            pipeline="ecosystem_assembly",
+            symbol=request.symbol,
+            url=request.url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/ecosystem/hire")
+async def hub_ecosystem_hire(request: EcosystemHireRequest) -> Dict[str, Any]:
+    """Koordinatör ajanları işe alır."""
+    try:
+        growth = get_growth_protocol()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Ekosistem henüz başlatılmadı")
+    try:
+        return await growth.hire_agents(
+            pipeline=request.pipeline,
+            goal=request.goal,
+            initial_data=request.initial_data,
+            symbol=request.symbol,
+            url=request.url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/ecosystem/mission")
+async def hub_ecosystem_mission() -> Dict[str, Any]:
+    """Axium ailesi ortak misyonu — ajanlara yayınlanan charter."""
+    return get_mission_status()
+
+
+@router.get("/hierarchy")
+async def hub_hierarchy() -> Dict[str, Any]:
+    """Komuta zinciri — Kurucu → Baş Yardımcı → Koordinatör → İşçiler."""
+    return get_hierarchy_status(_mesh().list_agents())
+
+
+@router.post("/hierarchy/command")
+async def hub_hierarchy_command(request: FounderCommandRequest) -> Dict[str, Any]:
+    """Kurucu emri — baş yardımcı ve koordinatöre iletilir."""
+    order = record_founder_command(
+        request.command,
+        message=request.message,
+        payload=request.payload,
+    )
+    try:
+        growth = get_growth_protocol()
+        growth._emit(
+            "founder_command",
+            f"Kurucu emri: {request.message[:80]}",
+            detail=order,
+        )
+    except RuntimeError:
+        pass
+    return {"accepted": True, "order": order}
+
+
+@router.get("/manifest")
+async def hub_founder_manifest() -> Dict[str, Any]:
+    """Yasin Karademir — kurucu manifestosu ve büyüme fazları."""
+    return get_organism_status()
+
+
+@router.get("/organism")
+async def hub_organism_status() -> Dict[str, Any]:
+    """Süper organizma durumu — planlanan bölümler ve ajan kimlikleri."""
+    return get_organism_status()
+
+
+@router.get("/autopilot")
+async def hub_autopilot_status() -> Dict[str, Any]:
+    """7/24 otopilot döngü durumu."""
+    from app.api.main import mesh_autopilot
+
+    return mesh_autopilot.status()
+
+
+@router.post("/autopilot/run")
+async def hub_autopilot_run_once() -> Dict[str, Any]:
+    """Tek otopilot döngüsünü hemen çalıştır."""
+    if settings.hub_demo_mode:
+        raise HTTPException(status_code=400, detail="Demo modunda otopilot çalışmaz")
+    from app.api.main import mesh_autopilot
+
+    try:
+        return await mesh_autopilot.run_cycle()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/ecosystem/dialogue")
+async def hub_ecosystem_dialogue(
+    limit: int = Query(default=40, ge=1, le=200),
+    thread_id: str | None = None,
+    agent_id: str | None = None,
+) -> Dict[str, Any]:
+    """Ajanlar arası konuşma günlüğü."""
+    bus = get_dialogue_bus()
+    messages = bus.list_messages(limit=limit, thread_id=thread_id, agent_id=agent_id)
+    return {
+        "messages": messages,
+        "count": len(messages),
+        "thread_id": thread_id,
+    }
+
+
+@router.post("/ecosystem/dialogue")
+async def hub_ecosystem_dialogue_send(request: AgentDialogueRequest) -> Dict[str, Any]:
+    """Ajan → ajan mesaj gönder."""
+    bus = get_dialogue_bus()
+    msg = bus.say(
+        request.from_agent,
+        request.to_agent,
+        request.text,
+        intent=request.intent,
+        payload=request.payload,
+        thread_id=request.thread_id,
+    )
+    try:
+        growth = get_growth_protocol()
+        growth._emit(
+            "agent_dialogue",
+            f"{request.from_agent} → {request.to_agent}: {request.text[:80]}",
+            agent_id=request.from_agent,
+            detail=msg.to_public(),
+        )
+    except RuntimeError:
+        pass
+    return msg.to_public()
+
+
 @router.get("/stats")
 async def hub_public_stats() -> Dict[str, Any]:
     """Landing / vitrin için canlı metrikler."""
@@ -684,14 +936,24 @@ async def hub_public_stats() -> Dict[str, Any]:
     vault_stats = get_proof_vault().stats()
     from app.workers.registry import LIVE_WORKER_IDS
 
+    ecosystem = {}
+    try:
+        ecosystem = {
+            "founders": get_growth_protocol().ecosystem_status().get("founder_count", 0),
+            "growth_agents": get_growth_protocol().ecosystem_status().get("growth_count", 0),
+        }
+    except RuntimeError:
+        ecosystem = {}
+
     return {
         "hub_build": HUB_BUILD,
         "live_workers": len(LIVE_WORKER_IDS),
         "total_agents": len(cards),
+        "ecosystem": ecosystem,
         "total_revenue_usd": round(total_revenue, 4),
         "mesh_proofs": vault_stats,
         "x402_services": len(list_x402_services().get("services", [])),
-        "tagline": "Mock yok · Gerçek API · Pasif ortaklık",
+        "tagline": "Ajanlar sistemi kurar · Mock yok · Büyüyen mesh",
     }
 
 
