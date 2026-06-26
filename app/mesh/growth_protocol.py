@@ -25,6 +25,7 @@ from app.mesh.mission import (
     welcome_agent_to_family,
 )
 from app.mesh.assembly_pipeline import run_ecosystem_assembly
+from app.mesh.arena_pipeline import run_arena_pipeline
 from app.mesh.ecosystem_registry import ECOSYSTEM_ASSEMBLY_AGENTS, MEDIA_AGENT_IDS_SET
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
@@ -271,6 +272,51 @@ class MeshGrowthProtocol:
                 "dialogue_messages": assembly.get("dialogue_messages"),
                 "dialogue": dialogue.list_messages(
                     thread_id=assembly.get("dialogue_thread"), limit=25
+                ),
+                "agent_standings": standings,
+                "real_data": True,
+            }
+        elif pipeline == "arena":
+            prompt = goal or str((initial_data or {}).get("prompt", ""))
+            if len(prompt.strip()) < 8:
+                raise ValueError("Arena pipeline için prompt gerekli (goal veya initial_data.prompt)")
+            self._emit(
+                "arena_started",
+                f"Gladyatör arenası — {prompt[:60]}…",
+                agent_id=hired_by,
+                detail={"pipeline": pipeline},
+            )
+            arena = await run_arena_pipeline(
+                user_prompt=prompt,
+                background_music=bool((initial_data or {}).get("background_music", True)),
+                duration_sec=int((initial_data or {}).get("duration_sec", 30)),
+            )
+            hired = arena.get("arena", {}).get("competitors", [])
+            from app.mesh.agent_dialogue import get_dialogue_bus
+
+            dialogue = get_dialogue_bus()
+            standings = record_mesh_proof_steps(
+                [
+                    {
+                        "agent_id": arena["winner"]["agent_id"],
+                        "worker": arena["winner"].get("display_name", ""),
+                        "output": {"real_data": True},
+                    }
+                ],
+                verdict="arena_win",
+            )
+            result = {
+                "pipeline": pipeline,
+                "hired_agents": hired,
+                "job_id": arena.get("job_id"),
+                "winner": arena.get("winner"),
+                "render": arena.get("render"),
+                "audit": arena.get("arena", {}).get("audit"),
+                "total_latency_ms": arena.get("total_latency_ms"),
+                "dialogue_thread": arena.get("dialogue_thread"),
+                "dialogue_messages": arena.get("dialogue_messages"),
+                "dialogue": dialogue.list_messages(
+                    thread_id=arena.get("dialogue_thread"), limit=25
                 ),
                 "agent_standings": standings,
                 "real_data": True,

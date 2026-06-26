@@ -34,6 +34,8 @@ from app.investment.schemas import (
 from app.investment.x402 import parse_x402_payment, verify_webhook_secret
 from app.investment.x402_gateway import (
     PaymentRequiredError,
+    arena_price_usd,
+    build_arena_payment_required,
     build_mesh_proof_payment_required,
     build_payment_required,
     list_x402_services,
@@ -42,6 +44,8 @@ from app.investment.x402_gateway import (
     parse_payment_proof,
     sentiment_radar_price_usd,
 )
+from app.mesh.arena_pipeline import run_arena_pipeline
+from app.mesh.agent_wallets import credit_agent, list_ledger, list_wallets, record_loss
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
 from app.mesh.agent_dialogue import get_dialogue_bus
@@ -54,7 +58,7 @@ from app.mesh.hierarchy import (
 from app.mesh.organism import get_organism_status
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
-from app.protocol.schemas import AgentManifest
+from app.protocol.schemas import AgentCapability, AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_RADAR_AGENT_ID, fetch_sentiment_snapshot_async
 from app.workers.web_crawler import AGENT_ID as WEB_CRAWLER_AGENT_ID
@@ -77,6 +81,12 @@ class MeshProofRunRequest(BaseModel):
     tx_hash: str | None = Field(default=None, description="Opsiyonel USDC tx doğrulama")
 
 
+class UserPromptRequest(BaseModel):
+    prompt: str = Field(..., min_length=8, max_length=4000, description="Tek girdi — doğal dil istem")
+    background_music: bool = Field(default=True)
+    duration_sec: int = Field(default=30, ge=15, le=90)
+
+
 class EcosystemJoinRequest(BaseModel):
     manifest: AgentManifest
 
@@ -89,7 +99,7 @@ class EcosystemAssembleRequest(BaseModel):
 class EcosystemHireRequest(BaseModel):
     pipeline: str = Field(
         default="mesh_proof",
-        description="mesh_proof | ecosystem_assembly | goal",
+        description="mesh_proof | ecosystem_assembly | goal | arena",
     )
     goal: str = Field(default="")
     initial_data: Dict[str, Any] = Field(default_factory=dict)
@@ -213,6 +223,8 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "x402_market_pulse": f"{base}/hub/x402/market-pulse/analyze",
             "x402_sentiment_radar": f"{base}/hub/x402/sentiment-radar/analyze",
             "mesh_proof": f"{base}/hub/proof/mesh/run",
+            "user_prompt": f"{base}/hub/prompt",
+            "arena_wallets": f"{base}/hub/arena/wallets",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
@@ -600,6 +612,172 @@ def _record_mesh_proof_revenue(
             }
         )
     return recorded
+
+
+    return recorded
+
+
+def _minimal_arena_manifest(agent_id: str, display_name: str) -> AgentManifest:
+    schema = {"type": "object", "properties": {"prompt": {"type": "string"}}}
+    return AgentManifest(
+        agent_id=agent_id,
+        endpoint=f"local://{agent_id}",
+        capabilities=[
+            AgentCapability(
+                name="arena_worker",
+                description=display_name,
+                input_schema=schema,
+                output_schema=schema,
+            )
+        ],
+    )
+
+
+def _arena_payout_amounts(gross_usdc: float) -> Dict[str, float]:
+    """$0.10 referans: metin kazanan %10, render %40, kasa %50."""
+    return {
+        "text_winner": round(gross_usdc * 0.10, 6),
+        "render": round(gross_usdc * 0.40, 6),
+        "treasury": round(gross_usdc * 0.50, 6),
+    }
+
+
+def _record_arena_payouts(
+    hub: Any,
+    mesh: OpenAgentMeshRouter,
+    result: Dict[str, Any],
+    gross_usdc: float,
+    payer: str | None,
+) -> Dict[str, Any]:
+    from app.workers.media_render import AGENT_ID as RENDER_ID, DISPLAY_NAME as RENDER_NAME
+
+    job_id = result["job_id"]
+    splits = _arena_payout_amounts(gross_usdc)
+    payouts: List[Dict[str, Any]] = []
+
+    winner_id = result.get("winner", {}).get("agent_id", "")
+    winner_name = result.get("winner", {}).get("display_name", winner_id)
+    if winner_id and splits["text_winner"] > 0:
+        credit_agent(
+            winner_id,
+            splits["text_winner"],
+            reason="arena_text_winner",
+            job_id=job_id,
+            payer=payer,
+        )
+        manifest = mesh.registry.get(winner_id) or _minimal_arena_manifest(winner_id, winner_name)
+        hub.record_external_revenue(manifest, f"{job_id}_text", splits["text_winner"], payer=payer)
+        payouts.append({"agent_id": winner_id, "role": "text_winner", "usd": splits["text_winner"]})
+
+    for loser_id in result.get("arena", {}).get("mapping", {}).get("loser_agent_ids", []):
+        record_loss(loser_id, job_id=job_id)
+
+    if splits["render"] > 0:
+        credit_agent(
+            RENDER_ID,
+            splits["render"],
+            reason="arena_render",
+            job_id=job_id,
+            payer=payer,
+        )
+        render_manifest = mesh.registry.get(RENDER_ID) or _minimal_arena_manifest(RENDER_ID, RENDER_NAME)
+        hub.record_external_revenue(render_manifest, f"{job_id}_render", splits["render"], payer=payer)
+        payouts.append({"agent_id": RENDER_ID, "role": "render", "usd": splits["render"]})
+
+    return {
+        "gross_usdc": gross_usdc,
+        "splits": splits,
+        "payouts": payouts,
+        "treasury_usd": splits["treasury"],
+        "wallet_ledger": list_ledger(job_id=job_id),
+    }
+
+
+@router.get("/prompt")
+async def arena_prompt_discover() -> Dict[str, Any]:
+    """Tek girdi UX — gladyatör arena keşfi."""
+    return {
+        "service": "synapse-arena",
+        "tagline": "Tek kutu. Arka planda organizma uyanır.",
+        "method": "POST",
+        "url": f"{settings.public_base_url.rstrip('/')}/hub/prompt",
+        "price_usd": arena_price_usd(),
+        "pipeline": [
+            "paralel metin ajanları (arena)",
+            "kör denetim (bağışıklık)",
+            "kazanan → Reels render",
+            "mikro cüzdan ödemeleri",
+        ],
+        "demo_free": settings.hub_demo_mode,
+    }
+
+
+@router.post("/prompt")
+async def user_prompt_arena(
+    request: UserPromptRequest,
+    x_payment: str | None = Header(default=None, alias="X-PAYMENT"),
+    x_payment_proof: str | None = Header(default=None, alias="X-Payment-Proof"),
+) -> Any:
+    """
+    Tek kullanıcı girdisi — gladyatör arenası.
+    Demo modda ücretsiz; canlıda x402 USDC.
+    """
+    payment: Dict[str, Any] = {"amount_usdc": 0.0, "payer": None, "demo": settings.hub_demo_mode}
+
+    if not settings.hub_demo_mode:
+        if not settings.x402_enabled:
+            raise HTTPException(status_code=503, detail="x402 kapalı")
+        proof_header = x_payment_proof if settings.x402_dev_accept_proof else None
+        try:
+            payment = parse_payment_proof(
+                x_payment,
+                proof_header,
+                required_usd=arena_price_usd(),
+            )
+        except PaymentRequiredError:
+            return JSONResponse(
+                status_code=402,
+                content=build_arena_payment_required(prompt_preview=request.prompt),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        result = await run_arena_pipeline(
+            user_prompt=request.prompt,
+            background_music=request.background_music,
+            duration_sec=request.duration_sec,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Arena hatası: {exc}") from exc
+
+    hub = get_investment_hub()
+    mesh = _mesh()
+    gross = payment["amount_usdc"] if payment["amount_usdc"] > 0 else arena_price_usd()
+    revenue = _record_arena_payouts(
+        hub,
+        mesh,
+        result,
+        gross,
+        payment.get("payer"),
+    )
+
+    return {
+        "paid": payment["amount_usdc"] > 0,
+        "payment": payment,
+        "result": result,
+        "revenue": revenue,
+        "wallets": list_wallets(limit=10),
+        "message": result.get("message", "Arena tamamlandı"),
+    }
+
+
+@router.get("/arena/wallets")
+async def arena_wallets(limit: int = Query(default=30, ge=1, le=100)) -> Dict[str, Any]:
+    """Ajan mikro cüzdanları — görev başına kazanç."""
+    return {"wallets": list_wallets(limit=limit)}
 
 
 @router.get("/proof/mesh")

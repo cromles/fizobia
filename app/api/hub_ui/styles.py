@@ -522,6 +522,87 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .net-online {{ color: var(--mint) !important; }}
 .net-degraded {{ color: var(--danger) !important; text-transform: capitalize; }}
 
+.synapse-prompt {{
+  margin: 0 0 1.25rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 255, 200, 0.18);
+  background: linear-gradient(145deg, rgba(8, 20, 18, 0.92), rgba(4, 8, 12, 0.95));
+  position: relative;
+}}
+.synapse-prompt-kicker {{
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mint);
+}}
+.synapse-prompt h3 {{ margin: 0.35rem 0 0.25rem; font-size: 1.15rem; }}
+.synapse-prompt-head p {{ margin: 0 0 0.75rem; color: var(--dim); font-size: 0.82rem; }}
+.synapse-prompt-input {{
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.35);
+  color: var(--text);
+  padding: 0.85rem 1rem;
+  font: inherit;
+  line-height: 1.45;
+}}
+.synapse-prompt-actions {{ margin-top: 0.75rem; display: flex; gap: 0.5rem; }}
+.btn-prompt {{
+  position: relative;
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.4rem;
+  background: linear-gradient(90deg, #1ef2b0, #0ea5e9);
+  color: #021208;
+  font-weight: 700;
+  cursor: pointer;
+}}
+.btn-prompt.loading .btn-text {{ opacity: 0; }}
+.btn-prompt .btn-loader {{
+  display: none;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: #021208;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}}
+.btn-prompt.loading .btn-loader {{ display: block; }}
+.arena-overlay {{
+  margin-top: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(30, 242, 176, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--mint);
+  font-size: 0.85rem;
+}}
+.arena-pulse {{
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--mint);
+  animation: pulse 1.2s ease-in-out infinite;
+}}
+.arena-result {{
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+}}
+body.arena-frozen .synapse-prompt-input {{ opacity: 0.65; pointer-events: none; }}
+body.arena-frozen .dash-main > *:not(.synapse-prompt) {{ opacity: 0.45; pointer-events: none; }}
+
 .mesh-proof-hero {{
   display: grid;
   grid-template-columns: 1.4fr 0.8fr;
