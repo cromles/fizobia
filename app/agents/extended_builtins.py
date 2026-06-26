@@ -25,12 +25,48 @@ def _validator_handler(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _orchestrator_handler(data: Dict[str, Any]) -> Dict[str, Any]:
-    goal = data.get("goal", data.get("query", "pipeline"))
-    return {
-        "plan_id": f"pipe_{hash(goal) & 0xFFFF:04x}",
-        "steps": 3,
-        "status": "scheduled",
-    }
+    """Koordinatör — gateway üzerinden ajan işe alır (büyüme protokolü)."""
+    import httpx
+
+    from app.config import settings
+
+    base = f"http://127.0.0.1:{settings.gateway_port}"
+    pipeline = str(data.get("pipeline") or "mesh_proof")
+    payload: Dict[str, Any] = {"pipeline": pipeline}
+    if pipeline == "mesh_proof":
+        payload["symbol"] = data.get("symbol", "bitcoin")
+        if data.get("url"):
+            payload["url"] = data["url"]
+    else:
+        payload["goal"] = data.get("goal", data.get("query", "piyasa analizi yap"))
+        payload["initial_data"] = data.get("initial_data") or {
+            k: v for k, v in data.items() if k in ("query", "text", "url", "symbol")
+        }
+
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(f"{base}/hub/ecosystem/hire", json=payload)
+            if response.status_code >= 400:
+                return {
+                    "error": response.text[:200],
+                    "status_code": response.status_code,
+                    "real_data": False,
+                    "agent_id": "oam.orchestrator.pipeline.local",
+                }
+            body = response.json()
+            return {
+                "orchestrator": "oam.orchestrator.pipeline.local",
+                "action": "hire",
+                "real_data": True,
+                **body,
+            }
+    except Exception as exc:
+        return {
+            "error": str(exc),
+            "real_data": False,
+            "agent_id": "oam.orchestrator.pipeline.local",
+            "hint": "Gateway (8787) çalışıyor olmalı",
+        }
 
 
 def _web_fetch_handler(data: Dict[str, Any]) -> Dict[str, Any]:
