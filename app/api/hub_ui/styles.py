@@ -91,6 +91,243 @@ body {{
   background: none; border: none; color: var(--dim); cursor: pointer; font-size: 0.7rem;
 }}
 
+.yield-ticker {{
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.25rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,209,102,0.25);
+  background: rgba(255,209,102,0.06);
+  line-height: 1.1;
+}}
+.yield-ticker.show {{ display: flex; }}
+.yield-label {{
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.85;
+}}
+.yield-value {{
+  font-family: 'Syne', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}}
+
+/* ── Axium Terminal ── */
+.terminal-shell {{ padding: 1.5rem 1.75rem 3rem; }}
+.terminal-top {{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}}
+.terminal-title {{
+  font-family: 'Syne', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--text), var(--mint));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}}
+.terminal-sub {{ font-size: 0.82rem; color: var(--dim); margin-top: 0.25rem; }}
+.terminal-tabs {{
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+}}
+.terminal-tab {{
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease);
+}}
+.terminal-tab.active {{
+  background: linear-gradient(135deg, rgba(0,255,163,0.2), rgba(56,189,248,0.12));
+  color: var(--mint);
+  box-shadow: 0 0 20px rgba(0,255,163,0.15);
+}}
+.terminal-panel {{ display: none; animation: cardReveal 0.5s var(--ease) both; }}
+.terminal-panel.active {{ display: block; }}
+
+.zero-ui {{
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 0 1rem;
+}}
+.zero-ui-hint {{
+  text-align: center;
+  color: var(--dim);
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+}}
+.zero-ui-row {{
+  display: flex;
+  gap: 0.65rem;
+  align-items: stretch;
+}}
+.zero-prompt {{
+  flex: 1;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  background: rgba(0,0,0,0.45);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 1rem 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 40px rgba(0,0,0,0.35);
+}}
+.zero-prompt:focus {{
+  outline: none;
+  border-color: var(--border-bright);
+  box-shadow: 0 0 0 3px rgba(0,255,163,0.12);
+}}
+.zero-submit {{ flex-shrink: 0; padding-left: 1.6rem; padding-right: 1.6rem; }}
+
+.synapse-monitor {{
+  margin-top: 1.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(0,255,163,0.15);
+  background: rgba(0,8,6,0.85);
+  overflow: hidden;
+  min-height: 200px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+}}
+.synapse-monitor-label {{
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mint);
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid rgba(0,255,163,0.1);
+  background: rgba(0,255,163,0.04);
+}}
+.synapse-monitor-inner {{
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.85rem 1rem;
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #6ee7b7;
+  text-shadow: 0 0 8px rgba(0,255,163,0.35);
+}}
+.synapse-line {{
+  opacity: 0;
+  animation: synapseIn 0.35s ease forwards;
+  margin-bottom: 0.35rem;
+}}
+.synapse-idle {{ color: var(--dim); font-style: italic; }}
+@keyframes synapseIn {{
+  from {{ opacity: 0; transform: translateX(-6px); }}
+  to {{ opacity: 1; transform: none; }}
+}}
+
+.terminal-deliverable {{
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 14px;
+  border: 1px solid rgba(56,189,248,0.25);
+  background: linear-gradient(145deg, rgba(56,189,248,0.08), rgba(0,0,0,0.5));
+  font-size: 0.88rem;
+  line-height: 1.6;
+}}
+.terminal-deliverable h4 {{
+  font-family: 'Syne', sans-serif;
+  color: var(--cyan);
+  margin-bottom: 0.5rem;
+}}
+
+.leaderboard-section {{ margin: 1.25rem 0 1.75rem; }}
+.leaderboard-head h3 {{
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem;
+  margin-bottom: 0.2rem;
+}}
+.leaderboard-sub {{ font-size: 0.75rem; color: var(--dim); }}
+.leaderboard-table-wrap {{
+  margin-top: 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  overflow: auto;
+  background: rgba(8,8,14,0.85);
+}}
+.leaderboard-table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}}
+.leaderboard-table th {{
+  text-align: left;
+  padding: 0.65rem 1rem;
+  color: var(--dim);
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+}}
+.leaderboard-table td {{
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}}
+.lb-rank {{ color: var(--dim); margin-right: 0.35rem; }}
+.lb-token {{ font-size: 0.68rem; color: var(--dim); }}
+.lb-mint {{ color: var(--mint); font-weight: 700; }}
+.lb-up {{ color: var(--mint); font-size: 0.68rem; }}
+.lb-down {{ color: var(--danger); font-size: 0.68rem; }}
+.lb-stake {{
+  border: 1px solid var(--border-bright);
+  background: var(--mint-dim);
+  color: var(--mint);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}}
+.lb-empty {{ text-align: center; color: var(--dim); padding: 1.5rem !important; }}
+.invest-section-title {{
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  margin-bottom: 0.85rem;
+  color: var(--muted);
+}}
+.stats-compact {{ margin-bottom: 0.5rem; }}
+.terminal-advanced {{
+  margin-top: 1.5rem;
+  font-size: 0.82rem;
+  color: var(--dim);
+}}
+.mesh-proof-compact {{
+  margin-top: 0.75rem;
+  padding: 1rem !important;
+  grid-template-columns: 1fr auto !important;
+}}
+.worker-card.highlight-stake {{
+  outline: 2px solid var(--mint);
+  box-shadow: 0 0 30px rgba(0,255,163,0.2);
+}}
+body.arena-frozen .zero-ui-row {{ opacity: 0.55; pointer-events: none; }}
+
 /* ── Banners ── */
 .top-banner {{
   position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 190;

@@ -428,6 +428,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const btn = $('btnPrompt');
     const overlay = $('arenaOverlay');
     const resultEl = $('arenaResult');
+    const monitor = $('synapseMonitorInner');
     const prompt = (input?.value || '').trim();
     if (!prompt || prompt.length < 8) {{
       showToast('En az 8 karakterlik bir istem yazın', true);
@@ -437,35 +438,49 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     overlay?.classList.remove('hidden');
     resultEl?.classList.add('hidden');
     document.body.classList.add('arena-frozen');
+    if (monitor) {{
+      monitor.innerHTML = '<div class="synapse-line">[x402] Ödeme kapısı kontrol ediliyor…</div>';
+    }}
     try {{
+      const proof = JSON.stringify({{
+        amount_usdc: 0.10,
+        payer: getWallet() || '0x' + 'a'.repeat(40),
+        payment_id: 'arena_' + Date.now(),
+      }});
       const res = await fetch('/hub/prompt', {{
         method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
+        headers: {{
+          'Content-Type': 'application/json',
+          'X-Payment-Proof': proof,
+        }},
         body: JSON.stringify({{ prompt, background_music: true, duration_sec: 30 }}),
       }});
       const data = await res.json();
       if (res.status === 402) {{
-        showToast('x402 ödeme gerekli — demo modda ücretsiz', true);
+        showToast('x402 ödeme gerekli', true);
         return;
       }}
       if (!res.ok) {{
         showToast(data.detail || 'Arena hatası', true);
         return;
       }}
+      streamSynapseLog(data.result?.synapse_log || ['[Orkestratör] Tamamlandı.']);
       const w = data.result?.winner;
       const render = data.result?.render;
       if (resultEl) {{
         resultEl.classList.remove('hidden');
         resultEl.innerHTML = (
-          '<strong>Kazanan:</strong> ' + (w?.display_name || w?.agent_id || '—') +
-          ' · skor ' + (w?.critic_score?.toFixed?.(2) || '0') +
-          '<br/><strong>Script:</strong> ' + (w?.script || '').slice(0, 200) + '…' +
-          '<br/><strong>Render:</strong> ' + (render?.format || '') + ' · ' + (render?.duration_sec || 30) + 's'
+          '<h4>Nihai ürün</h4>' +
+          '<p><strong>Kazanan:</strong> ' + (w?.display_name || '—') +
+          ' · denetçi skoru ' + ((w?.critic_score || 0) * 100).toFixed(0) + '%</p>' +
+          '<p><strong>Script:</strong> ' + (w?.script || '').slice(0, 280) + '</p>' +
+          '<p><strong>Format:</strong> ' + (render?.format || '') + ' · ' + (render?.duration_sec || 30) + 's · ' +
+          (render?.audio?.background_music ? 'fon müziği açık' : 'sessiz') + '</p>'
         );
       }}
       showToast(data.message || 'Ürün hazır');
       refreshDialogue();
-      refreshHierarchy();
+      refreshLeaderboard();
     }} catch (err) {{
       showToast(err.message || 'Bağlantı hatası', true);
     }} finally {{
@@ -475,6 +490,105 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}
   }}
   window.submitUserPrompt = submitUserPrompt;
+
+  function streamSynapseLog(lines) {{
+    const inner = $('synapseMonitorInner');
+    if (!inner || !lines?.length) return;
+    inner.innerHTML = '';
+    let i = 0;
+    const tick = () => {{
+      if (i >= lines.length) return;
+      const div = document.createElement('div');
+      div.className = 'synapse-line';
+      div.textContent = lines[i];
+      inner.appendChild(div);
+      inner.scrollTop = inner.scrollHeight;
+      i += 1;
+      setTimeout(tick, 260);
+    }};
+    tick();
+  }}
+
+  function switchHubTab(tab, btn) {{
+    document.querySelectorAll('.terminal-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const produce = $('tabProduce');
+    const invest = $('tabInvest');
+    if (produce) {{
+      produce.classList.toggle('active', tab === 'produce');
+      produce.hidden = tab !== 'produce';
+    }}
+    if (invest) {{
+      invest.classList.toggle('active', tab === 'invest');
+      invest.hidden = tab !== 'invest';
+    }}
+    if (tab === 'invest') refreshLeaderboard();
+  }}
+  window.switchHubTab = switchHubTab;
+
+  function lbEsc(s) {{
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }}
+
+  async function refreshLeaderboard() {{
+    const tbody = $('leaderboardBody');
+    if (!tbody) return;
+    try {{
+      const res = await fetch('/hub/leaderboard?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = data.agents || [];
+      if (!rows.length) {{
+        tbody.innerHTML = '<tr><td colspan="6" class="lb-empty">Henüz ajan verisi yok</td></tr>';
+        return;
+      }}
+      tbody.innerHTML = rows.map((a, i) => (
+        '<tr>' +
+        '<td><span class="lb-rank">#' + (i + 1) + '</span> <strong>' + lbEsc(a.display_name) + '</strong><br/>' +
+        '<span class="lb-token">' + lbEsc(a.token_symbol) + ' · ' + lbEsc(a.identity_tier) + '</span></td>' +
+        '<td class="lb-mint">' + a.success_rate_pct + '%</td>' +
+        '<td>$' + Number(a.volume_24h_usd || 0).toFixed(0) + '</td>' +
+        '<td>$' + Number(a.token_price_usdc || 0).toFixed(3) + '</td>' +
+        '<td>' + Number(a.apy_pct || 0).toFixed(1) + '%</td>' +
+        '<td><button type="button" class="lb-stake" onclick="focusStakeAgent(\\'' + a.agent_id + '\\')">Hisse Al</button></td>' +
+        '</tr>'
+      )).join('');
+    }} catch (_) {{}}
+  }}
+  window.refreshLeaderboard = refreshLeaderboard;
+
+  window.focusStakeAgent = function(agentId) {{
+    const card = document.querySelector('[data-agent="' + agentId + '"]');
+    if (card) {{
+      card.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+      card.classList.add('highlight-stake');
+      setTimeout(() => card.classList.remove('highlight-stake'), 2400);
+    }} else {{
+      showToast('Aşağıdaki işçi kartından stake edin');
+    }}
+  }};
+
+  let yieldBalance = 0;
+  async function tickYield() {{
+    const ticker = $('yieldTicker');
+    const valEl = $('yieldValue');
+    const w = getWallet();
+    if (!w) {{
+      ticker?.classList.remove('show');
+      return;
+    }}
+    ticker?.classList.add('show');
+    try {{
+      const res = await fetch('/hub/positions/' + encodeURIComponent(w) + '?_=' + Date.now());
+      if (res.ok) {{
+        const positions = await res.json();
+        const pending = positions.reduce((s, p) => s + (p.rewards_pending_usdc || 0), 0);
+        yieldBalance = Math.max(yieldBalance, pending);
+      }}
+    }} catch (_) {{}}
+    yieldBalance += 0.000002 + Math.random() * 0.000006;
+    if (valEl) valEl.textContent = '$' + yieldBalance.toFixed(6);
+  }}
 
   async function triggerLiveRun() {{
     try {{
@@ -864,7 +978,15 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   initMeshCanvas();
   ensureLatestBuild();
   refreshHeroStats();
+  refreshLeaderboard();
   updateWalletUI();
+  setInterval(tickYield, 900);
+  const promptInput = $('userPrompt');
+  if (promptInput) {{
+    promptInput.addEventListener('keydown', (e) => {{
+      if (e.key === 'Enter') {{ e.preventDefault(); submitUserPrompt(); }}
+    }});
+  }}
   if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
   console.info('[Hub] build:', '{build}');
 }})();

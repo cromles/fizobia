@@ -91,3 +91,21 @@ def test_hub_prompt_discover():
     res = client.get("/hub/prompt")
     assert res.status_code == 200
     assert res.json()["service"] == "synapse-arena"
+
+
+def test_hub_leaderboard_endpoint():
+    client = TestClient(app)
+    res = client.get("/hub/leaderboard")
+    assert res.status_code == 200
+    body = res.json()
+    assert "agents" in body
+    assert "total_tvl_usd" in body
+
+
+@pytest.mark.asyncio
+async def test_arena_returns_synapse_log():
+    _reset()
+    result = await run_arena_pipeline(
+        user_prompt="Teknoloji haberleri için 30 saniyelik dikey Reels metni üret.",
+    )
+    assert len(result.get("synapse_log", [])) >= 3
