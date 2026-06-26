@@ -6,15 +6,14 @@ from typing import Dict, List, Optional
 from app.config import settings
 from app.api.hub_ui.cards import render_featured_worker_card, render_worker_card
 from app.api.hub_ui.helpers import esc
-from app.mesh.departments import primary_department
+from app.mesh.departments import DEPARTMENTS
 from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
-from app.mesh.departments import DEPARTMENTS
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-rich-invest-v21"
+HUB_UI_BUILD = "2026.06.26-simple-cards-v22"
 
 
 def render_hub_dashboard(
@@ -33,54 +32,25 @@ def render_hub_dashboard(
 
     featured_cards = [c for c in cards if c.profile.agent_id in LIVE_WORKER_IDS]
     other_cards = [c for c in cards if c.profile.agent_id not in LIVE_WORKER_IDS]
+    pool_count = len(cards)
 
-    featured_html = "".join(
-        render_featured_worker_card(
-            card,
-            manifests.get(card.profile.agent_id),
-            LIVE_WORKERS[card.profile.agent_id],
-        )
-        for card in featured_cards
-        if card.profile.agent_id in LIVE_WORKERS
-    )
-
-    pool_count = len(other_cards)
-
-    dept_groups_html = ""
+    agents_html_parts: list[str] = []
     idx = 0
-    for spec in DEPARTMENTS.values():
-        dept_cards = [
-            c for c in other_cards if primary_department(c.profile.agent_id) == spec.code
-        ]
-        if not dept_cards:
-            continue
-        cards_html = "".join(
-            render_worker_card(c, idx + i, manifests.get(c.profile.agent_id), compact=False)
-            for i, c in enumerate(dept_cards)
+    for card in featured_cards:
+        if card.profile.agent_id in LIVE_WORKERS:
+            agents_html_parts.append(
+                render_featured_worker_card(
+                    card,
+                    manifests.get(card.profile.agent_id),
+                    LIVE_WORKERS[card.profile.agent_id],
+                )
+            )
+            idx += 1
+    for i, card in enumerate(other_cards):
+        agents_html_parts.append(
+            render_worker_card(card, idx + i, manifests.get(card.profile.agent_id))
         )
-        idx += len(dept_cards)
-        dept_groups_html += f"""
-<section class="dept-agent-group" data-dept="{esc(spec.code)}">
-  <header class="dept-group-head">
-    <div>
-      <h4>{esc(spec.label_tr)}</h4>
-      <p>{esc(spec.description)}</p>
-    </div>
-    <span class="dept-invest-hint">{esc(spec.invest_hint)}</span>
-  </header>
-  <div class="workers-grid dept-grid">{cards_html}</div>
-</section>"""
-
-    dept_insights_html = "".join(
-        f"""<article class="dept-insight-card" data-dept="{esc(spec.code)}">
-  <span class="dept-insight-kicker">{esc(spec.label_short)}</span>
-  <h4>{esc(spec.label_tr)}</h4>
-  <p>{esc(spec.description)}</p>
-  <span class="dept-insight-hint">{esc(spec.invest_hint)}</span>
-  <span class="dept-insight-count">{len(spec.agent_ids)} mikro işçi</span>
-</article>"""
-        for spec in DEPARTMENTS.values()
-    )
+    agents_html = "".join(agents_html_parts)
 
     onchain = onchain or {}
     chain_name = esc(str(onchain.get("chain_name", "Base Sepolia")))
@@ -316,85 +286,60 @@ def render_hub_dashboard(
         </div>
 
         <div id="tabInvest" class="terminal-panel" role="tabpanel" hidden>
-          <section class="invest-hero">
-            <div class="invest-hero-copy">
-              <span class="invest-kicker">Pasif ortaklık · {agent_count} otonom ajan</span>
-              <h3>Dijital işçilere ortak ol — mesh senin adına çalışsın</h3>
-              <p>
-                Her ajan kendi staking havuzuna, token ekonomisine ve görev gelirine sahip.
-                USDC stake ettiğinde elektrik, API ve compute maliyetini karşılarsın;
-                görev gelirinin <strong>%{staking_pct:.0f}'i</strong> havuza akar.
-              </p>
-            </div>
-            <div class="invest-hero-split">
-              <div class="split-bar invest-split-bar">
-                <div class="split-seg seg-stake"></div>
-                <div class="split-seg seg-platform"></div>
-                <div class="split-seg seg-operator"></div>
-              </div>
-              <div class="split-legend invest-split-legend">
-                <span><strong>%{staking_pct:.0f}</strong> Staking (sana)</span>
-                <span><strong>%{platform_pct:.0f}</strong> Platform</span>
-                <span><strong>%{operator_pct:.0f}</strong> Operatör</span>
-              </div>
-            </div>
+          <section class="invest-intro">
+            <h3>İşçi seç, USDC ile ortak ol</h3>
+            <p>Gelirin <strong>%{staking_pct:.0f}'i</strong> stake edenlere gider. Sen çalıştırmazsın — mesh 7/24 çalışır.</p>
           </section>
-
-          <div class="onchain-strip" id="onchainStrip">
-            <span class="onchain-dot"></span>
-            <span id="onchainStatusText">{onchain_status}</span>
-            <span class="onchain-chain" id="onchainChainLabel">{chain_name} · 84532</span>
-          </div>
 
           <section class="portfolio-strip" id="portfolioStrip">
-            <div class="portfolio-empty">Cüzdan bağlayın — pozisyonlarınız ve bekleyen ödüller burada görünür</div>
+            <div class="portfolio-empty">Cüzdan bağlayınca pozisyonların burada görünür</div>
           </section>
 
-          <div class="stats-grid stats-compact">
+          <div class="stats-grid stats-compact stats-invest">
             <div class="stat" style="--i:0"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
             <div class="stat" style="--i:1"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
-            <div class="stat" style="--i:2"><span class="stat-label">Aktif</span><span class="stat-value mint" id="statAgents">0 / {agent_count}</span></div>
-            <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
+            <div class="stat" style="--i:2"><span class="stat-label">Ajan</span><span class="stat-value mint" id="statAgents">{agent_count}</span></div>
           </div>
 
-          <section class="dept-insights">
-            <h3 class="invest-section-title">Departmanlar — mikro işçi hücreleri</h3>
-            <div class="dept-insights-grid">{dept_insights_html}</div>
-          </section>
-
           <div class="dept-filter-bar">
-            <span class="dept-filter-label">Filtre</span>
             <div class="filter-tabs" id="deptFilterTabs">
               <button type="button" class="filter-tab active" data-dept="all" onclick="filterByDepartment('all', this)">Tümü</button>
               {dept_tabs}
             </div>
+            <div class="color-legend" aria-hidden="true">
+              <span class="legend-item legend-media">Video</span>
+              <span class="legend-item legend-copy">Makale</span>
+              <span class="legend-item legend-tech">Teknik</span>
+            </div>
           </div>
 
-          <section class="leaderboard-section">
-            <div class="leaderboard-head">
-              <h3>Gladyatör Liderlik Tablosu</h3>
-              <span class="leaderboard-sub" id="leaderboardSub">Otonom ajanlar · performans, TVL ve tier</span>
+          <div class="invest-workers">
+            <div class="workers-grid agents-grid" id="workersGrid">
+              {agents_html or '<p class="invest-empty">Henüz ajan yok.</p>'}
             </div>
-            <div class="leaderboard-table-wrap">
-              <table class="leaderboard-table" id="leaderboardTable">
-                <thead>
-                  <tr>
-                    <th>Ajan</th>
-                    <th>Departman</th>
-                    <th>Tier</th>
-                    <th>Başarı</th>
-                    <th>24s Hacim</th>
-                    <th>TVL</th>
-                    <th>APY</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                  <tr><td colspan="8" class="lb-empty">Yükleniyor…</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          </div>
+
+          <details class="invest-extra">
+            <summary>Sıralama tablosu</summary>
+            <section class="leaderboard-section">
+              <div class="leaderboard-table-wrap">
+                <table class="leaderboard-table" id="leaderboardTable">
+                  <thead>
+                    <tr>
+                      <th>Ajan</th>
+                      <th>Departman</th>
+                      <th>APY</th>
+                      <th>TVL</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="leaderboardBody">
+                    <tr><td colspan="5" class="lb-empty">Yükleniyor…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </details>
 
           <div class="setup-alert hidden" id="setupAlert">
             <div class="setup-alert-copy">
@@ -404,22 +349,8 @@ def render_hub_dashboard(
             <code class="setup-cmd">python3 -m app.run_stack</code>
           </div>
 
-          <div class="invest-workers">
-            <h3 class="invest-section-title">Öne çıkan canlı işçiler — x402 & gerçek API</h3>
-            <p class="invest-section-desc">Market-Pulse ve Sentiment-Radar gibi canlı ajanlar gerçek veri kaynaklarına bağlıdır; stake ile pasif ortaklık kurabilirsiniz.</p>
-            <div class="featured-slot featured-grid" id="featuredSlot">
-              {featured_html}
-            </div>
-
-            <h3 class="invest-section-title invest-section-spaced">Departman havuzları — {pool_count} ajan</h3>
-            <p class="invest-section-desc">Her departman kendi uzmanlık alanında çalışan mikro işçi hücrelerinden oluşur. Kartları genişleterek yatırım tezini, kullanım senaryolarını ve yetenekleri okuyun.</p>
-            <div class="dept-agent-groups" id="deptAgentGroups">
-              {dept_groups_html or '<p style="color:var(--dim)">Havuz boş.</p>'}
-            </div>
-          </div>
-
           <details class="terminal-advanced">
-            <summary>Gelişmiş — Mesh Kanıtı</summary>
+            <summary>Gelişmiş — Mesh Kanıtı · {onchain_status}</summary>
             <div class="mesh-proof-hero mesh-proof-compact" id="meshProofHero">
               <div class="mesh-proof-copy">
                 <p>4 gerçek işçi konuşarak çalışır — x402 ${settings.x402_mesh_proof_price_usd:.2f}</p>

@@ -412,30 +412,12 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   let activeDepartment = 'all';
 
   function applyDepartmentFilter(code) {{
-    const cards = document.querySelectorAll('.worker-card[data-department], .featured-worker[data-department]');
+    const cards = document.querySelectorAll('.worker-card[data-department]');
     cards.forEach(card => {{
       const dept = card.getAttribute('data-department') || '';
       const show = code === 'all' || dept === code;
       card.style.display = show ? '' : 'none';
-      card.classList.toggle('dept-hidden', !show);
     }});
-    document.querySelectorAll('.dept-agent-group').forEach(group => {{
-      const dept = group.getAttribute('data-dept') || '';
-      const show = code === 'all' || dept === code;
-      group.style.display = show ? '' : 'none';
-    }});
-    document.querySelectorAll('.dept-insight-card').forEach(card => {{
-      const dept = card.getAttribute('data-dept') || '';
-      const show = code === 'all' || dept === code;
-      card.classList.toggle('dept-hidden', !show);
-    }});
-    const featured = $('featuredSlot');
-    if (featured && code !== 'all') {{
-      const visibleFeatured = featured.querySelectorAll('[data-department]:not(.dept-hidden)');
-      featured.style.display = visibleFeatured.length ? '' : 'none';
-    }} else if (featured) {{
-      featured.style.display = '';
-    }}
   }}
 
   window.filterByDepartment = function(code, btn) {{
@@ -641,27 +623,18 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         sub.textContent = rows.length + ' otonom ajan · toplam TVL $' + Number(data.total_tvl_usd || 0).toFixed(0);
       }}
       if (!rows.length) {{
-        tbody.innerHTML = '<tr><td colspan="8" class="lb-empty">Bu departmanda henüz ajan verisi yok</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="lb-empty">Veri yok</td></tr>';
         return;
       }}
-      tbody.innerHTML = rows.map((a, i) => {{
-        const tier = TIER_LABELS[a.identity_tier] || a.identity_tier || '—';
-        const tierClass = 'tier-' + (a.identity_tier || 'probation');
-        return (
-        '<tr class="lb-row" data-agent="' + lbEsc(a.agent_id) + '">' +
-        '<td class="lb-agent"><span class="lb-rank">#' + (i + 1) + '</span> ' +
-        '<button type="button" class="lb-agent-link" onclick="openAgentDetail(\\'' + a.agent_id + '\\')">' + lbEsc(a.display_name) + '</button>' +
-        '<br/><span class="lb-token">' + lbEsc(a.token_symbol) + '</span></td>' +
-        '<td><span class="lb-dept">' + lbEsc(a.department_label || a.department_code || '—') + '</span></td>' +
-        '<td><span class="lb-tier ' + tierClass + '">' + lbEsc(tier) + '</span></td>' +
-        '<td class="lb-mint">' + a.success_rate_pct + '%</td>' +
-        '<td>$' + Number(a.volume_24h_usd || 0).toFixed(0) + '</td>' +
-        '<td>$' + Number(a.tvl_usd || 0).toFixed(0) + '</td>' +
+      tbody.innerHTML = rows.map((a, i) => (
+        '<tr class="lb-row">' +
+        '<td><strong>' + lbEsc(a.display_name) + '</strong><br/><span class="lb-token">' + lbEsc(a.token_symbol) + '</span></td>' +
+        '<td><span class="lb-dept">' + lbEsc(a.department_label || '—') + '</span></td>' +
         '<td class="lb-apy">' + Number(a.apy_pct || 0).toFixed(1) + '%</td>' +
-        '<td><button type="button" class="lb-stake" onclick="focusStakeAgent(\\'' + a.agent_id + '\\')">Hisse Al</button></td>' +
+        '<td>$' + Number(a.tvl_usd || 0).toFixed(0) + '</td>' +
+        '<td><button type="button" class="lb-stake" onclick="focusStakeAgent(\\'' + a.agent_id + '\\')">Seç</button></td>' +
         '</tr>'
-      );
-      }}).join('');
+      )).join('');
     }} catch (_) {{}}
   }}
   window.refreshLeaderboard = refreshLeaderboard;
@@ -777,24 +750,6 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}
   }}
   window.refreshPortfolio = refreshPortfolio;
-
-  function updateOnchainStrip() {{
-    const text = $('onchainStatusText');
-    const strip = $('onchainStrip');
-    if (!text || !ONCHAIN_CONFIG) return;
-    if (ONCHAIN_CONFIG.enabled && ONCHAIN_CONFIG.connected) {{
-      const mode = ONCHAIN_CONFIG.ready && ONCHAIN_CONFIG.require_tx ? 'stake aktif' : 'RPC modu';
-      text.textContent = '● ' + (ONCHAIN_CONFIG.chain_name || 'Base Sepolia') + ' bağlı · ' + mode;
-      strip?.classList.add('connected');
-    }} else {{
-      text.textContent = '○ Zincir yapılandırılıyor';
-      strip?.classList.remove('connected');
-    }}
-    const chainLabel = $('onchainChainLabel');
-    if (chainLabel && ONCHAIN_CONFIG.chain_id) {{
-      chainLabel.textContent = (ONCHAIN_CONFIG.chain_name || '') + ' · ' + ONCHAIN_CONFIG.chain_id;
-    }}
-  }}
 
   let yieldBalance = 0;
   async function tickYield() {{
@@ -956,7 +911,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.stake = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn.closest('.worker-card') || btn.closest('.featured-worker');
+    const card = btn.closest('.worker-card');
     const amount = parseFloat(card?.querySelector('.amount')?.value || '0');
     if (!w) {{ openWalletModal(); return; }}
     if (!amount) {{ showToast('Miktar girin', true); return; }}
@@ -990,7 +945,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.claim = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn?.closest?.('.worker-card') || btn?.closest?.('.featured-worker');
+    const card = btn?.closest?.('.worker-card');
     if (!w) {{ openWalletModal(); return; }}
     try {{
       let txHash = null;
@@ -1012,7 +967,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.unstake = async function(agentId, btn) {{
     const w = getWallet();
-    const card = btn.closest('.worker-card') || btn.closest('.featured-worker');
+    const card = btn.closest('.worker-card');
     const shares = parseFloat(card?.querySelector('.amount')?.value || '0');
     if (!w) {{ openWalletModal(); return; }}
     if (!shares) {{ showToast('Çekilecek miktar girin', true); return; }}
@@ -1157,7 +1112,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       const a = data.analysis || {{}};
       showToast('x402 OK · ' + (a.analysis || a.sentiment || a.symbol || 'tamamlandı'));
-      const card = btn.closest('.featured-worker') || btn.closest('.worker-card');
+      const card = btn.closest('.worker-card');
       const taskEl = card?.querySelector('.task-text');
       if (taskEl) taskEl.textContent = 'x402 · ' + (a.analysis || a.sentiment || 'tamamlandı');
       refreshLive();
@@ -1208,7 +1163,6 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   refreshHeroStats();
   refreshLeaderboard();
   refreshPortfolio();
-  updateOnchainStrip();
   updateWalletUI();
   setInterval(tickYield, 900);
   const promptInput = $('userPrompt');

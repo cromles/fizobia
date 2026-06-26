@@ -87,3 +87,11 @@ def use_cases_list(use_cases: List[str], *, limit: int = 6) -> str:
     items = use_cases[:limit]
     lis = "".join(f"<li>{esc(u)}</li>" for u in items)
     return f'<ul class="wc-use-cases">{lis}</ul>'
+
+
+def card_tone_class(dept_code: str) -> str:
+    """Departmana göre hafif kart rengi."""
+    safe = dept_code.replace("-", "_")
+    if safe in ("media_video", "copywriting", "technical"):
+        return f"tone-{safe}"
+    return "tone-default"

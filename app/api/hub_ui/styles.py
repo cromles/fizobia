@@ -276,7 +276,7 @@ body {{
 }}
 .leaderboard-sub {{ font-size: 0.75rem; color: var(--dim); }}
 .dept-filter-bar {{
-  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
   margin: 0.75rem 0 1rem;
 }}
 .dept-filter-label {{
@@ -1511,6 +1511,125 @@ body.arena-frozen .dash-main > *:not(.synapse-prompt) {{ opacity: 0.45; pointer-
 body.embed-mode #landing {{ display: none !important; }}
 body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 
+/* ── Sade yatırım & renkli kartlar ── */
+.invest-intro {{
+  margin-bottom: 1.25rem; padding: 1rem 1.25rem; border-radius: 16px;
+  background: rgba(0,255,163,0.05); border: 1px solid var(--border);
+}}
+.invest-intro h3 {{
+  font-family: 'Syne', sans-serif; font-size: 1.15rem; margin-bottom: 0.35rem;
+}}
+.invest-intro p {{ font-size: 0.85rem; color: var(--muted); line-height: 1.55; }}
+.invest-intro strong {{ color: var(--mint); }}
+.stats-invest {{ grid-template-columns: repeat(3, 1fr); margin-bottom: 1rem; }}
+.invest-empty {{ color: var(--dim); text-align: center; padding: 2rem; }}
+
+.color-legend {{
+  display: flex; gap: 0.65rem; flex-wrap: wrap; margin-left: auto;
+}}
+.legend-item {{
+  font-size: 0.68rem; color: var(--dim); padding: 0.2rem 0.55rem;
+  border-radius: 6px; border: 1px solid var(--border);
+}}
+.legend-media {{ border-color: rgba(168,85,247,0.35); color: #c4b5fd; background: rgba(168,85,247,0.08); }}
+.legend-copy {{ border-color: rgba(56,189,248,0.35); color: #7dd3fc; background: rgba(56,189,248,0.08); }}
+.legend-tech {{ border-color: rgba(255,209,102,0.35); color: #fde68a; background: rgba(255,209,102,0.08); }}
+
+.agents-grid {{
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.85rem;
+}}
+
+.worker-card.tone-media_video {{ --card-r: 168; --card-g: 85; --card-b: 247; }}
+.worker-card.tone-copywriting {{ --card-r: 56; --card-g: 189; --card-b: 248; }}
+.worker-card.tone-technical {{ --card-r: 255; --card-g: 209; --card-b: 102; }}
+.worker-card.tone-default {{ --card-r: 100; --card-g: 116; --card-b: 139; }}
+.worker-card[class*="tone-"] {{
+  background: linear-gradient(
+    155deg,
+    rgba(var(--card-r), var(--card-g), var(--card-b), 0.11),
+    rgba(14, 14, 22, 0.88) 55%
+  );
+  border-color: rgba(var(--card-r), var(--card-g), var(--card-b), 0.22);
+  border-left: 3px solid rgba(var(--card-r), var(--card-g), var(--card-b), 0.5);
+}}
+.worker-card.wc-variant-1 {{ filter: brightness(1.04); }}
+.worker-card.wc-variant-2 {{ border-left-color: rgba(var(--card-r), var(--card-g), var(--card-b), 0.32); }}
+.worker-card.wc-variant-3 {{ box-shadow: inset 0 1px 0 rgba(var(--card-r), var(--card-g), var(--card-b), 0.1); }}
+.worker-card.is-live-worker {{
+  box-shadow: 0 0 0 1px rgba(0,255,163,0.2), 0 8px 32px rgba(0,0,0,0.25);
+}}
+
+.wc-head-simple {{
+  display: flex; gap: 0.65rem; align-items: flex-start; margin-bottom: 0.65rem;
+}}
+.wc-title-simple {{ flex: 1; min-width: 0; }}
+.wc-title-simple h3 {{
+  font-family: 'Syne', sans-serif; font-size: 0.98rem; font-weight: 700;
+  margin-bottom: 0.25rem; line-height: 1.25;
+}}
+.wc-meta-row {{ display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }}
+.wc-apy-badge {{
+  flex-shrink: 0; font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 800;
+  color: var(--mint); padding: 0.25rem 0.5rem; border-radius: 8px;
+  background: var(--mint-dim); border: 1px solid var(--border-bright);
+}}
+.wc-live-pill {{
+  display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.62rem;
+  font-weight: 700; color: var(--mint); text-transform: uppercase; letter-spacing: 0.06em;
+}}
+.dept-tag.dept-media_video {{ color: #c4b5fd; background: rgba(168,85,247,0.15); }}
+.dept-tag.dept-copywriting {{ color: #7dd3fc; background: rgba(56,189,248,0.15); }}
+.dept-tag.dept-technical {{ color: #fde68a; background: rgba(255,209,102,0.15); }}
+
+.wc-mission-simple {{
+  font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.65rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}}
+.wc-stats-simple {{
+  display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+  font-size: 0.72rem; color: var(--dim); margin-bottom: 0.75rem;
+}}
+.wc-stats-simple strong {{ color: var(--text); }}
+.wc-status-inline {{ display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; }}
+
+.wc-stake-simple {{
+  display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: stretch;
+  margin-bottom: 0.5rem;
+}}
+.wc-stake-simple .stake-input-wrap {{ margin-bottom: 0; }}
+.wc-stake-simple .btn-stake {{ padding: 0.65rem 1rem; }}
+
+.wc-actions-row {{
+  display: flex; gap: 0.35rem; flex-wrap: wrap;
+}}
+.btn-claim-sm, .btn-unstake-sm, .btn-detail-sm {{
+  padding: 0.35rem 0.6rem; border-radius: 8px; font-size: 0.68rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03); color: var(--muted); transition: all 0.2s;
+}}
+.btn-claim-sm:hover {{ border-color: var(--gold); color: var(--gold); }}
+.btn-unstake-sm:hover {{ border-color: var(--danger); color: var(--danger); }}
+.btn-detail-sm:hover {{ border-color: var(--cyan); color: var(--cyan); }}
+.btn-x402-sm {{
+  padding: 0.35rem 0.6rem !important; width: auto !important; margin: 0 !important;
+  font-size: 0.68rem !important; border-style: dashed !important;
+}}
+
+.invest-extra {{
+  margin-top: 1.5rem; font-size: 0.82rem; color: var(--dim);
+}}
+.invest-extra summary {{ cursor: pointer; padding: 0.5rem 0; font-weight: 600; }}
+.invest-extra[open] .leaderboard-section {{ margin-top: 0.75rem; }}
+
+.worker-card .wc-shine, .worker-card .wc-orbit {{ display: none; }}
+.worker-card {{ padding: 1rem; }}
+.worker-card:hover {{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  border-color: rgba(var(--card-r), var(--card-g), var(--card-b), 0.4);
+}}
+
 /* Keyframes */
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(24px); }} to {{ opacity: 1; transform: none; }} }}
 @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
@@ -1527,6 +1646,10 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 @keyframes modalIn {{ from {{ transform: scale(0.92) translateY(10px); opacity: 0; }} to {{ transform: none; opacity: 1; }} }}
 
 @media (max-width: 900px) {{
+  .stats-invest {{ grid-template-columns: 1fr; }}
+  .dept-filter-bar {{ flex-direction: column; align-items: stretch; }}
+  .color-legend {{ margin-left: 0; }}
+  .agents-grid {{ grid-template-columns: 1fr; }}
   .invest-hero {{ grid-template-columns: 1fr; }}
   .portfolio-summary {{ grid-template-columns: 1fr; }}
   .featured-body {{ grid-template-columns: 1fr; }}
