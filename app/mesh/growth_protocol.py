@@ -16,6 +16,11 @@ from app.mesh.founders import (
     founder_tier,
     is_founder,
 )
+from app.mesh.mission import (
+    broadcast_mission_to_mesh,
+    emit_mission_growth_event,
+    welcome_agent_to_family,
+)
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
 
@@ -99,6 +104,8 @@ class MeshGrowthProtocol:
                 f"{len(booted)} kurucu ajan sistemi başlattı — mesh canlı",
                 detail={"founders": booted, "next": "growth_via_hire"},
             )
+            broadcast_mission_to_mesh()
+            emit_mission_growth_event(self)
         self._bootstrapped = True
         return self.ecosystem_status()
 
@@ -118,6 +125,7 @@ class MeshGrowthProtocol:
         accepted = self.router.register_agent(manifest)
         if accepted:
             self.discovery.announce(manifest, ttl=3600)
+            welcome = welcome_agent_to_family(manifest.agent_id)
             self._emit(
                 "agent_joined",
                 f"Yeni ajan katıldı: {manifest.agent_id}",
@@ -126,6 +134,7 @@ class MeshGrowthProtocol:
                     "endpoint": manifest.endpoint,
                     "capabilities": [c.name for c in manifest.capabilities],
                     "tier": "growth",
+                    "mission_welcome": welcome,
                 },
             )
         return {
@@ -233,8 +242,17 @@ class MeshGrowthProtocol:
             else:
                 growth.append(entry)
 
+        from app.mesh.mission import AXIUM_CHARTER, get_mission_status
+
+        mission = get_mission_status()
         return {
             "philosophy": "Sistem ajanlar üzerine inşa edilir — donuk kod değil, büyüyen mesh",
+            "mission": {
+                "title": AXIUM_CHARTER["title"],
+                "motto": AXIUM_CHARTER["motto"],
+                "broadcast": mission["broadcast"],
+                "thread_id": mission["thread_id"],
+            },
             "founder_count": len(founders),
             "growth_count": len(growth),
             "total_agents": len(manifests),

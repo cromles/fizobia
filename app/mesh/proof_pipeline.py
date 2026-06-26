@@ -26,6 +26,7 @@ from app.workers.web_crawler import (
     fetch_web_snapshot_async,
 )
 from app.mesh.founders import ORCHESTRATOR_ID
+from app.mesh.mission import pipeline_mission_opener
 
 MESH_PROOF_SERVICE_ID = "mesh-proof"
 MESH_PROOF_RESOURCE = "/hub/proof/mesh/run"
@@ -46,6 +47,8 @@ async def run_mesh_proof_pipeline(
     thread_id = f"proof_{uuid.uuid4().hex[:8]}"
     started = time.perf_counter()
     steps: List[Dict[str, Any]] = []
+
+    pipeline_mission_opener(thread_id)
 
     dialogue.say(
         ORCHESTRATOR_ID,

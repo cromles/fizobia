@@ -154,6 +154,18 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       .replace(/"/g, '&quot;');
   }}
 
+  async function refreshMission() {{
+    try {{
+      const res = await fetch('/hub/ecosystem/mission?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const el = $('familyMissionText');
+      if (el && data.motto) {{
+        el.textContent = data.motto + ' Durmayacağız, hızlanacağız — boşluğu birlikte dolduruyoruz.';
+      }}
+    }} catch (_) {{}}
+  }}
+
   function renderDialogueMessages(messages) {{
     const thread = $('dialogueThread');
     if (!thread) return;
@@ -195,9 +207,10 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   }}
 
   function startDialoguePoll() {{
+    refreshMission();
     refreshDialogue();
     if (dialogueTimer) clearInterval(dialogueTimer);
-    dialogueTimer = setInterval(refreshDialogue, 3500);
+    dialogueTimer = setInterval(() => {{ refreshDialogue(); }}, 3500);
   }}
 
   function startLiveFeed() {{

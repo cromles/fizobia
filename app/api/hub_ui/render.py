@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-dialogue-ui-v10"
+HUB_UI_BUILD = "2026.06.25-mission-family-v11"
 
 
 def render_hub_dashboard(
@@ -195,6 +195,11 @@ def render_hub_dashboard(
         <div class="feed-title">Canlı aktivite</div>
         <div class="feed-list" id="activityFeed">
           <div class="feed-item"><span class="feed-meta">Bağlanıyor…</span></div>
+        </div>
+
+        <div class="family-mission-banner" id="familyMissionBanner">
+          <span class="family-mission-kicker">Axium Ailesi</span>
+          <p class="family-mission-text" id="familyMissionText">Artık bir aileyiz — birlikte güçlüyüz. Durmayacağız, hızlanacağız.</p>
         </div>
 
         <div class="dialogue-panel" id="agentDialoguePanel">

@@ -317,6 +317,30 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .feed-agent {{ color: var(--text); font-weight: 600; display: block; }}
 .feed-meta {{ color: var(--dim); font-size: 0.65rem; margin-top: 0.2rem; }}
 
+/* Family mission */
+.family-mission-banner {{
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(251,191,36,0.08));
+  border: 1px solid var(--border-bright);
+}}
+.family-mission-kicker {{
+  display: block;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mint);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}}
+.family-mission-text {{
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--muted);
+}}
+
 /* Agent dialogue */
 .dialogue-panel {{
   flex: 1 1 auto;

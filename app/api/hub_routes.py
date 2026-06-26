@@ -45,6 +45,7 @@ from app.investment.x402_gateway import (
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
 from app.mesh.agent_dialogue import get_dialogue_bus
+from app.mesh.mission import get_mission_status
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
@@ -92,7 +93,7 @@ class AgentDialogueRequest(BaseModel):
     thread_id: str | None = None
 
 
-HUB_BUILD = "2026.06.25-dialogue-ui-v10"
+HUB_BUILD = "2026.06.25-mission-family-v11"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -197,6 +198,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
             "ecosystem_events": f"{base}/hub/ecosystem/events",
             "ecosystem_dialogue": f"{base}/hub/ecosystem/dialogue",
+            "ecosystem_mission": f"{base}/hub/ecosystem/mission",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -756,6 +758,12 @@ async def hub_ecosystem_hire(request: EcosystemHireRequest) -> Dict[str, Any]:
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/ecosystem/mission")
+async def hub_ecosystem_mission() -> Dict[str, Any]:
+    """Axium ailesi ortak misyonu — ajanlara yayınlanan charter."""
+    return get_mission_status()
 
 
 @router.get("/ecosystem/dialogue")
