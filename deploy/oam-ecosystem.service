@@ -1,0 +1,17 @@
+[Unit]
+Description=Axium Birleşik Ekosistem (10 ajan + Hub + otopilot)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/fizobia
+EnvironmentFile=/opt/fizobia/.env.server
+Environment=OAM_STACK_MODE=ecosystem
+ExecStart=/usr/bin/python3 -m app.run_stack
+Restart=always
+RestartSec=8
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
