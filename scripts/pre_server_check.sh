@@ -38,7 +38,7 @@ assert len(list_x402_services()['services']) >= 3
 assert arena_price_usd() > 0
 assert get_synapse_manifest()['code'] == 'THE_SYNAPSE_NET'
 assert list_departments()['count'] == 3
-assert len(ECOSYSTEM_STACK_AGENT_IDS) == 18
+assert len(ECOSYSTEM_STACK_AGENT_IDS) == 15
 print('  ✓ x402 + arena + departmanlar OK')
 "
 

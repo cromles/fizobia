@@ -10,7 +10,7 @@ BRANCH="${BRANCH:-main}"
 
 echo ""
 echo "  Axium Ekosistem deploy — ${DOMAIN}"
-echo "  18 mikro ajan · 3 departman · ücretsiz API · otopilot"
+echo "  12 kalifiye ajan (15 arka plan) · 3 departman · ücretsiz API"
 echo ""
 
 export DEBIAN_FRONTEND=noninteractive

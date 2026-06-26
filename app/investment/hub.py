@@ -18,6 +18,7 @@ from app.investment.schemas import (
 from app.investment.seed import DEFAULT_PROFILES
 from app.investment.staking import StakingPoolManager
 from app.config import settings
+from app.mesh.qualified_agents import is_hub_qualified
 from app.protocol.schemas import AgentManifest
 
 
@@ -175,9 +176,13 @@ class InvestmentHub:
     def list_identity_cards(
         self,
         manifests: List[AgentManifest],
+        *,
+        include_hidden: bool = False,
     ) -> List[AgentIdentityCard]:
         cards: List[AgentIdentityCard] = []
         for manifest in manifests:
+            if not include_hidden and not is_hub_qualified(manifest.agent_id):
+                continue
             self.ensure_agent(manifest)
             card = self.build_identity_card(manifest.agent_id, manifest.reliability_score)
             if card:

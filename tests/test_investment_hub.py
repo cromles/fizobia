@@ -96,24 +96,37 @@ def test_hub_api_endpoints():
 
     from app.api.main import app, router_mesh
     from app.registry.agent_registry import InMemoryAgentRegistry
+    from app.workers.web_crawler import AGENT_ID as WEB_ID
 
     router_mesh.registry = InMemoryAgentRegistry()
     client = TestClient(app)
 
-    manifest = _fetcher_manifest()
+    manifest = AgentManifest(
+        agent_id=WEB_ID,
+        endpoint="http://127.0.0.1:9001",
+        cost_per_token=1.0,
+        capabilities=[
+            AgentCapability(
+                name="web_crawler",
+                description="web veri çeker",
+                input_schema={"type": "object", "properties": {}},
+                output_schema={"type": "object", "properties": {}},
+            )
+        ],
+    )
     client.post("/agents/register", json={"manifest": manifest.model_dump()})
 
     response = client.get("/hub/agents")
     assert response.status_code == 200
     agents = response.json()
-    assert any(a["profile"]["agent_id"] == "test.fetcher" for a in agents)
+    assert any(a["profile"]["agent_id"] == WEB_ID for a in agents)
 
     config = client.get("/hub/revenue/config")
     assert config.json()["staking_share"] == 0.65
 
     stake = client.post(
         "/hub/stake",
-        json={"investor_id": "0xabc", "agent_id": "test.fetcher", "amount_usdc": 100},
+        json={"investor_id": "0xabc", "agent_id": WEB_ID, "amount_usdc": 100},
     )
     assert stake.status_code == 200
     assert stake.json()["shares"] > 0

@@ -8,8 +8,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from app.mesh.critic import CRITIC_AGENT_ID
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS
 from app.workers.media_brand import AGENT_ID as BRAND_ID
-from app.workers.media_outreach import AGENT_ID as OUTREACH_ID
-from app.workers.media_proof import AGENT_ID as PROOF_MEDIA_ID
 from app.workers.media_render import AGENT_ID as RENDER_ID
 from app.workers.media_story import AGENT_ID as STORY_ID
 from app.workers.text_competitors import ARENA_TEXT_COMPETITORS
@@ -67,7 +65,7 @@ DEPARTMENTS: Dict[str, DepartmentSpec] = {
         description="Görsel estetik, video kurgu şemaları, render ve montaj — sadece bu işçi hücreleri.",
         invest_hint="Video Edit Ajanları havuzuna yatırım",
         pipeline_ids=("arena",),
-        agent_ids=ARENA_TEXT_COMPETITORS + (RENDER_ID, OUTREACH_ID, PROOF_MEDIA_ID),
+        agent_ids=ARENA_TEXT_COMPETITORS + (RENDER_ID,),
     ),
     DEPARTMENT_COPYWRITING: DepartmentSpec(
         code=DEPARTMENT_COPYWRITING,
@@ -96,8 +94,6 @@ AGENT_DEPARTMENTS: Dict[str, Tuple[str, ...]] = {
     BRAND_ID: (DEPARTMENT_COPYWRITING, DEPARTMENT_MEDIA_VIDEO),
     CRITIC_AGENT_ID: (DEPARTMENT_COPYWRITING, DEPARTMENT_MEDIA_VIDEO),
     RENDER_ID: (DEPARTMENT_MEDIA_VIDEO,),
-    OUTREACH_ID: (DEPARTMENT_MEDIA_VIDEO,),
-    PROOF_MEDIA_ID: (DEPARTMENT_MEDIA_VIDEO,),
 }
 for aid in ARENA_TEXT_COMPETITORS:
     AGENT_DEPARTMENTS.setdefault(aid, (DEPARTMENT_MEDIA_VIDEO,))

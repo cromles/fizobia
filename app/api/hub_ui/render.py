@@ -11,9 +11,10 @@ from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
+from app.mesh.qualified_agents import HUB_QUALIFIED_AGENT_IDS, is_hub_qualified
+from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-simple-cards-v22"
+HUB_UI_BUILD = "2026.06.26-qualified-agents-v23"
 
 
 def render_hub_dashboard(
@@ -28,28 +29,28 @@ def render_hub_dashboard(
     brand_sub: str = "Dijital İşçiler",
 ) -> str:
     manifests = manifests or {}
-    agent_count = len(cards)
-
-    featured_cards = [c for c in cards if c.profile.agent_id in LIVE_WORKER_IDS]
-    other_cards = [c for c in cards if c.profile.agent_id not in LIVE_WORKER_IDS]
-    pool_count = len(cards)
+    agent_count = len(HUB_QUALIFIED_AGENT_IDS)
 
     agents_html_parts: list[str] = []
     idx = 0
-    for card in featured_cards:
-        if card.profile.agent_id in LIVE_WORKERS:
-            agents_html_parts.append(
-                render_featured_worker_card(
-                    card,
-                    manifests.get(card.profile.agent_id),
-                    LIVE_WORKERS[card.profile.agent_id],
-                )
-            )
-            idx += 1
-    for i, card in enumerate(other_cards):
+    for card in cards:
+        if card.profile.agent_id not in LIVE_WORKERS:
+            continue
         agents_html_parts.append(
-            render_worker_card(card, idx + i, manifests.get(card.profile.agent_id))
+            render_featured_worker_card(
+                card,
+                manifests.get(card.profile.agent_id),
+                LIVE_WORKERS[card.profile.agent_id],
+            )
         )
+        idx += 1
+    for card in cards:
+        if card.profile.agent_id in LIVE_WORKERS:
+            continue
+        agents_html_parts.append(
+            render_worker_card(card, idx, manifests.get(card.profile.agent_id))
+        )
+        idx += 1
     agents_html = "".join(agents_html_parts)
 
     onchain = onchain or {}
@@ -129,7 +130,7 @@ def render_hub_dashboard(
   <!-- ═══ LANDING ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{len(featured_cards)} canlı API · mesh kanıtı</span></div>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{len(HUB_QUALIFIED_AGENT_IDS)} kalifiye ajan · canlı veri</span></div>
       <h1>Uyurken<br/><span class="gradient">kazan</span></h1>
       <p class="hero-sub">
         AI işçilerine ortak ol. Sen çalıştırma — mesh 7/24 çalışsın.
