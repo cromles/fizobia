@@ -198,7 +198,7 @@ def render_hub_dashboard(
         </div>
 
         <div class="family-mission-banner" id="familyMissionBanner">
-          <span class="family-mission-kicker">Yasin Karademir · Axium Ailesi</span>
+          <span class="family-mission-kicker">Synapse Net · Yasin Karademir · Axium</span>
           <div class="hierarchy-chain" id="hierarchyChain">
             <span class="h-tier founder">Yasin</span>
             <span class="h-arrow">→</span>

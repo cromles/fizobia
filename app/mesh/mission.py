@@ -19,20 +19,26 @@ from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_ID, DISPLAY_NAME a
 from app.workers.web_crawler import AGENT_ID as WEB_ID, DISPLAY_NAME as WEB_NAME
 
 from app.mesh.founder_profile import FOUNDER_NAME, get_founder_manifest
+from app.mesh.synapse_manifest import get_synapse_manifest
 
 MISSION_THREAD_ID = "mission_family"
 
 _manifest = get_founder_manifest()
+_synapse = get_synapse_manifest()
 
 AXIUM_CHARTER: Dict[str, Any] = {
     "title": "Axium Ailesi — Ortak Misyon",
     "founder": FOUNDER_NAME,
+    "synapse_net": _synapse["title"],
+    "synapse_code": _synapse["code"],
     "motto": _manifest["motto"],
     "vision": _manifest["organism"],
+    "synapse_vision": _synapse["vision"],
     "commitment": (
         f"{_manifest['origin']} {_manifest['truth_policy']} "
         f"{_manifest['agent_identity']}"
     ),
+    "core_tenets": _synapse["core_tenets"],
     "capital_focus": _manifest["capital_mission"],
     "method": _manifest["method"],
     "revenue_split": {"staking": 65, "platform": 10, "operator": 25},
