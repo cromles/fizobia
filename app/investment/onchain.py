@@ -61,7 +61,10 @@ def _load_deployment_file() -> Optional[Dict[str, Any]]:
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not raw.get("usdc"):
+            return None
+        return raw
     except Exception as exc:
         logger.warning("On-chain deployment okunamadı: %s", exc)
         return None
@@ -72,16 +75,18 @@ def get_deployment() -> Optional[OnchainDeployment]:
     if _deployment is not None:
         return _deployment
     raw = _load_deployment_file()
-    if raw is None or not raw.get("usdc"):
+    if raw is None:
         return None
+    pools = dict(raw.get("pools") or {})
+    factory = str(raw.get("factory") or "")
     _deployment = OnchainDeployment(
-        chain_id=int(raw.get("chain_id", 0)),
-        network=str(raw.get("network", "local")),
+        chain_id=int(raw.get("chain_id", settings.onchain_chain_id)),
+        network=str(raw.get("network", "base-sepolia")),
         rpc_url=str(raw.get("rpc_url", settings.onchain_rpc_url)),
         deployer=str(raw.get("deployer", "")),
         usdc=str(raw["usdc"]),
-        factory=str(raw.get("factory", "")),
-        pools=dict(raw.get("pools", {})),
+        factory=factory,
+        pools=pools,
         usdc_decimals=int(raw.get("usdc_decimals", 6)),
     )
     return _deployment
@@ -108,11 +113,21 @@ def rpc_connected() -> bool:
         return False
 
 
+def is_onchain_connected() -> bool:
+    """RPC canlı — deployment olmasa da zincir izleme."""
+    if not settings.onchain_enabled:
+        return False
+    return rpc_connected()
+
+
 def is_onchain_ready() -> bool:
     if not settings.onchain_enabled:
         return False
     if get_deployment() is None:
         return False
+    dep = get_deployment()
+    if not dep or not dep.factory or not dep.pools:
+        return is_onchain_connected()
     return rpc_connected()
 
 
@@ -144,26 +159,30 @@ def _address_from_topic(topic: str) -> str:
 
 def build_public_config() -> Dict[str, Any]:
     deployment = get_deployment()
+    connected = is_onchain_connected()
     ready = is_onchain_ready()
     chain_id = deployment.chain_id if deployment else settings.onchain_chain_id
     ui_meta = dict(_CHAIN_UI_META.get(chain_id, {}))
     if deployment and deployment.rpc_url and "rpc_urls" not in ui_meta:
         ui_meta["rpc_urls"] = [deployment.rpc_url]
+    elif settings.onchain_rpc_url:
+        ui_meta.setdefault("rpc_urls", [settings.onchain_rpc_url])
     if deployment and deployment.network and "chain_name" not in ui_meta:
         ui_meta["chain_name"] = deployment.network.replace("-", " ").title()
     return {
         "enabled": settings.onchain_enabled,
+        "connected": connected,
         "ready": ready,
         "chain_id": chain_id,
-        "network": deployment.network if deployment else "unknown",
-        "chain_name": ui_meta.get("chain_name", "OAM Chain"),
+        "network": deployment.network if deployment else settings.x402_network,
+        "chain_name": ui_meta.get("chain_name", "Base Sepolia"),
         "rpc_urls": ui_meta.get("rpc_urls", [settings.onchain_rpc_url]),
-        "block_explorer_urls": ui_meta.get("block_explorer_urls", []),
-        "usdc": deployment.usdc if deployment else None,
+        "block_explorer_urls": ui_meta.get("block_explorer_urls", ["https://sepolia.basescan.org"]),
+        "usdc": deployment.usdc if deployment and deployment.usdc else settings.x402_usdc_contract,
         "factory": deployment.factory if deployment else None,
         "pools": deployment.pools if deployment else {},
         "usdc_decimals": deployment.usdc_decimals if deployment else 6,
-        "require_tx": settings.onchain_require_tx,
+        "require_tx": settings.onchain_require_tx and ready,
         "wallet_mode": "metamask",
     }
 
