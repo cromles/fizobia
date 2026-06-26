@@ -2,13 +2,19 @@
 # Uzaktan Axium deploy — Cursor Secrets: AXIUM_SSH_PASSWORD
 set -euo pipefail
 
-SERVER_IP="${AXIUM_SERVER_IP:-89.47.113.150}"
+SERVER_IP="${AXIUM_SERVER_IP:-}"
 SERVER_USER="${AXIUM_SERVER_USER:-root}"
 PASS="${AXIUM_SSH_PASSWORD:-${SERVER_SSH_PASSWORD:-${SSH_PASSWORD:-}}}"
 
 if [[ -z "${PASS}" ]]; then
   echo "HATA: AXIUM_SSH_PASSWORD tanımlı değil."
   echo "Cursor → Secrets → AXIUM_SSH_PASSWORD = sunucu root şifresi"
+  echo "Opsiyonel: AXIUM_SERVER_IP = yeni sunucu IP"
+  exit 1
+fi
+
+if [[ -z "${SERVER_IP}" ]]; then
+  echo "HATA: AXIUM_SERVER_IP tanımlı değil (yeni sunucu IP)."
   exit 1
 fi
 

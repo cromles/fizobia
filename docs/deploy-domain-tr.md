@@ -4,6 +4,47 @@
 
 **Axium Hub, Zinesh’ten bağımsızdır.** Ayrı domain, ayrı marka, ayrı sunucu önerilir.
 
+## Yeni sunucuya geçiş (önerilen)
+
+Eski VPS RAM doluysa (OOM) **8GB RAM** li temiz Ubuntu VPS alın. **aaPanel kurmayın** — sadece Axium için nginx yeterli.
+
+### 1. Yeni VPS — tek komut (root)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/bootstrap_new_server.sh | bash
+```
+
+Gemini ile:
+
+```bash
+AXIUM_GEMINI_KEY="AIza..." CERTBOT_EMAIL="sen@email.com" \
+  bash -c 'curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/bootstrap_new_server.sh | bash'
+```
+
+### 2. DNS (Turhost)
+
+| Kayıt | Tip | Değer |
+|-------|-----|-------|
+| `@` | A | **yeni sunucu IP** |
+| `www` | CNAME | `axium.com.tr` |
+
+Eski IP (`89.47.113.150`) kaydını silin veya güncelleyin.
+
+### 3. Doğrulama
+
+```bash
+curl -s https://axium.com.tr/hub/version
+curl -s https://axium.com.tr/hub/apis
+```
+
+Build `free-apis-v20` veya üzeri olmalı.
+
+### 4. Eski sunucu
+
+DNS yayıldıktan sonra eski VPS’i kapatabilir veya sadece durdurun.
+
+---
+
 ## 1. DNS (Turhost — axium.com.tr)
 
 | Kayıt | Tip | Değer |
