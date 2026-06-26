@@ -18,7 +18,21 @@ ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS_DIR = ROOT / "artifacts" / "contracts"
 
 STAKED_TOPIC = keccak(text="Staked(address,uint256,uint256)").hex()
+UNSTAKED_TOPIC = keccak(text="Unstaked(address,uint256,uint256)").hex()
 CLAIMED_TOPIC = keccak(text="RewardClaimed(address,uint256)").hex()
+
+_CHAIN_UI_META: Dict[int, Dict[str, Any]] = {
+    31337: {
+        "chain_name": "OAM Local",
+        "rpc_urls": ["http://127.0.0.1:8545"],
+        "block_explorer_urls": [],
+    },
+    84532: {
+        "chain_name": "Base Sepolia",
+        "rpc_urls": ["https://sepolia.base.org"],
+        "block_explorer_urls": ["https://sepolia.basescan.org"],
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -131,11 +145,20 @@ def _address_from_topic(topic: str) -> str:
 def build_public_config() -> Dict[str, Any]:
     deployment = get_deployment()
     ready = is_onchain_ready()
+    chain_id = deployment.chain_id if deployment else settings.onchain_chain_id
+    ui_meta = dict(_CHAIN_UI_META.get(chain_id, {}))
+    if deployment and deployment.rpc_url and "rpc_urls" not in ui_meta:
+        ui_meta["rpc_urls"] = [deployment.rpc_url]
+    if deployment and deployment.network and "chain_name" not in ui_meta:
+        ui_meta["chain_name"] = deployment.network.replace("-", " ").title()
     return {
         "enabled": settings.onchain_enabled,
         "ready": ready,
-        "chain_id": deployment.chain_id if deployment else settings.onchain_chain_id,
+        "chain_id": chain_id,
         "network": deployment.network if deployment else "unknown",
+        "chain_name": ui_meta.get("chain_name", "OAM Chain"),
+        "rpc_urls": ui_meta.get("rpc_urls", [settings.onchain_rpc_url]),
+        "block_explorer_urls": ui_meta.get("block_explorer_urls", []),
         "usdc": deployment.usdc if deployment else None,
         "factory": deployment.factory if deployment else None,
         "pools": deployment.pools if deployment else {},
@@ -221,6 +244,59 @@ def verify_stake_tx(
         }
 
     raise ValueError("Stake event bulunamadı")
+
+
+def verify_unstake_tx(
+    tx_hash: str,
+    investor_id: str,
+    agent_id: str,
+    shares: float,
+) -> Dict[str, Any]:
+    deployment = get_deployment()
+    if deployment is None:
+        raise ValueError("On-chain deployment bulunamadı")
+
+    pool_address = deployment.pool_address(agent_id)
+    if not pool_address:
+        raise ValueError(f"On-chain havuz yok: {agent_id}")
+
+    receipt = _wait_for_receipt(tx_hash)
+    if int(receipt.get("status", "0x0"), 16) != 1:
+        raise ValueError("Unstake işlemi başarısız")
+
+    expected_shares = usdc_to_wei(shares)
+    investor = _checksum(investor_id)
+    pool_lower = pool_address.lower()
+
+    for log in receipt.get("logs", []):
+        if log.get("address", "").lower() != pool_lower:
+            continue
+        topics = [_topic_hex(t) for t in log.get("topics", [])]
+        if not topics or topics[0] != _topic_hex(UNSTAKED_TOPIC):
+            continue
+        if len(topics) < 2:
+            continue
+        logged_user = _address_from_topic(topics[1])
+        if logged_user.lower() != investor.lower():
+            continue
+        data_hex = log.get("data", "0x")
+        if data_hex.startswith("0x"):
+            data_hex = data_hex[2:]
+        logged_shares, amount = decode(["uint256", "uint256"], bytes.fromhex(data_hex))
+        if abs(logged_shares - expected_shares) > 1:
+            raise ValueError("Unstake pay miktarı zincir ile uyuşmuyor")
+        if abs(amount - expected_shares) > 1:
+            raise ValueError("Unstake USDC miktarı zincir ile uyuşmuyor")
+        return {
+            "tx_hash": tx_hash,
+            "investor": investor,
+            "agent_id": agent_id,
+            "shares_wei": logged_shares,
+            "usdc_returned": wei_to_usdc(amount),
+            "pool": pool_address,
+        }
+
+    raise ValueError("Unstaked event bulunamadı")
 
 
 def verify_claim_tx(tx_hash: str, investor_id: str, agent_id: str) -> Dict[str, Any]:

@@ -154,6 +154,7 @@ class UnstakeRequest(BaseModel):
     investor_id: str
     agent_id: str
     shares: float = Field(..., gt=0)
+    tx_hash: Optional[str] = Field(default=None, description="On-chain unstake işlem hash'i")
 
 
 class ClaimRewardsRequest(BaseModel):
