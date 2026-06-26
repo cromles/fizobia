@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,6 +11,9 @@ import httpx
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_MAX_LLM_ATTEMPTS = 3
 
 
 def llm_public_status() -> Dict[str, Any]:
@@ -84,14 +88,49 @@ async def chat_completion(
     import time
 
     started = time.perf_counter()
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.post(
-            f"{settings.llm_base_url.rstrip('/')}/chat/completions",
-            headers=headers,
-            json=body,
-        )
-        response.raise_for_status()
-        payload = response.json()
+    last_error: Optional[Exception] = None
+    payload: Dict[str, Any] = {}
+
+    for attempt in range(1, _MAX_LLM_ATTEMPTS + 1):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers=headers,
+                    json=body,
+                )
+                status = getattr(response, "status_code", 200)
+                if status in _RETRYABLE_STATUS and attempt < _MAX_LLM_ATTEMPTS:
+                    wait = 1.5 * attempt
+                    logger.warning(
+                        "LLM %s — %s, %ss sonra yeniden (%s/%s)",
+                        use_model,
+                        status,
+                        wait,
+                        attempt,
+                        _MAX_LLM_ATTEMPTS,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                response.raise_for_status()
+                payload = response.json()
+                break
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            if exc.response.status_code in _RETRYABLE_STATUS and attempt < _MAX_LLM_ATTEMPTS:
+                await asyncio.sleep(1.5 * attempt)
+                continue
+            raise
+        except httpx.RequestError as exc:
+            last_error = exc
+            if attempt < _MAX_LLM_ATTEMPTS:
+                await asyncio.sleep(1.5 * attempt)
+                continue
+            raise
+    else:
+        if last_error:
+            raise last_error
+        raise RuntimeError("LLM yanıt alınamadı")
 
     latency_ms = round((time.perf_counter() - started) * 1000, 1)
     content = payload["choices"][0]["message"]["content"].strip()

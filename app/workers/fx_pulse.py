@@ -9,7 +9,7 @@ import httpx
 AGENT_ID = "oam.analyst.fx.local"
 DISPLAY_NAME = "FX-Pulse"
 
-_FRANKFURTER = "https://api.frankfurter.app/latest"
+_FRANKFURTER = "https://api.frankfurter.dev/v1/latest"
 
 
 def _parse_symbols(raw: str) -> List[str]:
@@ -22,7 +22,7 @@ def fetch_fx_snapshot(*, base: str = "USD", symbols: str = "TRY,EUR") -> Dict[st
     base_ccy = (base or "USD").strip().upper()
     target_syms = _parse_symbols(symbols)
     params = {"from": base_ccy, "to": ",".join(target_syms)}
-    with httpx.Client(timeout=12.0) as client:
+    with httpx.Client(timeout=12.0, follow_redirects=True) as client:
         response = client.get(_FRANKFURTER, params=params)
         response.raise_for_status()
         payload = response.json()
@@ -38,7 +38,7 @@ def fetch_fx_snapshot(*, base: str = "USD", symbols: str = "TRY,EUR") -> Dict[st
         "rates": rates,
         "usd_try": try_rate,
         "analysis": " · ".join(analysis_parts) if analysis_parts else "Kur verisi alındı",
-        "source": "frankfurter.app",
+        "source": "frankfurter.dev",
         "real_data": True,
     }
 
@@ -47,7 +47,7 @@ async def fetch_fx_snapshot_async(*, base: str = "USD", symbols: str = "TRY,EUR"
     base_ccy = (base or "USD").strip().upper()
     target_syms = _parse_symbols(symbols)
     params = {"from": base_ccy, "to": ",".join(target_syms)}
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
         response = await client.get(_FRANKFURTER, params=params)
         response.raise_for_status()
         payload = response.json()
@@ -63,6 +63,6 @@ async def fetch_fx_snapshot_async(*, base: str = "USD", symbols: str = "TRY,EUR"
         "rates": rates,
         "usd_try": try_rate,
         "analysis": " · ".join(analysis_parts) if analysis_parts else "Kur verisi alındı",
-        "source": "frankfurter.app",
+        "source": "frankfurter.dev",
         "real_data": True,
     }

@@ -39,7 +39,7 @@ def test_fetch_fx_snapshot(mock_client_cls):
     result = fetch_fx_snapshot(base="USD", symbols="TRY,EUR")
     assert result["real_data"] is True
     assert result["usd_try"] == 46.5
-    assert result["source"] == "frankfurter.app"
+    assert result["source"] == "frankfurter.dev"
 
 
 @patch("app.workers.defi_pulse.httpx.Client")

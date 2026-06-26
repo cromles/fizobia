@@ -29,7 +29,7 @@ FREE_DATA_SOURCES: List[Dict[str, Any]] = [
     {
         "id": "frankfurter",
         "name": "Frankfurter (ECB)",
-        "endpoint": "https://api.frankfurter.app/latest",
+        "endpoint": "https://api.frankfurter.dev/v1/latest",
         "auth": "none",
         "worker": "fx_pulse",
         "agent_id": "oam.analyst.fx.local",

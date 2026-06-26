@@ -7,6 +7,10 @@ EMAIL="${CERTBOT_EMAIL:-admin@${DOMAIN}}"
 HUB_PORT="${HUB_PORT:-8787}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/fizobia}"
 
+echo "  [0/4] Certbot bağımlılık düzeltmesi (pip cryptography çakışması)…"
+pip3 uninstall -y cryptography pyopenssl 2>/dev/null || true
+apt-get install -y -qq --reinstall python3-openssl python3-cryptography python3-certbot-nginx certbot 2>/dev/null || true
+
 echo ""
 echo "  Axium SSL — ${DOMAIN}"
 echo ""
