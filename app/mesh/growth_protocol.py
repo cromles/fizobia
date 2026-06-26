@@ -16,6 +16,7 @@ from app.mesh.founders import (
     founder_tier,
     is_founder,
 )
+from app.mesh.hierarchy import announce_chain_of_command
 from app.mesh.mission import (
     broadcast_mission_to_mesh,
     emit_mission_growth_event,
@@ -106,6 +107,7 @@ class MeshGrowthProtocol:
             )
             broadcast_mission_to_mesh()
             emit_mission_growth_event(self)
+            announce_chain_of_command()
         self._bootstrapped = True
         return self.ecosystem_status()
 
@@ -242,11 +244,18 @@ class MeshGrowthProtocol:
             else:
                 growth.append(entry)
 
+        from app.mesh.hierarchy import get_hierarchy_status
         from app.mesh.mission import AXIUM_CHARTER, get_mission_status
 
         mission = get_mission_status()
+        hierarchy = get_hierarchy_status(manifests)
         return {
             "philosophy": "Sistem ajanlar üzerine inşa edilir — donuk kod değil, büyüyen mesh",
+            "hierarchy": {
+                "motto": hierarchy["motto"],
+                "announced": hierarchy["announced"],
+                "chain_tiers": len(hierarchy["chain"]),
+            },
             "mission": {
                 "title": AXIUM_CHARTER["title"],
                 "motto": AXIUM_CHARTER["motto"],

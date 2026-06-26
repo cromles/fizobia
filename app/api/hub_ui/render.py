@@ -12,7 +12,7 @@ from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.25-mission-family-v11"
+HUB_UI_BUILD = "2026.06.25-hierarchy-autopilot-v12"
 
 
 def render_hub_dashboard(
@@ -198,8 +198,18 @@ def render_hub_dashboard(
         </div>
 
         <div class="family-mission-banner" id="familyMissionBanner">
-          <span class="family-mission-kicker">Axium Ailesi</span>
-          <p class="family-mission-text" id="familyMissionText">Artık bir aileyiz — birlikte güçlüyüz. Durmayacağız, hızlanacağız.</p>
+          <span class="family-mission-kicker">Axium Komuta Zinciri</span>
+          <div class="hierarchy-chain" id="hierarchyChain">
+            <span class="h-tier founder">Kurucu</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier assistant">Baş Yardımcı</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier coord">Koordinatör</span>
+            <span class="h-arrow">→</span>
+            <span class="h-tier workers">İşçiler</span>
+          </div>
+          <p class="family-mission-text" id="familyMissionText">Durmayacağız — otopilot mesh proof ile hızlanıyoruz.</p>
+          <div class="autopilot-status" id="autopilotStatus">Otopilot: —</div>
         </div>
 
         <div class="dialogue-panel" id="agentDialoguePanel">

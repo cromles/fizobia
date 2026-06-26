@@ -33,9 +33,11 @@ from app.planning.factory import planner_backend_name
 from app.registry.factory import create_registry, registry_backend_name
 
 from app.investment.activity_worker import HubActivityWorker
+from app.mesh.autopilot import MeshAutopilot
 
 router_mesh = OpenAgentMeshRouter()
 hub_activity_worker = HubActivityWorker(router_mesh)
+mesh_autopilot = MeshAutopilot(router_mesh)
 peer_discovery = create_discovery()
 discovery_sync = create_discovery_sync(peer_discovery, router_mesh.registry)
 global_mesh = get_global_mesh()
@@ -58,7 +60,9 @@ async def lifespan(_: FastAPI):
     discovery_sync.sync_once()
     await discovery_sync.start()
     await hub_activity_worker.start()
+    await mesh_autopilot.start()
     yield
+    await mesh_autopilot.stop()
     await hub_activity_worker.stop()
     await discovery_sync.stop()
     registry = router_mesh.registry

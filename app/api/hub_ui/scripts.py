@@ -25,7 +25,10 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   let lastEventCount = 0, lastDialogueCount = 0, dialogueThreadId = null;
   const agentNameMap = {{}};
   const AGENT_LABELS = {{
+    'oam.founder.operator': 'Kurucu',
+    'oam.assistant.chief.local': 'Baş Yardımcı',
     'oam.orchestrator.pipeline.local': 'Koordinatör',
+    'oam.mesh.workers': 'İşçiler',
     'oam.fetcher.web.local': 'Web-Crawler',
     'oam.analyst.sentiment.local': 'Sentiment',
     'oam.analyst.market.local': 'Market',
@@ -161,7 +164,30 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       const data = await res.json();
       const el = $('familyMissionText');
       if (el && data.motto) {{
-        el.textContent = data.motto + ' Durmayacağız, hızlanacağız — boşluğu birlikte dolduruyoruz.';
+        el.textContent = data.motto + ' ' + (data.hierarchy || '');
+      }}
+    }} catch (_) {{}}
+  }}
+
+  async function refreshHierarchy() {{
+    try {{
+      const [hRes, aRes] = await Promise.all([
+        fetch('/hub/hierarchy?_=' + Date.now(), {{ cache: 'no-store' }}),
+        fetch('/hub/autopilot?_=' + Date.now(), {{ cache: 'no-store' }}),
+      ]);
+      if (hRes.ok) {{
+        const h = await hRes.json();
+        const el = $('familyMissionText');
+        if (el && h.motto) el.textContent = h.motto + ' — kaybedecek vakit yok.';
+      }}
+      if (aRes.ok) {{
+        const a = await aRes.json();
+        const ap = $('autopilotStatus');
+        if (ap) {{
+          const cycles = a.cycles_completed || 0;
+          const running = a.running ? 'aktif' : 'beklemede';
+          ap.textContent = 'Otopilot: ' + running + ' · ' + cycles + ' döngü · ' + (a.interval_seconds || 90) + 's';
+        }}
       }}
     }} catch (_) {{}}
   }}
@@ -208,9 +234,10 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   function startDialoguePoll() {{
     refreshMission();
+    refreshHierarchy();
     refreshDialogue();
     if (dialogueTimer) clearInterval(dialogueTimer);
-    dialogueTimer = setInterval(() => {{ refreshDialogue(); }}, 3500);
+    dialogueTimer = setInterval(() => {{ refreshDialogue(); refreshHierarchy(); }}, 3500);
   }}
 
   function startLiveFeed() {{

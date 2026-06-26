@@ -35,6 +35,7 @@ AXIUM_CHARTER: Dict[str, Any] = {
         "Sistem donuk kod değil; yaşayan, konuşan, işe alan bir aile."
     ),
     "revenue_split": {"staking": 65, "platform": 10, "operator": 25},
+    "hierarchy": "Kurucu Operatör → Axium Baş Yardımcı → Pipeline Orchestrator → İşçi Ajanlar",
     "broadcast_at": None,
 }
 

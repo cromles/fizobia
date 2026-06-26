@@ -340,6 +340,33 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   line-height: 1.5;
   color: var(--muted);
 }}
+.hierarchy-chain {{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}}
+.h-tier {{
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}}
+.h-tier.founder {{ color: var(--gold); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }}
+.h-tier.assistant {{ color: var(--cyan); border-color: rgba(56,189,248,0.35); background: rgba(56,189,248,0.08); }}
+.h-tier.coord {{ color: var(--mint); border-color: var(--border-bright); background: var(--mint-dim); }}
+.h-tier.workers {{ color: var(--muted); }}
+.h-arrow {{ color: var(--dim); font-size: 0.55rem; }}
+.autopilot-status {{
+  margin-top: 0.4rem;
+  font-size: 0.62rem;
+  color: var(--mint);
+  font-family: ui-monospace, monospace;
+}}
 
 /* Agent dialogue */
 .dialogue-panel {{

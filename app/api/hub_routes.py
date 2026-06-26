@@ -46,6 +46,11 @@ from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
 from app.mesh.agent_dialogue import get_dialogue_bus
 from app.mesh.mission import get_mission_status
+from app.mesh.hierarchy import (
+    announce_chain_of_command,
+    get_hierarchy_status,
+    record_founder_command,
+)
 from app.mesh.proof_vault import get_proof_vault
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentManifest
@@ -93,7 +98,13 @@ class AgentDialogueRequest(BaseModel):
     thread_id: str | None = None
 
 
-HUB_BUILD = "2026.06.25-mission-family-v11"
+class FounderCommandRequest(BaseModel):
+    command: str = Field(default="accelerate", description="accelerate | mesh_proof | custom")
+    message: str = Field(default="Durma, hızlan — ne gerekiyorsa yap.")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+HUB_BUILD = "2026.06.25-hierarchy-autopilot-v12"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -199,6 +210,9 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "ecosystem_events": f"{base}/hub/ecosystem/events",
             "ecosystem_dialogue": f"{base}/hub/ecosystem/dialogue",
             "ecosystem_mission": f"{base}/hub/ecosystem/mission",
+            "hierarchy": f"{base}/hub/hierarchy",
+            "hierarchy_command": f"{base}/hub/hierarchy/command",
+            "autopilot": f"{base}/hub/autopilot",
             "well_known_agent": f"{base}/.well-known/agent.json",
         },
         "cors_origins": settings.cors_origins,
@@ -764,6 +778,53 @@ async def hub_ecosystem_hire(request: EcosystemHireRequest) -> Dict[str, Any]:
 async def hub_ecosystem_mission() -> Dict[str, Any]:
     """Axium ailesi ortak misyonu — ajanlara yayınlanan charter."""
     return get_mission_status()
+
+
+@router.get("/hierarchy")
+async def hub_hierarchy() -> Dict[str, Any]:
+    """Komuta zinciri — Kurucu → Baş Yardımcı → Koordinatör → İşçiler."""
+    return get_hierarchy_status(_mesh().list_agents())
+
+
+@router.post("/hierarchy/command")
+async def hub_hierarchy_command(request: FounderCommandRequest) -> Dict[str, Any]:
+    """Kurucu emri — baş yardımcı ve koordinatöre iletilir."""
+    order = record_founder_command(
+        request.command,
+        message=request.message,
+        payload=request.payload,
+    )
+    try:
+        growth = get_growth_protocol()
+        growth._emit(
+            "founder_command",
+            f"Kurucu emri: {request.message[:80]}",
+            detail=order,
+        )
+    except RuntimeError:
+        pass
+    return {"accepted": True, "order": order}
+
+
+@router.get("/autopilot")
+async def hub_autopilot_status() -> Dict[str, Any]:
+    """7/24 otopilot döngü durumu."""
+    from app.api.main import mesh_autopilot
+
+    return mesh_autopilot.status()
+
+
+@router.post("/autopilot/run")
+async def hub_autopilot_run_once() -> Dict[str, Any]:
+    """Tek otopilot döngüsünü hemen çalıştır."""
+    if settings.hub_demo_mode:
+        raise HTTPException(status_code=400, detail="Demo modunda otopilot çalışmaz")
+    from app.api.main import mesh_autopilot
+
+    try:
+        return await mesh_autopilot.run_cycle()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/ecosystem/dialogue")
