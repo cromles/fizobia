@@ -32,7 +32,7 @@ from app.investment.schemas import (
     UnstakeRequest,
     X402RevenueRequest,
 )
-from app.investment.x402 import parse_x402_payment, verify_webhook_secret
+from app.investment.revenue_summary import build_revenue_summary
 from app.investment.x402_gateway import (
     PaymentRequiredError,
     arena_price_usd,
@@ -133,7 +133,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-qualified-agents-v23"
+HUB_BUILD = "2026.06.26-revenue-mission-v24"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -224,6 +224,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "claim": f"{base}/hub/claim",
             "positions": f"{base}/hub/positions/{{investor_id}}",
             "revenue_config": f"{base}/hub/revenue/config",
+            "revenue_summary": f"{base}/hub/revenue/summary",
             "onchain_config": f"{base}/hub/onchain/config",
             "version": f"{base}/hub/version",
             "discovery": f"{base}/hub/discovery",
@@ -629,9 +630,6 @@ def _record_mesh_proof_revenue(
                 "task_id": task_id,
             }
         )
-    return recorded
-
-
     return recorded
 
 
@@ -1363,6 +1361,13 @@ async def hub_public_stats() -> Dict[str, Any]:
 @router.get("/revenue/config")
 async def revenue_config() -> RevenueSplitConfig:
     return get_investment_hub().split
+
+
+@router.get("/revenue/summary")
+async def revenue_summary() -> Dict[str, Any]:
+    """Gelir döngüsü — 7 çekirdek işçi, x402 kanıtı, stake modu."""
+    hub = get_investment_hub()
+    return build_revenue_summary(hub, _mesh().list_agents())
 
 
 @router.get("/revenue/events")

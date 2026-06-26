@@ -1630,6 +1630,73 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
   border-color: rgba(var(--card-r), var(--card-g), var(--card-b), 0.4);
 }}
 
+/* ── Gelir döngüsü (v24) ── */
+.revenue-loop-panel {{
+  margin-bottom: 1rem; padding: 1.1rem 1.25rem; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0,255,163,0.07), rgba(56,189,248,0.05));
+  border: 1px solid rgba(0,255,163,0.22);
+}}
+.revenue-loop-head {{
+  display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; margin-bottom: 0.85rem;
+}}
+.revenue-kicker {{
+  display: block; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--mint); margin-bottom: 0.25rem;
+}}
+.revenue-loop-head h3 {{
+  font-family: 'Syne', sans-serif; font-size: 1.1rem; margin-bottom: 0.3rem;
+}}
+.revenue-loop-desc {{ font-size: 0.82rem; color: var(--muted); line-height: 1.5; max-width: 36rem; }}
+.btn-mesh-proof-prominent {{
+  padding: 0.7rem 1.1rem; font-weight: 700; white-space: nowrap;
+}}
+.revenue-loop-stats {{
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem;
+}}
+.rl-stat {{
+  padding: 0.55rem 0.7rem; border-radius: 10px; background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+}}
+.rl-stat span {{
+  display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--dim); margin-bottom: 0.2rem;
+}}
+.rl-stat strong {{ font-family: 'Syne', sans-serif; font-size: 0.95rem; color: var(--mint); }}
+.revenue-loop-result {{ margin-top: 0.65rem; font-size: 0.78rem; }}
+
+.stake-mode-banner {{
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+  padding: 0.65rem 0.9rem; border-radius: 12px;
+  background: rgba(255,209,102,0.06); border: 1px solid rgba(255,209,102,0.28);
+  font-size: 0.78rem; color: #fde68a; line-height: 1.45;
+}}
+.stake-mode-banner.onchain {{
+  background: rgba(0,255,163,0.06); border-color: rgba(0,255,163,0.28); color: var(--mint);
+}}
+.stake-mode-dot {{
+  width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; flex-shrink: 0;
+}}
+.stake-mode-banner.onchain .stake-mode-dot {{ background: var(--mint); }}
+
+.invest-workers-head {{
+  margin-bottom: 0.75rem;
+}}
+.invest-workers-head h4 {{
+  font-family: 'Syne', sans-serif; font-size: 0.95rem; margin-bottom: 0.2rem;
+}}
+.invest-workers-head p {{ font-size: 0.78rem; color: var(--dim); line-height: 1.5; }}
+
+.tag.api-tag {{
+  border-color: rgba(0,255,163,0.35); color: var(--mint); background: rgba(0,255,163,0.08);
+  font-size: 0.62rem;
+}}
+.tag.proof-tag {{
+  border-color: rgba(56,189,248,0.35); color: #7dd3fc; background: rgba(56,189,248,0.08);
+  font-size: 0.62rem;
+}}
+.dept-filter-compact {{ margin-top: 0.75rem; margin-bottom: 0.5rem; }}
+
 /* Keyframes */
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(24px); }} to {{ opacity: 1; transform: none; }} }}
 @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
@@ -1647,6 +1714,8 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 
 @media (max-width: 900px) {{
   .stats-invest {{ grid-template-columns: 1fr; }}
+  .revenue-loop-stats {{ grid-template-columns: repeat(2, 1fr); }}
+  .revenue-loop-head {{ flex-direction: column; }}
   .dept-filter-bar {{ flex-direction: column; align-items: stretch; }}
   .color-legend {{ margin-left: 0; }}
   .agents-grid {{ grid-template-columns: 1fr; }}

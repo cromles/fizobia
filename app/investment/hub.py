@@ -18,6 +18,7 @@ from app.investment.schemas import (
 from app.investment.seed import DEFAULT_PROFILES
 from app.investment.staking import StakingPoolManager
 from app.config import settings
+from app.mesh.agent_catalog import agent_label
 from app.mesh.qualified_agents import is_hub_qualified
 from app.protocol.schemas import AgentManifest
 
@@ -52,7 +53,7 @@ class InvestmentHub:
         token_symbol = _token_symbol(manifest.agent_id)
         profile = AgentInvestmentProfile(
             agent_id=manifest.agent_id,
-            display_name=_display_name(manifest.agent_id),
+            display_name=agent_label(manifest.agent_id),
             agent_class=agent_class,
             mission=_mission_from_manifest(manifest),
             token_symbol=token_symbol,
@@ -259,14 +260,14 @@ def _token_symbol(agent_id: str) -> str:
     return f"{prefix}-TKN"
 
 
-def _display_name(agent_id: str) -> str:
-    return agent_id.split(".")[0].replace("-", " ").title()
-
-
 def _mission_from_manifest(manifest: AgentManifest) -> str:
+    from app.mesh.agent_catalog import AGENT_MISSION
+
+    if manifest.agent_id in AGENT_MISSION:
+        return AGENT_MISSION[manifest.agent_id]
     if manifest.capabilities:
         return manifest.capabilities[0].description
-    return f"{manifest.agent_id} ağ görevlerini yürütür."
+    return f"{agent_label(manifest.agent_id)} — mesh görevleri."
 
 
 def _estimate_task_revenue(manifest: AgentManifest) -> float:
