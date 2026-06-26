@@ -262,6 +262,18 @@ body {{
   margin-bottom: 0.2rem;
 }}
 .leaderboard-sub {{ font-size: 0.75rem; color: var(--dim); }}
+.dept-filter-bar {{
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  margin: 0.75rem 0 1rem;
+}}
+.dept-filter-label {{
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--dim);
+}}
+.lb-dept {{
+  font-size: 0.72rem; color: var(--muted); padding: 0.15rem 0.45rem;
+  border-radius: 4px; background: rgba(255,255,255,0.04);
+}}
 .leaderboard-table-wrap {{
   margin-top: 0.85rem;
   border-radius: 14px;

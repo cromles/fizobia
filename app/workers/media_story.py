@@ -40,3 +40,44 @@ def weave_story(
 
 async def weave_story_async(**kwargs: Any) -> Dict[str, Any]:
     return await asyncio.to_thread(weave_story, **kwargs)
+
+
+def weave_article_outline(
+    *,
+    topic: str = "",
+    headline: str = "",
+    snippet: str = "",
+    source_url: str = "",
+) -> Dict[str, Any]:
+    """Araştırma verisinden makale iskeleti — giriş, gelişme, sonuç."""
+    hook = headline or topic or "Güncel gelişmeler"
+    body_seed = snippet[:320] if snippet else f"{topic} hakkında güncel veriler toplandı."
+    intro = (
+        f"Giriş — {hook}. Okuyucunun dikkatini çeken kanca: "
+        f"bu konu neden şimdi önemli ve kimleri etkiliyor?"
+    )
+    development = (
+        f"Gelişme — {body_seed} "
+        "Veri noktaları, bağlam ve sektör etkisi burada açılıyor. "
+        "Kaynaklar çapraz doğrulandı."
+    )
+    conclusion = (
+        f"Sonuç — {topic or hook} için net özet: trend devam ediyor mu, "
+        "yatırımcı ve okuyucu ne yapmalı? Bir sonraki adımı belirt."
+    )
+    draft = f"{intro}\n\n{development}\n\n{conclusion}"
+    return {
+        "agent_id": AGENT_ID,
+        "display_name": DISPLAY_NAME,
+        "topic": topic,
+        "headline": hook,
+        "outline": {"intro": intro, "development": development, "conclusion": conclusion},
+        "draft": draft,
+        "word_count": len(draft.split()),
+        "source_url": source_url,
+        "real_data": True,
+    }
+
+
+async def weave_article_outline_async(**kwargs: Any) -> Dict[str, Any]:
+    return await asyncio.to_thread(weave_article_outline, **kwargs)

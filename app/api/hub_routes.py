@@ -100,7 +100,7 @@ class EcosystemAssembleRequest(BaseModel):
 class EcosystemHireRequest(BaseModel):
     pipeline: str = Field(
         default="mesh_proof",
-        description="mesh_proof | ecosystem_assembly | goal | arena",
+        description="mesh_proof | ecosystem_assembly | goal | arena | article",
     )
     goal: str = Field(default="")
     initial_data: Dict[str, Any] = Field(default_factory=dict)
@@ -124,7 +124,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-terminal-v17"
+HUB_BUILD = "2026.06.26-departments-v18"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -227,6 +227,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "user_prompt": f"{base}/hub/prompt",
             "arena_wallets": f"{base}/hub/arena/wallets",
             "leaderboard": f"{base}/hub/leaderboard",
+            "departments": f"{base}/hub/departments",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
             "ecosystem_hire": f"{base}/hub/ecosystem/hire",
@@ -782,18 +783,34 @@ async def arena_wallets(limit: int = Query(default=30, ge=1, le=100)) -> Dict[st
     return {"wallets": list_wallets(limit=limit)}
 
 
+@router.get("/departments")
+async def hub_departments() -> Dict[str, Any]:
+    """Dikey uzmanlık departmanları — yatırım kategorileri ve mikro ajan hücreleri."""
+    mesh = _mesh()
+    from app.mesh.departments import list_departments
+
+    registered = [m.agent_id for m in mesh.list_agents()]
+    return list_departments(registered_agent_ids=registered)
+
+
 @router.get("/leaderboard")
-async def hub_gladiator_leaderboard() -> Dict[str, Any]:
+async def hub_gladiator_leaderboard(
+    department_code: str | None = Query(default=None, description="media_video | copywriting | technical"),
+) -> Dict[str, Any]:
     """Gladyatör liderlik tablosu — borsa terminali görünümü için."""
     mesh = _mesh()
     hub = get_investment_hub()
     organism = get_organism_status()
     standings_map = {s["agent_id"]: s for s in organism.get("agent_standings", [])}
     wallets_map = {w["agent_id"]: w for w in list_wallets(limit=200)}
+    from app.mesh.departments import DEPARTMENTS, departments_for_agent, primary_department
 
     rows: List[Dict[str, Any]] = []
     for card in hub.list_identity_cards(mesh.list_agents()):
         aid = card.profile.agent_id
+        dept = primary_department(aid)
+        if department_code and department_code not in departments_for_agent(aid):
+            continue
         st = standings_map.get(aid, {})
         wl = wallets_map.get(aid, {})
         wins = int(wl.get("tasks_won", 0))
@@ -805,6 +822,7 @@ async def hub_gladiator_leaderboard() -> Dict[str, Any]:
             success_pct = round(float(st.get("score", 0.5)) * 100, 1)
 
         price = card.finance.token_price_usdc
+        dept_spec = DEPARTMENTS.get(dept)
         rows.append(
             {
                 "agent_id": aid,
@@ -818,6 +836,9 @@ async def hub_gladiator_leaderboard() -> Dict[str, Any]:
                 "identity_tier": st.get("identity_tier", "probation"),
                 "earned_usdc": wl.get("earned_usdc", 0.0),
                 "tier_badge": st.get("identity_tier", "probation"),
+                "department_code": dept,
+                "department_label": dept_spec.label_short if dept_spec else dept,
+                "departments": list(departments_for_agent(aid)),
             }
         )
 
@@ -828,6 +849,7 @@ async def hub_gladiator_leaderboard() -> Dict[str, Any]:
         "count": len(rows),
         "total_tvl_usd": round(total_tvl, 2),
         "revenue_split_staking_pct": 65,
+        "department_filter": department_code,
     }
 
 

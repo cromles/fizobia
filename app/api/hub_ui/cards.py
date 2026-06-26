@@ -12,6 +12,7 @@ from app.api.hub_ui.helpers import (
 )
 from app.config import settings
 from app.investment.schemas import AgentIdentityCard
+from app.mesh.departments import primary_department
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKERS, LiveWorkerSpec
 
@@ -33,9 +34,10 @@ def render_featured_worker_card(
     h = card.health
     f = card.finance
     agent_id = esc(p.agent_id)
+    dept = esc(primary_department(p.agent_id))
     price = _x402_price(spec)
     return f"""
-<section class="featured-worker" data-agent="{agent_id}" data-service="{esc(spec.service_id)}">
+<section class="featured-worker" data-agent="{agent_id}" data-service="{esc(spec.service_id)}" data-department="{dept}">
   <div class="featured-glow" aria-hidden="true"></div>
   <div class="featured-badge"><span class="pulse-dot"></span> Canlı işçi · x402</div>
   <div class="featured-body">
@@ -85,6 +87,7 @@ def render_worker_card(
     pool = card.pool
     delay = 0.05 + index * 0.06
     agent_id = esc(p.agent_id)
+    dept = esc(primary_department(p.agent_id))
     contract = esc(pool.contract_address or "")
     caps = capabilities_list(manifest)
     spec = LIVE_WORKERS.get(p.agent_id)
@@ -104,7 +107,8 @@ def render_worker_card(
         return f"""
 <article class="worker-card compact{' is-live-worker' if spec else ''}" style="--i:{index};--delay:{delay}s"
   data-agent="{agent_id}"
-  data-class="{esc(p.agent_class.value)}">
+  data-class="{esc(p.agent_class.value)}"
+  data-department="{dept}">
   <div class="wc-compact-main">
     <div class="wc-avatar class-{esc(p.agent_class.value)}"><span class="wc-icon">{class_icon(p.agent_class.value)}</span></div>
     <div class="wc-compact-copy">
@@ -123,7 +127,8 @@ def render_worker_card(
   data-agent="{agent_id}"
   data-token="{esc(p.token_symbol)}"
   data-pool="{contract}"
-  data-class="{esc(p.agent_class.value)}">
+  data-class="{esc(p.agent_class.value)}"
+  data-department="{dept}">
   <div class="wc-shine"></div>
   <div class="wc-orbit"></div>
 

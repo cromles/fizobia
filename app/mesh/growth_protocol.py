@@ -26,6 +26,8 @@ from app.mesh.mission import (
 )
 from app.mesh.assembly_pipeline import run_ecosystem_assembly
 from app.mesh.arena_pipeline import run_arena_pipeline
+from app.mesh.article_pipeline import run_article_pipeline
+from app.mesh.departments import ARTICLE_PIPELINE_AGENTS
 from app.mesh.ecosystem_registry import ECOSYSTEM_ASSEMBLY_AGENTS, MEDIA_AGENT_IDS_SET
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.protocol.schemas import AgentManifest
@@ -321,6 +323,47 @@ class MeshGrowthProtocol:
                 "agent_standings": standings,
                 "real_data": True,
             }
+        elif pipeline == "article":
+            topic = goal or str((initial_data or {}).get("topic", ""))
+            if len(topic.strip()) < 8:
+                raise ValueError("Article pipeline için topic gerekli (goal veya initial_data.topic)")
+            tone = str((initial_data or {}).get("tone", "corporate"))
+            article_url = (initial_data or {}).get("url") or url
+            self._emit(
+                "article_started",
+                f"Makale zinciri — {topic[:60]}…",
+                agent_id=hired_by,
+                detail={"pipeline": pipeline, "department": "copywriting"},
+            )
+            article = await run_article_pipeline(topic=topic, tone=tone, url=article_url)
+            hired = article.get("article", {}).get("competitors", list(ARTICLE_PIPELINE_AGENTS))
+            from app.mesh.agent_dialogue import get_dialogue_bus
+
+            dialogue = get_dialogue_bus()
+            standings = record_mesh_proof_steps(
+                article.get("steps", []),
+                verdict="article_ok" if article.get("article", {}).get("approved") else "article_reject",
+            )
+            result = {
+                "pipeline": pipeline,
+                "department": article.get("department"),
+                "hired_agents": hired,
+                "job_id": article.get("job_id"),
+                "topic": topic,
+                "tone": tone,
+                "approved": article.get("article", {}).get("approved"),
+                "final_text": article.get("article", {}).get("final_text", ""),
+                "review": article.get("article", {}).get("review"),
+                "total_latency_ms": article.get("total_latency_ms"),
+                "steps": len(article.get("steps", [])),
+                "dialogue_thread": article.get("dialogue_thread"),
+                "dialogue_messages": article.get("dialogue_messages"),
+                "dialogue": dialogue.list_messages(
+                    thread_id=article.get("dialogue_thread"), limit=25
+                ),
+                "agent_standings": standings,
+                "real_data": True,
+            }
         elif pipeline == "goal":
             self._emit(
                 "hire_started",
@@ -428,6 +471,14 @@ class MeshGrowthProtocol:
                 },
                 "goal": {
                     "description": "Koordinatör hedefe göre mesh'ten ajan işe alır",
+                },
+                "arena": {
+                    "description": "Paralel metin gladyatörü → kör denetim → Reels render",
+                },
+                "article": {
+                    "agents": list(ARTICLE_PIPELINE_AGENTS),
+                    "description": "Crawler → Story-Weaver → Brand-Voice → Immune-Critic",
+                    "department": "copywriting",
                 },
             },
         }

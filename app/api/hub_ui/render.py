@@ -9,10 +9,11 @@ from app.api.hub_ui.helpers import esc
 from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
+from app.mesh.departments import DEPARTMENTS
 from app.protocol.schemas import AgentManifest
 from app.workers.registry import LIVE_WORKER_IDS, LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-terminal-v17"
+HUB_UI_BUILD = "2026.06.26-departments-v18"
 
 
 def render_hub_dashboard(
@@ -47,6 +48,12 @@ def render_hub_dashboard(
         for i, c in enumerate(other_cards)
     )
     pool_count = len(other_cards)
+
+    dept_tabs = "".join(
+        f'<button type="button" class="filter-tab" data-dept="{esc(spec.code)}" '
+        f'onclick="filterByDepartment(\'{esc(spec.code)}\', this)">{esc(spec.label_short)}</button>'
+        for spec in DEPARTMENTS.values()
+    )
 
     staking_pct = split.staking_share * 100
     platform_pct = split.platform_share * 100
@@ -273,16 +280,25 @@ def render_hub_dashboard(
             <div class="stat" style="--i:3"><span class="stat-label">Görev/dk</span><span class="stat-value mint" id="statTpm">—</span></div>
           </div>
 
+          <div class="dept-filter-bar">
+            <span class="dept-filter-label">Departman</span>
+            <div class="filter-tabs" id="deptFilterTabs">
+              <button type="button" class="filter-tab active" data-dept="all" onclick="filterByDepartment('all', this)">Tümü</button>
+              {dept_tabs}
+            </div>
+          </div>
+
           <section class="leaderboard-section">
             <div class="leaderboard-head">
               <h3>Gladyatör Liderlik Tablosu</h3>
-              <span class="leaderboard-sub">Otonom ajanlar · canlı başarı ve hacim</span>
+              <span class="leaderboard-sub" id="leaderboardSub">Otonom ajanlar · sektörel mikro işçi hücreleri</span>
             </div>
             <div class="leaderboard-table-wrap">
               <table class="leaderboard-table" id="leaderboardTable">
                 <thead>
                   <tr>
                     <th>Ajan</th>
+                    <th>Departman</th>
                     <th>Başarı</th>
                     <th>24s Hacim</th>
                     <th>Token</th>
@@ -291,7 +307,7 @@ def render_hub_dashboard(
                   </tr>
                 </thead>
                 <tbody id="leaderboardBody">
-                  <tr><td colspan="6" class="lb-empty">Yükleniyor…</td></tr>
+                  <tr><td colspan="7" class="lb-empty">Yükleniyor…</td></tr>
                 </tbody>
               </table>
             </div>

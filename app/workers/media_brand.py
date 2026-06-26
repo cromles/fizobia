@@ -29,3 +29,49 @@ def craft_brand_copy(*, narrative: str = "", symbol: str = "bitcoin") -> Dict[st
 
 async def craft_brand_copy_async(**kwargs: Any) -> Dict[str, Any]:
     return await asyncio.to_thread(craft_brand_copy, **kwargs)
+
+
+_TONE_STYLES = {
+    "corporate": {
+        "opener": "Kurumsal bakış açısıyla",
+        "voice": "net, güven veren ve ölçülü",
+        "cta": "Detaylı analiz için bizimle iletişime geçin.",
+    },
+    "humorous": {
+        "opener": "Ciddiyeti bir kenara bırakalım",
+        "voice": "esprili ama bilgili",
+        "cta": "Gülmek serbest — paylaşmayı unutma.",
+    },
+    "technical": {
+        "opener": "Teknik derinlikte",
+        "voice": "veri odaklı ve kesin",
+        "cta": "Ham veri ve metodoloji talep edilebilir.",
+    },
+}
+
+
+def polish_article_tone(
+    *,
+    draft: str = "",
+    topic: str = "",
+    tone: str = "corporate",
+) -> Dict[str, Any]:
+    """Müşteri marka sesine göre metin düzenleme."""
+    style = _TONE_STYLES.get(tone, _TONE_STYLES["corporate"])
+    polished = (
+        f"{style['opener']}, {topic or 'konu'} üzerine {style['voice']} bir metin:\n\n"
+        f"{draft.strip()}\n\n"
+        f"{style['cta']}"
+    )
+    return {
+        "agent_id": AGENT_ID,
+        "display_name": DISPLAY_NAME,
+        "tone": tone,
+        "polished_draft": polished,
+        "word_count": len(polished.split()),
+        "real_data": True,
+    }
+
+
+async def polish_article_tone_async(**kwargs: Any) -> Dict[str, Any]:
+    return await asyncio.to_thread(polish_article_tone, **kwargs)

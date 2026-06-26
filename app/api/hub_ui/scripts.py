@@ -408,6 +408,35 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}
   }};
 
+  let activeDepartment = 'all';
+
+  function applyDepartmentFilter(code) {{
+    const cards = document.querySelectorAll('[data-department]');
+    cards.forEach(card => {{
+      const dept = card.getAttribute('data-department') || '';
+      const show = code === 'all' || dept === code;
+      card.style.display = show ? '' : 'none';
+      card.classList.toggle('dept-hidden', !show);
+    }});
+    const featured = $('featuredSlot');
+    const pool = $('workerPool');
+    if (code !== 'all' && pool) pool.open = true;
+    if (featured && code !== 'all') {{
+      const visibleFeatured = featured.querySelectorAll('[data-department]:not(.dept-hidden)');
+      featured.style.display = visibleFeatured.length ? '' : 'none';
+    }} else if (featured) {{
+      featured.style.display = '';
+    }}
+  }}
+
+  window.filterByDepartment = function(code, btn) {{
+    activeDepartment = code || 'all';
+    document.querySelectorAll('#deptFilterTabs .filter-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    applyDepartmentFilter(activeDepartment);
+    refreshLeaderboard();
+  }};
+
   function startProcessAnimation() {{
     const cards = Array.from(document.querySelectorAll('.worker-card'));
     if (!cards.length) return;
@@ -534,18 +563,29 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const tbody = $('leaderboardBody');
     if (!tbody) return;
     try {{
-      const res = await fetch('/hub/leaderboard?_=' + Date.now(), {{ cache: 'no-store' }});
+      const qs = activeDepartment && activeDepartment !== 'all'
+        ? '?department_code=' + encodeURIComponent(activeDepartment) + '&_=' + Date.now()
+        : '?_=' + Date.now();
+      const res = await fetch('/hub/leaderboard' + qs, {{ cache: 'no-store' }});
       if (!res.ok) return;
       const data = await res.json();
       const rows = data.agents || [];
+      const sub = $('leaderboardSub');
+      if (sub && activeDepartment !== 'all') {{
+        const deptLabel = document.querySelector('#deptFilterTabs .filter-tab.active')?.textContent || activeDepartment;
+        sub.textContent = deptLabel + ' departmanı · mikro işçi hücreleri';
+      }} else if (sub) {{
+        sub.textContent = 'Otonom ajanlar · sektörel mikro işçi hücreleri';
+      }}
       if (!rows.length) {{
-        tbody.innerHTML = '<tr><td colspan="6" class="lb-empty">Henüz ajan verisi yok</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="lb-empty">Bu departmanda henüz ajan verisi yok</td></tr>';
         return;
       }}
       tbody.innerHTML = rows.map((a, i) => (
         '<tr>' +
         '<td><span class="lb-rank">#' + (i + 1) + '</span> <strong>' + lbEsc(a.display_name) + '</strong><br/>' +
         '<span class="lb-token">' + lbEsc(a.token_symbol) + ' · ' + lbEsc(a.identity_tier) + '</span></td>' +
+        '<td><span class="lb-dept">' + lbEsc(a.department_label || a.department_code || '—') + '</span></td>' +
         '<td class="lb-mint">' + a.success_rate_pct + '%</td>' +
         '<td>$' + Number(a.volume_24h_usd || 0).toFixed(0) + '</td>' +
         '<td>$' + Number(a.token_price_usdc || 0).toFixed(3) + '</td>' +

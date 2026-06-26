@@ -90,6 +90,52 @@ def blind_audit(submissions: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+_ARTICLE_SECTION_MARKERS = ("giriş", "gelişme", "sonuç", "özet", "kaynak")
+_GRAMMAR_HINTS = (".", ",", ":", "—", "ve", "ile", "için")
+
+
+def _score_article(text: str, word_count: int) -> Tuple[float, Dict[str, float]]:
+    lower = text.lower()
+    section_hits = sum(1 for m in _ARTICLE_SECTION_MARKERS if m in lower)
+    grammar_hits = sum(1 for g in _GRAMMAR_HINTS if g in text)
+    length_score = 1.0 if 180 <= word_count <= 900 else (0.7 if word_count >= 120 else 0.4)
+    structure_score = min(1.0, section_hits / 2.0)
+    flow_score = min(1.0, grammar_hits / 6.0)
+    clarity = 0.9 if len(text) > 200 else 0.35
+
+    total = round(
+        length_score * 0.3 + structure_score * 0.3 + flow_score * 0.2 + clarity * 0.2,
+        4,
+    )
+    return total, {
+        "length": round(length_score, 3),
+        "structure": round(structure_score, 3),
+        "flow": round(flow_score, 3),
+        "clarity": round(clarity, 3),
+    }
+
+
+def audit_article(text: str) -> Dict[str, Any]:
+    """Makale kalite kapısı — yazım, akış ve yapı denetimi."""
+    wc = len(text.split())
+    total, breakdown = _score_article(text, wc)
+    passed = total >= 0.58
+    return {
+        "critic_agent": CRITIC_AGENT_ID,
+        "criteria": ["length", "structure", "flow", "clarity"],
+        "blind": False,
+        "word_count": wc,
+        "critic_score": total,
+        "breakdown": breakdown,
+        "verdict": "pass" if passed else "reject",
+        "rationale": (
+            f"Yapı:{breakdown['structure']:.2f} · Akış:{breakdown['flow']:.2f} · "
+            f"Uzunluk:{breakdown['length']:.2f} · Netlik:{breakdown['clarity']:.2f}"
+        ),
+        "approved": passed,
+    }
+
+
 def map_winner_to_agent(
     drafts: List[Dict[str, Any]],
     blind_submissions: List[Dict[str, Any]],
