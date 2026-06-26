@@ -11,7 +11,7 @@ BRANCH="${BRANCH:-main}"
 
 echo ""
 echo "  Axium Ekosistem deploy — ${DOMAIN}"
-echo "  10 ajan · medya · sermaye · otopilot 60s"
+echo "  10 ajan · arena · synapse · otopilot 60s"
 echo ""
 
 export DEBIAN_FRONTEND=noninteractive
@@ -49,6 +49,7 @@ OAM_X402_DEV_ACCEPT_PROOF=true
 OAM_X402_MARKET_PULSE_PRICE=0.05
 OAM_X402_SENTIMENT_PRICE=0.04
 OAM_X402_MESH_PROOF_PRICE=0.10
+OAM_X402_ARENA_PRICE=0.10
 OAM_CORS_ORIGINS=https://${DOMAIN},https://www.${DOMAIN},http://${DOMAIN},http://www.${DOMAIN}
 OAM_EMBED_FRAME_ORIGINS=https://${DOMAIN},https://www.${DOMAIN}
 OAM_ONCHAIN_ENABLED=false

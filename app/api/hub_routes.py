@@ -124,7 +124,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.25-ecosystem-live-v15"
+HUB_BUILD = "2026.06.26-arena-synapse-onchain-v16"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
