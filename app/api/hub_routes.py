@@ -133,7 +133,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-agents-v19"
+HUB_BUILD = "2026.06.26-free-apis-v20"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -238,6 +238,10 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "leaderboard": f"{base}/hub/leaderboard",
             "departments": f"{base}/hub/departments",
             "llm": f"{base}/hub/llm",
+            "apis": f"{base}/hub/apis",
+            "data_fx": f"{base}/hub/data/fx",
+            "data_defi": f"{base}/hub/data/defi",
+            "data_btc_network": f"{base}/hub/data/btc-network",
             "article": f"{base}/hub/article",
             "ecosystem": f"{base}/hub/ecosystem",
             "ecosystem_join": f"{base}/hub/ecosystem/join",
@@ -808,6 +812,72 @@ async def hub_llm_status() -> Dict[str, Any]:
     from app.llm.client import llm_public_status
 
     return llm_public_status()
+
+
+@router.get("/apis")
+async def hub_data_apis(probe: bool = Query(default=False)) -> Dict[str, Any]:
+    """Ücretsiz dış veri kaynakları — katalog ve isteğe bağlı erişim kontrolü."""
+    from app.mesh.data_sources import list_data_sources, probe_data_sources
+
+    catalog = list_data_sources()
+    if probe:
+        probed = await probe_data_sources()
+        reachable = sum(1 for s in probed if s.get("probe", {}).get("reachable"))
+        return {
+            **catalog,
+            "probed": True,
+            "reachable_count": reachable,
+            "sources": probed,
+            "data_routes": {
+                "fx": f"{settings.public_base_url.rstrip('/')}/hub/data/fx",
+                "defi": f"{settings.public_base_url.rstrip('/')}/hub/data/defi",
+                "btc_network": f"{settings.public_base_url.rstrip('/')}/hub/data/btc-network",
+            },
+        }
+    return {
+        **catalog,
+        "data_routes": {
+            "fx": f"{settings.public_base_url.rstrip('/')}/hub/data/fx",
+            "defi": f"{settings.public_base_url.rstrip('/')}/hub/data/defi",
+            "btc_network": f"{settings.public_base_url.rstrip('/')}/hub/data/btc-network",
+        },
+    }
+
+
+@router.get("/data/fx")
+async def hub_data_fx(
+    base: str = Query(default="USD"),
+    symbols: str = Query(default="TRY,EUR"),
+) -> Dict[str, Any]:
+    """Frankfurter — ücretsiz döviz kurları (USD/TRY vb.)."""
+    from app.workers.fx_pulse import fetch_fx_snapshot_async
+
+    try:
+        return await fetch_fx_snapshot_async(base=base, symbols=symbols)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"FX API hatası: {exc}") from exc
+
+
+@router.get("/data/defi")
+async def hub_data_defi(limit: int = Query(default=8, ge=3, le=20)) -> Dict[str, Any]:
+    """DefiLlama — zincir TVL (ücretsiz)."""
+    from app.workers.defi_pulse import fetch_defi_snapshot_async
+
+    try:
+        return await fetch_defi_snapshot_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"DeFi API hatası: {exc}") from exc
+
+
+@router.get("/data/btc-network")
+async def hub_data_btc_network() -> Dict[str, Any]:
+    """Mempool.space + blockchain.info — BTC ağ durumu (ücretsiz)."""
+    from app.workers.btc_network import fetch_btc_network_snapshot_async
+
+    try:
+        return await fetch_btc_network_snapshot_async()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"BTC ağ API hatası: {exc}") from exc
 
 
 @router.get("/departments")

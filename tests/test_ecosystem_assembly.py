@@ -26,7 +26,7 @@ def _reset():
 
 
 def test_ecosystem_stack_agent_count():
-    assert len(ECOSYSTEM_STACK_AGENT_IDS) == 15
+    assert len(ECOSYSTEM_STACK_AGENT_IDS) == 18
 
 
 @pytest.mark.asyncio

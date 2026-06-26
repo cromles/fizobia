@@ -12,12 +12,13 @@ from app.workers.media_outreach import AGENT_ID as OUTREACH_ID
 from app.workers.media_proof import AGENT_ID as PROOF_MEDIA_ID
 from app.workers.media_render import AGENT_ID as RENDER_ID
 from app.workers.media_story import AGENT_ID as STORY_ID
+from app.mesh.departments import FREE_DATA_AGENT_IDS
 from app.mesh.critic import CRITIC_AGENT_ID
 from app.workers.text_competitors import ARENA_TEXT_COMPETITORS
 
 MEDIA_AGENT_IDS: Tuple[str, ...] = (STORY_ID, BRAND_ID, OUTREACH_ID, PROOF_MEDIA_ID)
 DEPARTMENT_MICRO_AGENT_IDS: Tuple[str, ...] = ARENA_TEXT_COMPETITORS + (CRITIC_AGENT_ID, RENDER_ID)
-GROWTH_DIVISION_IDS: Tuple[str, ...] = MEDIA_AGENT_IDS + (CAPITAL_ID,) + DEPARTMENT_MICRO_AGENT_IDS
+GROWTH_DIVISION_IDS: Tuple[str, ...] = MEDIA_AGENT_IDS + (CAPITAL_ID,) + DEPARTMENT_MICRO_AGENT_IDS + FREE_DATA_AGENT_IDS
 
 ECOSYSTEM_STACK_AGENT_IDS: Tuple[str, ...] = FOUNDER_STACK_AGENT_IDS + GROWTH_DIVISION_IDS
 

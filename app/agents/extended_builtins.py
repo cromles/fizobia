@@ -106,6 +106,36 @@ def _onchain_handler(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": str(exc), "real_data": False, "agent_id": "oam.watcher.onchain.local"}
 
 
+def _fx_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.fx_pulse import fetch_fx_snapshot
+
+    try:
+        return fetch_fx_snapshot(
+            base=str(data.get("base") or "USD"),
+            symbols=str(data.get("symbols") or data.get("query") or "TRY,EUR"),
+        )
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.fx.local"}
+
+
+def _defi_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.defi_pulse import fetch_defi_snapshot
+
+    try:
+        return fetch_defi_snapshot(limit=int(data.get("limit") or 8))
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.analyst.defi.local"}
+
+
+def _btc_network_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.btc_network import fetch_btc_network_snapshot
+
+    try:
+        return fetch_btc_network_snapshot()
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.watcher.btcnet.local"}
+
+
 def _story_handler(data: Dict[str, Any]) -> Dict[str, Any]:
     from app.workers.media_story import weave_story
 
@@ -220,6 +250,9 @@ EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.orchestrator.pipeline.local": {"pipeline_orchestrator": _orchestrator_handler},
     "oam.validator.quality.local": {"quality_validator": _validator_handler},
     "oam.watcher.onchain.local": {"onchain_watcher": _onchain_handler},
+    "oam.analyst.fx.local": {"fx_analyst": _fx_handler},
+    "oam.analyst.defi.local": {"defi_analyst": _defi_handler},
+    "oam.watcher.btcnet.local": {"btc_network_watcher": _btc_network_handler},
     "oam.media.story.local": {"story_weaver": _story_handler},
     "oam.media.brand.local": {"brand_voice": _brand_handler},
     "oam.media.outreach.local": {"outreach_pulse": _outreach_handler},
@@ -406,6 +439,30 @@ REELS_RENDERER = _manifest(
     "Kazanan metni dikey Reels üretim spec'ine dönüştürür",
     "reels_renderer",
 )
+FX_PULSE = _manifest(
+    "oam.analyst.fx.local",
+    8122,
+    0.001,
+    "fx_analyst",
+    "USD/TRY ve döviz kurları — Frankfurter ECB verisi",
+    "fx_analyst",
+)
+DEFI_PULSE = _manifest(
+    "oam.analyst.defi.local",
+    8123,
+    0.0012,
+    "defi_analyst",
+    "DeFi zincir TVL ve liderlik analizi — DefiLlama",
+    "defi_analyst",
+)
+BTC_NETWORK = _manifest(
+    "oam.watcher.btcnet.local",
+    8124,
+    0.001,
+    "btc_network_watcher",
+    "Bitcoin blok yüksekliği, mempool ücretleri ve spot fiyat",
+    "btc_network_watcher",
+)
 
 EXTENDED_MANIFESTS: List[AgentManifest] = [
     MARKET_ANALYST,
@@ -426,4 +483,7 @@ EXTENDED_MANIFESTS: List[AgentManifest] = [
     STORY_FORGE,
     DATA_PULSE,
     REELS_RENDERER,
+    FX_PULSE,
+    DEFI_PULSE,
+    BTC_NETWORK,
 ]

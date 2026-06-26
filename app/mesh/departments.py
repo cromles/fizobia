@@ -14,6 +14,9 @@ from app.workers.media_render import AGENT_ID as RENDER_ID
 from app.workers.media_story import AGENT_ID as STORY_ID
 from app.workers.text_competitors import ARENA_TEXT_COMPETITORS
 from app.workers.web_crawler import AGENT_ID as WEB_CRAWLER_ID
+from app.workers.fx_pulse import AGENT_ID as FX_ID
+from app.workers.defi_pulse import AGENT_ID as DEFI_ID
+from app.workers.btc_network import AGENT_ID as BTCNET_ID
 
 DEPARTMENT_MEDIA_VIDEO = "media_video"
 DEPARTMENT_COPYWRITING = "copywriting"
@@ -25,6 +28,8 @@ ARTICLE_PIPELINE_AGENTS: Tuple[str, ...] = (
     BRAND_ID,
     CRITIC_AGENT_ID,
 )
+
+FREE_DATA_AGENT_IDS: Tuple[str, ...] = (FX_ID, DEFI_ID, BTCNET_ID)
 
 
 @dataclass(frozen=True)
@@ -80,7 +85,7 @@ DEPARTMENTS: Dict[str, DepartmentSpec] = {
         description="Kod blokları, veri tabanı şemaları ve teknik sistem mimarisi analizi.",
         invest_hint="Teknik Analiz Ajanları havuzuna yatırım",
         pipeline_ids=("mesh_proof", "ecosystem_assembly"),
-        agent_ids=MESH_PROOF_AGENTS,
+        agent_ids=MESH_PROOF_AGENTS + FREE_DATA_AGENT_IDS,
     ),
 }
 
@@ -97,6 +102,8 @@ AGENT_DEPARTMENTS: Dict[str, Tuple[str, ...]] = {
 for aid in ARENA_TEXT_COMPETITORS:
     AGENT_DEPARTMENTS.setdefault(aid, (DEPARTMENT_MEDIA_VIDEO,))
 for aid in MESH_PROOF_AGENTS:
+    AGENT_DEPARTMENTS.setdefault(aid, (DEPARTMENT_TECHNICAL,))
+for aid in FREE_DATA_AGENT_IDS:
     AGENT_DEPARTMENTS.setdefault(aid, (DEPARTMENT_TECHNICAL,))
 
 
