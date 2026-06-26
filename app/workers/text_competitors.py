@@ -78,7 +78,7 @@ async def _llm_draft(agent_id: str, *, user_prompt: str, model: str) -> tuple[st
         user=user,
         model=model,
         temperature=0.85,
-        max_tokens=220,
+        max_tokens=120,
     )
     return text, llm_meta
 

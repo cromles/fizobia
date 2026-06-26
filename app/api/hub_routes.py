@@ -47,6 +47,8 @@ from app.investment.x402_gateway import (
 )
 from app.mesh.arena_pipeline import run_arena_pipeline
 from app.mesh.article_pipeline import run_article_pipeline
+from app.mesh.prompt_intent import prompt_mode
+from app.mesh.quick_compose import run_quick_compose
 from app.mesh.agent_wallets import credit_agent, list_ledger, list_wallets, record_loss
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
 from app.mesh.growth_protocol import get_growth_protocol
@@ -755,11 +757,15 @@ async def user_prompt_arena(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        result = await run_arena_pipeline(
-            user_prompt=request.prompt,
-            background_music=request.background_music,
-            duration_sec=request.duration_sec,
-        )
+        mode = prompt_mode(request.prompt)
+        if mode == "quick_compose":
+            result = await run_quick_compose(user_prompt=request.prompt)
+        else:
+            result = await run_arena_pipeline(
+                user_prompt=request.prompt,
+                background_music=request.background_music,
+                duration_sec=request.duration_sec,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -768,17 +774,21 @@ async def user_prompt_arena(
     hub = get_investment_hub()
     mesh = _mesh()
     gross = payment["amount_usdc"] if payment["amount_usdc"] > 0 else arena_price_usd()
-    revenue = _record_arena_payouts(
-        hub,
-        mesh,
-        result,
-        gross,
-        payment.get("payer"),
-    )
+    if result.get("mode") == "quick_compose":
+        revenue = {"gross_usdc": gross, "mode": "quick_compose", "payouts": []}
+    else:
+        revenue = _record_arena_payouts(
+            hub,
+            mesh,
+            result,
+            gross,
+            payment.get("payer"),
+        )
 
     return {
         "paid": payment["amount_usdc"] > 0,
         "payment": payment,
+        "mode": result.get("mode", "arena"),
         "result": result,
         "revenue": revenue,
         "wallets": list_wallets(limit=10),

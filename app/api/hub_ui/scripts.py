@@ -452,6 +452,39 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}, 2600);
   }}
 
+  function isQuickComposePrompt(text) {{
+    const t = (text || '').toLowerCase();
+    if (/reels|instagram|tiktok|video|30 saniye|dikey/.test(t)) return false;
+    return /şiir|siir|poem|makale|hikaye|metin yaz|yaz bana|blog|aşk/.test(t);
+  }}
+
+  function startSynapseProgress(monitor, prompt) {{
+    if (!monitor) return null;
+    const quick = isQuickComposePrompt(prompt) && !/reels|instagram|tiktok|video/.test((prompt||'').toLowerCase());
+    const steps = quick
+      ? [
+          '[x402] Ödeme doğrulandı',
+          '[Story-Weaver] Gemini metin üretiyor…',
+          '[Orkestratör] Tamamlanıyor…',
+        ]
+      : [
+          '[x402] Ödeme doğrulandı',
+          '[Arena] Gladyatörler paralel yazıyor…',
+          '[Immune-Critic] Kör denetim…',
+          '[Render] Reels spec…',
+        ];
+    let i = 0;
+    monitor.innerHTML = '<div class="synapse-line">' + steps[0] + '</div>';
+    return setInterval(() => {{
+      i = (i + 1) % steps.length;
+      const div = document.createElement('div');
+      div.className = 'synapse-line';
+      div.textContent = steps[i];
+      monitor.appendChild(div);
+      monitor.scrollTop = monitor.scrollHeight;
+    }}, 900);
+  }}
+
   async function submitUserPrompt() {{
     const input = $('userPrompt');
     const btn = $('btnPrompt');
@@ -467,9 +500,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     overlay?.classList.remove('hidden');
     resultEl?.classList.add('hidden');
     document.body.classList.add('arena-frozen');
-    if (monitor) {{
-      monitor.innerHTML = '<div class="synapse-line">[x402] Ödeme kapısı kontrol ediliyor…</div>';
-    }}
+    const progressTimer = startSynapseProgress(monitor, prompt);
     try {{
       const proof = JSON.stringify({{
         amount_usdc: 0.10,
@@ -496,16 +527,26 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       streamSynapseLog(data.result?.synapse_log || ['[Orkestratör] Tamamlandı.']);
       const w = data.result?.winner;
       const render = data.result?.render;
+      const isCompose = data.mode === 'quick_compose' || data.result?.mode === 'quick_compose';
       if (resultEl) {{
         resultEl.classList.remove('hidden');
-        resultEl.innerHTML = (
-          '<h4>Nihai ürün</h4>' +
-          '<p><strong>Kazanan:</strong> ' + (w?.display_name || '—') +
-          ' · denetçi skoru ' + ((w?.critic_score || 0) * 100).toFixed(0) + '%</p>' +
-          '<p><strong>Script:</strong> ' + (w?.script || '').slice(0, 280) + '</p>' +
-          '<p><strong>Format:</strong> ' + (render?.format || '') + ' · ' + (render?.duration_sec || 30) + 's · ' +
-          (render?.audio?.background_music ? 'fon müziği açık' : 'sessiz') + '</p>'
-        );
+        if (isCompose) {{
+          resultEl.innerHTML = (
+            '<h4>Metin hazır</h4>' +
+            '<p><strong>Ajan:</strong> ' + (w?.display_name || 'Story-Weaver') +
+            ' · ~' + Math.round((data.result?.total_latency_ms || 0) / 1000) + ' sn</p>' +
+            '<pre class="compose-output">' + (render?.text || w?.script || '').replace(/</g, '&lt;') + '</pre>'
+          );
+        }} else {{
+          resultEl.innerHTML = (
+            '<h4>Nihai ürün</h4>' +
+            '<p><strong>Kazanan:</strong> ' + (w?.display_name || '—') +
+            ' · denetçi skoru ' + ((w?.critic_score || 0) * 100).toFixed(0) + '%</p>' +
+            '<p><strong>Script:</strong> ' + (w?.script || '').slice(0, 280) + '</p>' +
+            '<p><strong>Format:</strong> ' + (render?.format || '') + ' · ' + (render?.duration_sec || 30) + 's · ' +
+            (render?.audio?.background_music ? 'fon müziği açık' : 'sessiz') + '</p>'
+          );
+        }}
       }}
       showToast(data.message || 'Ürün hazır');
       refreshDialogue();
@@ -513,6 +554,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }} catch (err) {{
       showToast(err.message || 'Bağlantı hatası', true);
     }} finally {{
+      if (progressTimer) clearInterval(progressTimer);
       btn?.classList.remove('loading');
       overlay?.classList.add('hidden');
       document.body.classList.remove('arena-frozen');

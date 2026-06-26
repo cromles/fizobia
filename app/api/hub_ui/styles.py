@@ -254,6 +254,19 @@ body {{
   color: var(--cyan);
   margin-bottom: 0.5rem;
 }}
+.compose-output {{
+  white-space: pre-wrap;
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text);
+  background: rgba(0,0,0,0.25);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  max-height: 320px;
+  overflow-y: auto;
+}}
 
 .leaderboard-section {{ margin: 1.25rem 0 1.75rem; }}
 .leaderboard-head h3 {{
