@@ -13,7 +13,7 @@ def test_hub_workers_catalog():
     assert res.status_code == 200
     body = res.json()
     assert body["count"] == 10
-    assert body["topology"] == "synapse_mesh"
+    assert body["topology"] == "dag"
     assert len(body.get("mesh_edges", [])) > 0
     ids = {w["agent_id"] for w in body["workers"]}
     assert ids == set(CELLULAR_AGENT_IDS)

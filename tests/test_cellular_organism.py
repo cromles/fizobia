@@ -1,80 +1,72 @@
-"""Hücresel organizma — taxonomy, homeostazi, metabolizma, mesh."""
+"""Hücresel runtime — geriye uyumluluk testleri."""
 
-from fastapi.testclient import TestClient
-
-from app.api.main import app
 from app.mesh.cellular_taxonomy import CELLULAR_ORGANISM, CELL_SENSORY, cell_type_for
-from app.mesh.feedback import record_failure, reset_feedback, summarize_for_brain
-from app.mesh.homeostasis import (
-    debit_energy,
-    check_pipeline_allowed,
-    get_homeostasis_status,
-    reset_homeostasis,
-)
-from app.mesh.mesh_nervous import immune_halt_muscle, is_muscle_halted, reset_mesh_nervous, send_mesh_signal
-from app.mesh.metabolism import can_agent_act, record_api_spend, reset_metabolism
+from app.mesh.agent_dag import is_valid_edge
+from app.mesh.approval_gate import reset_approval_gate
+from app.mesh.backpressure import debit_budget, reset_backpressure
+from app.mesh.cost_ledger import record_cost, reset_cost_ledger
+from app.mesh.decision_trace import reset_decision_traces
+from app.mesh.feedback import record_feedback, reset_feedback
+from app.mesh.mesh_nervous import reset_dag_runtime, send_dag_signal, worker_halt
+from app.mesh.cost_ledger import can_worker_run
+from app.mesh.backpressure import check_pipeline_allowed, health_score
+from app.workers.macro_strategist import AGENT_ID as MACRO_ID
 from app.workers.market_pulse import AGENT_ID as MARKET_ID
 from app.workers.web_crawler import AGENT_ID as WEB_ID
 
 
 def setup_function() -> None:
-    reset_homeostasis()
-    reset_metabolism()
+    reset_backpressure()
+    reset_cost_ledger()
     reset_feedback()
-    reset_mesh_nervous()
-
-
-def test_cellular_taxonomy_has_10_agents():
-    client = TestClient(app)
-    res = client.get("/hub/cellular")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["cellular"]["total_agents"] == 10
-    assert len(body["cellular"]["cell_types"]) == 4
-    sensory = next(ct for ct in body["cellular"]["cell_types"] if ct["code"] == CELL_SENSORY)
-    assert sensory["count"] == 3
-
-
-def test_mesh_adjacency_not_linear_only():
-    assert cell_type_for(WEB_ID) == CELL_SENSORY
-    ok = send_mesh_signal(WEB_ID, "oam.expert.macro.local", "sinyal test")
-    assert ok["delivered"] is True
-    bad = send_mesh_signal(WEB_ID, MARKET_ID, "doğrudan kas yasak değil ama komşu değilse red")
-    assert bad["delivered"] is False or bad.get("reason") == "mesh_reject"
-
-
-def test_homeostasis_hunt_blocks_heavy_pipeline():
-    status = get_homeostasis_status()
-    assert status["mode"] == "normal"
-    debit_energy(22.0)
-    mode = get_homeostasis_status()["mode"]
-    assert mode in ("hunt", "conserve", "critical")
-    allowed, _ = check_pipeline_allowed("arena")
-    assert allowed is False
-
-
-def test_immune_halt_muscle():
-    halt = immune_halt_muscle(
-        immune_agent="oam.critic.immune.local",
-        target_muscle=MARKET_ID,
-        reason="test audit fail",
-    )
-    assert halt["halted"] is True
-    assert is_muscle_halted(MARKET_ID)
-
-
-def test_metabolism_starvation_blocks_muscle():
-    for _ in range(12):
-        record_api_spend(MARKET_ID)
-    ok, reason = can_agent_act(MARKET_ID)
-    assert ok is False
-    assert "açlık" in reason or "Homeostazi" in reason or "kısıtlı" in reason
-
-
-def test_feedback_brain_summary():
-    record_failure(agent_id="oam.orchestrator.pipeline.local", error="kod hatası", pipeline="goal")
-    assert "kod hatası" in summarize_for_brain()
+    reset_dag_runtime()
+    reset_decision_traces()
+    reset_approval_gate()
 
 
 def test_cellular_agent_count_constant():
     assert len(CELLULAR_ORGANISM) == 10
+
+
+def test_dag_not_undirected_mesh():
+    assert cell_type_for(WEB_ID) == CELL_SENSORY
+    assert is_valid_edge(WEB_ID, MACRO_ID)
+    assert not is_valid_edge(WEB_ID, MARKET_ID)
+
+
+def test_backpressure_blocks_heavy_pipeline():
+    assert health_score() == 1.0
+    debit_budget(22.0)
+    allowed, _ = check_pipeline_allowed("arena")
+    assert allowed is False
+
+
+def test_worker_halt():
+    halt = worker_halt(
+        gate_agent="oam.critic.immune.local",
+        target_worker=MARKET_ID,
+        reason="test",
+    )
+    assert halt["halted"] is True
+
+
+def test_budget_exhausted_blocks_worker():
+    for _ in range(12):
+        record_cost(MARKET_ID)
+    ok, reason = can_worker_run(MARKET_ID)
+    assert ok is False
+    assert "budget_exhausted" in reason
+
+
+def test_structured_feedback_not_plain_summary():
+    record_feedback(
+        agent_id="oam.orchestrator.pipeline.local",
+        pipeline="goal",
+        success=False,
+        error="runtime",
+        http_status=500,
+    )
+    from app.mesh.feedback import get_feedback_status
+
+    status = get_feedback_status()
+    assert status["records"][0]["error_type"] == "upstream_5xx"

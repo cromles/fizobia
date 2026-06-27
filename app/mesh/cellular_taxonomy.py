@@ -119,19 +119,10 @@ CELLULAR_SET: FrozenSet[str] = frozenset(CELLULAR_AGENT_IDS)
 
 _AGENT_INDEX: Dict[str, CellularAgent] = {c.agent_id: c for c in CELLULAR_ORGANISM}
 
-# Mesh (ağ) — doğrusal fabrika bandı değil; duyu→beyin paralel, bağışıklık kası durdurabilir
-MESH_ADJACENCY: Dict[str, Tuple[str, ...]] = {
-    WEB_ID: (MACRO_ID, ORCHESTRATOR_ID, CRITIC_AGENT_ID),
-    SENTIMENT_ID: (MACRO_ID, ORCHESTRATOR_ID, MARKET_ID),
-    ONCHAIN_ID: (MACRO_ID, THREAT_ID, ORCHESTRATOR_ID),
-    MACRO_ID: (ORCHESTRATOR_ID, MARKET_ID, YIELD_ID),
-    ORCHESTRATOR_ID: (MARKET_ID, YIELD_ID, STORY_ID, CRITIC_AGENT_ID, THREAT_ID),
-    MARKET_ID: (CRITIC_AGENT_ID, ORCHESTRATOR_ID),
-    YIELD_ID: (CRITIC_AGENT_ID, ORCHESTRATOR_ID),
-    STORY_ID: (CRITIC_AGENT_ID, ORCHESTRATOR_ID),
-    CRITIC_AGENT_ID: (ORCHESTRATOR_ID, MARKET_ID, YIELD_ID, STORY_ID),
-    THREAT_ID: (ORCHESTRATOR_ID, ONCHAIN_ID, MARKET_ID),
-}
+# DAG kenarları — app.mesh.agent_dag tek kaynak
+from app.mesh.agent_dag import edges_public, is_valid_edge, outbound_neighbors
+
+MESH_ADJACENCY: Dict[str, Tuple[str, ...]] = {}  # deprecated; outbound_neighbors kullanın
 
 MUSCLE_AGENT_IDS: Tuple[str, ...] = tuple(
     c.agent_id for c in CELLULAR_ORGANISM if c.cell_type == CELL_MUSCLE
@@ -162,13 +153,8 @@ def cell_type_for(agent_id: str) -> str:
 
 
 def is_mesh_neighbor(from_agent: str, to_agent: str) -> bool:
-    """Ağ topolojisinde doğrudan sinaps var mı."""
-    if from_agent == to_agent:
-        return True
-    neighbors = MESH_ADJACENCY.get(from_agent, ())
-    if to_agent in neighbors:
-        return True
-    return from_agent in MESH_ADJACENCY.get(to_agent, ())
+    """DAG yönlü kenar — geriye uyumluluk."""
+    return is_valid_edge(from_agent, to_agent)
 
 
 def agents_by_cell(cell_type: str) -> List[Dict[str, Any]]:
@@ -190,10 +176,9 @@ def get_cellular_taxonomy() -> Dict[str, Any]:
             for ct in CELL_TYPES
         ],
         "agents": [c.to_public() for c in CELLULAR_ORGANISM],
-        "mesh_topology": "network",
-        "mesh_adjacency": {
-            aid: list(neighbors) for aid, neighbors in MESH_ADJACENCY.items()
-        },
+        "mesh_topology": "dag",
+        "mesh_adjacency": {aid: list(outbound_neighbors(aid)) for aid in CELLULAR_AGENT_IDS},
+        "mesh_edges": edges_public(),
         "muscle_agents": list(MUSCLE_AGENT_IDS),
         "sensory_agents": list(SENSORY_AGENT_IDS),
         "brain_agents": list(BRAIN_AGENT_IDS),

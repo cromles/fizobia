@@ -217,9 +217,9 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       const modeEl = $('homeostasisMode');
       const energyEl = $('organismEnergy');
       const grid = $('cellularGrid');
-      const hs = data.homeostasis || {{}};
-      if (modeEl) modeEl.textContent = 'Homeostazi: ' + (hs.mode || '—');
-      if (energyEl) energyEl.textContent = 'Enerji: $' + Number(hs.energy_usd || 0).toFixed(2);
+      const bp = data.backpressure || data.homeostasis || {{}};
+      if (modeEl) modeEl.textContent = 'Health: ' + (bp.health_score != null ? bp.health_score.toFixed(2) : '—');
+      if (energyEl) energyEl.textContent = 'Budget: $' + Number(bp.budget_usd || 0).toFixed(2);
       if (!grid) return;
       const types = (data.cellular && data.cellular.cell_types) || [];
       grid.innerHTML = types.map(ct => (
@@ -1419,12 +1419,12 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (outputType === 'story' || data.narrative) {{
       return '<div class="worker-story-block"><h3>' + lbEsc(data.headline || 'Hikaye') + '</h3><p>' + lbEsc(data.narrative || '') + '</p></div>';
     }}
-    if (outputType === 'coordinator' || data.mode != null) {{
+    if (outputType === 'coordinator' || data.health_score != null) {{
       return renderKvGrid([
-        ['Mod', data.mode || '—'],
-        ['Enerji USD', '$' + Number(data.energy_usd || 0).toFixed(2)],
-        ['Hücre', data.cell_count || '10'],
-        ['Geri besleme', (data.feedback_summary || '—').slice(0, 80)],
+        ['Health', data.health_score != null ? data.health_score : '—'],
+        ['Throttle', data.throttle_factor != null ? data.throttle_factor : '—'],
+        ['Budget USD', '$' + Number(data.budget_usd || 0).toFixed(2)],
+        ['Onay gerekli', data.approval_required ? 'evet' : 'hayır'],
       ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
     }}
     if (outputType === 'critic' || data.critic_score != null) {{

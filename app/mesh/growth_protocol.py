@@ -174,10 +174,16 @@ class MeshGrowthProtocol:
         mesh_proof: kurucu üçlü sabit pipeline
         goal: router üzerinden dinamik işe alma
         """
-        from app.mesh.feedback import get_brain_feedback, record_pipeline_feedback
+        from app.mesh.feedback import (
+            get_coordinator_actions,
+            record_pipeline_feedback,
+            should_skip_pipeline,
+        )
         from app.mesh.homeostasis import check_pipeline_allowed, sync_energy_from_revenue
         from app.mesh.mesh_nervous import is_muscle_halted, send_mesh_signal
         from app.mesh.metabolism import can_agent_act, record_pipeline_metabolism
+        from app.mesh.backpressure import health_score, budget_usd
+        from app.mesh.decision_trace import trace_decision
 
         try:
             from app.investment.factory import get_investment_hub
@@ -189,17 +195,33 @@ class MeshGrowthProtocol:
         except Exception:
             pass
 
+        skip, skip_reason = should_skip_pipeline(ORCHESTRATOR_ID, pipeline)
+        if skip:
+            trace_decision(
+                "pipeline_skipped",
+                agent_id=ORCHESTRATOR_ID,
+                pipeline=pipeline,
+                health_score=health_score(),
+                budget_usd=budget_usd(),
+                allowed=False,
+                reason=skip_reason,
+            )
+            raise ValueError(skip_reason)
+
         allowed, block_reason = check_pipeline_allowed(pipeline)
         if not allowed:
             raise ValueError(block_reason)
 
-        brain_hint = get_brain_feedback().get("summary", "")
-        if brain_hint:
+        actions = get_coordinator_actions()
+        if actions:
+            from app.workers.macro_strategist import AGENT_ID as MACRO_ID
+
             send_mesh_signal(
                 ORCHESTRATOR_ID,
-                ORCHESTRATOR_ID,
-                f"Geri besleme: {brain_hint}",
-                intent="brain_feedback",
+                MACRO_ID,
+                "coordinator_actions",
+                intent="structured_feedback",
+                payload={"actions": actions},
             )
 
         hired: List[str] = []

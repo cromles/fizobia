@@ -134,7 +134,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.28-synapse-net-v30"
+HUB_BUILD = "2026.06.28-runtime-arch-v31"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -982,21 +982,27 @@ async def hub_data_yield(
 
 @router.get("/data/coordinator")
 async def hub_data_coordinator() -> Dict[str, Any]:
-    """Koordinatör — mesh durumu, otopilot, homeostazi."""
+    """Koordinatör — backpressure, approval, yapılandırılmış feedback."""
     from app.mesh.cellular_organism import get_cellular_organism_status
 
     try:
         status = get_cellular_organism_status()
-        hs = status.get("homeostasis", {})
+        bp = status.get("backpressure", {})
         return {
             "agent_id": "oam.orchestrator.pipeline.local",
             "worker": "Pipeline Orchestrator",
-            "mode": hs.get("mode"),
-            "energy_usd": hs.get("energy_usd"),
-            "halted_muscles": status.get("nervous_system", {}).get("halted_muscles", {}),
-            "feedback_summary": status.get("feedback", {}).get("summary", ""),
+            "health_score": bp.get("health_score"),
+            "throttle_factor": bp.get("throttle_factor"),
+            "budget_usd": bp.get("budget_usd"),
+            "approval_required": status.get("approval_gate", {}).get("approval_required"),
+            "coordinator_actions": status.get("feedback", {}).get("coordinator_actions", []),
+            "halted_workers": status.get("runtime", {}).get("halted_workers", {}),
             "cell_count": status.get("cellular", {}).get("total_agents", 10),
-            "analysis": f"Koordinatör aktif — {hs.get('mode', 'normal')} mod · {hs.get('energy_usd', 0):.2f} USD enerji",
+            "decision_traces": status.get("decision_traces", [])[:5],
+            "analysis": (
+                f"Koordinatör — health={bp.get('health_score', 0):.2f} "
+                f"budget=${bp.get('budget_usd', 0):.2f} throttle={bp.get('throttle_factor', 1)}"
+            ),
             "real_data": True,
         }
     except Exception as exc:
@@ -1431,15 +1437,23 @@ async def hub_cellular_organism() -> Dict[str, Any]:
 
 
 @router.post("/cellular/halt")
-async def hub_immune_halt(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Bağışıklık hücresi kas ajanını durdurur (mesh sinir sinyali)."""
-    from app.mesh.mesh_nervous import immune_halt_muscle
+async def hub_worker_halt(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Gate ajanı worker'ı durdurur (DAG sinyali)."""
+    from app.mesh.mesh_nervous import worker_halt
 
-    return immune_halt_muscle(
-        immune_agent=str(payload.get("immune_agent", "oam.critic.immune.local")),
-        target_muscle=str(payload.get("target_muscle", "")),
-        reason=str(payload.get("reason", "manuel denetim")),
+    return worker_halt(
+        gate_agent=str(payload.get("immune_agent", payload.get("gate_agent", "oam.critic.immune.local"))),
+        target_worker=str(payload.get("target_muscle", payload.get("target_worker", ""))),
+        reason=str(payload.get("reason", "manual audit")),
     )
+
+
+@router.post("/cellular/approve")
+async def hub_approval_grant(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Human-in-the-loop onay — approval gate."""
+    from app.mesh.approval_gate import grant_approval
+
+    return grant_approval(operator=str(payload.get("operator", "hub")))
 
 
 @router.get("/autopilot")
