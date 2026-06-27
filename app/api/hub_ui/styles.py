@@ -798,6 +798,37 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }}
+.cellular-status-bar {{
+  display: flex; flex-wrap: wrap; gap: 0.5rem 0.85rem;
+  margin: 0.5rem 0 0.65rem; font-size: 0.68rem;
+}}
+.cellular-mode {{ color: var(--mint); font-weight: 600; }}
+.cellular-energy {{ color: var(--gold); }}
+.cellular-grid {{
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}}
+@media (min-width: 900px) {{
+  .cellular-grid {{ grid-template-columns: repeat(4, 1fr); }}
+}}
+.cellular-col {{
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+  padding: 0.45rem 0.5rem; background: rgba(0,0,0,0.25);
+}}
+.cellular-col-title {{
+  display: block; font-size: 0.58rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); margin-bottom: 0.35rem;
+}}
+.cell-sensory .cellular-col-title {{ color: #6ec8ff; }}
+.cell-brain .cellular-col-title {{ color: #c9a0ff; }}
+.cell-muscle .cellular-col-title {{ color: #ff9b6e; }}
+.cell-immune .cellular-col-title {{ color: #7dffb2; }}
+.cellular-agent-chip {{
+  display: inline-block; font-size: 0.62rem; margin: 0.12rem 0.2rem 0.12rem 0;
+  padding: 0.12rem 0.35rem; border-radius: 4px;
+  background: rgba(255,255,255,0.06); color: var(--text);
+}}
 
 /* Agent dialogue */
 .dialogue-panel {{

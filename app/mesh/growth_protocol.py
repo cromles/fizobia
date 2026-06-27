@@ -174,6 +174,34 @@ class MeshGrowthProtocol:
         mesh_proof: kurucu üçlü sabit pipeline
         goal: router üzerinden dinamik işe alma
         """
+        from app.mesh.feedback import get_brain_feedback, record_pipeline_feedback
+        from app.mesh.homeostasis import check_pipeline_allowed, sync_energy_from_revenue
+        from app.mesh.mesh_nervous import is_muscle_halted, send_mesh_signal
+        from app.mesh.metabolism import can_agent_act, record_pipeline_metabolism
+
+        try:
+            from app.investment.factory import get_investment_hub
+
+            hub = get_investment_hub()
+            cards = hub.list_identity_cards(self.router.list_agents())
+            rev = sum(c.finance.total_revenue_usd for c in cards)
+            sync_energy_from_revenue(rev)
+        except Exception:
+            pass
+
+        allowed, block_reason = check_pipeline_allowed(pipeline)
+        if not allowed:
+            raise ValueError(block_reason)
+
+        brain_hint = get_brain_feedback().get("summary", "")
+        if brain_hint:
+            send_mesh_signal(
+                ORCHESTRATOR_ID,
+                ORCHESTRATOR_ID,
+                f"Geri besleme: {brain_hint}",
+                intent="brain_feedback",
+            )
+
         hired: List[str] = []
         result: Dict[str, Any]
 
@@ -188,6 +216,12 @@ class MeshGrowthProtocol:
                 )
             if not hired:
                 raise ValueError("Tüm mesh proof ajanları elendi — pipeline çalıştırılamaz")
+            for aid in hired:
+                if is_muscle_halted(aid):
+                    raise ValueError(f"Bağışıklık — kas hücresi durduruldu: {aid}")
+                ok, why = can_agent_act(aid)
+                if not ok:
+                    raise ValueError(why)
             self._emit(
                 "hire_started",
                 f"Koordinatör {len(hired)} ajanı işe aldı — aralarında konuşarak (mesh proof)",
@@ -227,6 +261,14 @@ class MeshGrowthProtocol:
                 "agent_standings": standings,
                 "real_data": True,
             }
+            ok = proof.get("verdict") in ("ok", "bullish", "bearish", "neutral", "")
+            record_pipeline_metabolism(hired, success=ok, revenue_usd=0.02 if ok else 0.0)
+            record_pipeline_feedback(
+                agent_ids=hired,
+                pipeline=pipeline,
+                success=ok,
+                detail={"proof_id": proof.get("proof_id")},
+            )
         elif pipeline == "ecosystem_assembly":
             hired = filter_eligible_agents(list(ECOSYSTEM_ASSEMBLY_AGENTS))
             self._emit(

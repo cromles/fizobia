@@ -60,6 +60,7 @@ from app.mesh.hierarchy import (
     record_founder_command,
 )
 from app.mesh.organism import get_organism_status
+from app.mesh.cellular_organism import get_cellular_organism_status
 from app.mesh.worker_catalog import build_workers_catalog
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentCapability, AgentManifest
@@ -133,7 +134,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.28-expert-agents-v28"
+HUB_BUILD = "2026.06.28-cellular-organism-v29"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -1364,6 +1365,24 @@ async def hub_synapse_manifest() -> Dict[str, Any]:
 async def hub_organism_status() -> Dict[str, Any]:
     """Süper organizma durumu — planlanan bölümler ve ajan kimlikleri."""
     return get_organism_status()
+
+
+@router.get("/cellular")
+async def hub_cellular_organism() -> Dict[str, Any]:
+    """Hücresel organizma — 10 ajan, homeostazi, metabolizma, mesh sinir sistemi."""
+    return get_cellular_organism_status()
+
+
+@router.post("/cellular/halt")
+async def hub_immune_halt(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Bağışıklık hücresi kas ajanını durdurur (mesh sinir sinyali)."""
+    from app.mesh.mesh_nervous import immune_halt_muscle
+
+    return immune_halt_muscle(
+        immune_agent=str(payload.get("immune_agent", "oam.critic.immune.local")),
+        target_muscle=str(payload.get("target_muscle", "")),
+        reason=str(payload.get("reason", "manuel denetim")),
+    )
 
 
 @router.get("/autopilot")

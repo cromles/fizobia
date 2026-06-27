@@ -205,6 +205,32 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
           ap.textContent = 'Otopilot: ' + running + ' · ' + cycles + ' döngü · sermaye modu';
         }}
       }}
+      await refreshCellularOrganism();
+    }} catch (_) {{}}
+  }}
+
+  async function refreshCellularOrganism() {{
+    try {{
+      const res = await fetch('/hub/cellular?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const modeEl = $('homeostasisMode');
+      const energyEl = $('organismEnergy');
+      const grid = $('cellularGrid');
+      const hs = data.homeostasis || {{}};
+      if (modeEl) modeEl.textContent = 'Homeostazi: ' + (hs.mode || '—');
+      if (energyEl) energyEl.textContent = 'Enerji: $' + Number(hs.energy_usd || 0).toFixed(2);
+      if (!grid) return;
+      const types = (data.cellular && data.cellular.cell_types) || [];
+      grid.innerHTML = types.map(ct => (
+        '<div class="cellular-col cell-' + lbEsc(ct.code) + '">' +
+        '<span class="cellular-col-title">' + lbEsc(ct.label) + ' (' + ct.count + ')</span>' +
+        (ct.agents || []).map(a => (
+          '<span class="cellular-agent-chip" title="' + lbEsc(a.mission || '') + '">' +
+          lbEsc(a.display_name) + '</span>'
+        )).join('') +
+        '</div>'
+      )).join('');
     }} catch (_) {{}}
   }}
 

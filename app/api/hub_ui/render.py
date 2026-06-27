@@ -15,7 +15,7 @@ from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS, WORKER_CONSOLE_AGENT_
 from app.api.hub_ui.worker_console import render_worker_picker_items
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.28-expert-agents-v28"
+HUB_UI_BUILD = "2026.06.28-cellular-organism-v29"
 
 
 def render_hub_dashboard(
@@ -200,9 +200,14 @@ def render_hub_dashboard(
             <span class="h-arrow">→</span>
             <span class="h-tier coord">Koordinatör</span>
             <span class="h-arrow">→</span>
-            <span class="h-tier workers">İşçiler</span>
+            <span class="h-tier workers">10 Hücre</span>
           </div>
-          <p class="family-mission-text" id="familyMissionText">Süper organizma — sıfır noktasından çıkıyoruz. Sermayeye kısa yol.</p>
+          <p class="family-mission-text" id="familyMissionText">Mesh sinir ağı — fabrika bandı değil. Duyu, beyin, kas, bağışıklık.</p>
+          <div class="cellular-status-bar" id="cellularStatusBar">
+            <span class="cellular-mode" id="homeostasisMode">Homeostazi: —</span>
+            <span class="cellular-energy" id="organismEnergy">Enerji: —</span>
+          </div>
+          <div class="cellular-grid" id="cellularGrid" aria-label="Hücresel ajan haritası"></div>
           <div class="autopilot-status" id="autopilotStatus">Otopilot: —</div>
           <div class="organism-phase" id="organismPhase">Faz: Sıfır Noktasından Çıkış</div>
         </div>
