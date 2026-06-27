@@ -10,7 +10,7 @@ def get_investment_hub() -> InvestmentHub:
     global _hub
     if _hub is None:
         _hub = InvestmentHub()
-        if settings.hub_demo_mode:
+        if settings.hub_demo_mode or settings.hub_seed_demo:
             _hub.seed_demo_liquidity()
             _hub.seed_demo_metrics()
         if settings.onchain_enabled:
