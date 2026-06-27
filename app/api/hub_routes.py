@@ -133,7 +133,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.27-worker-console-v27"
+HUB_BUILD = "2026.06.28-expert-agents-v28"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -927,6 +927,56 @@ async def hub_data_btc_network() -> Dict[str, Any]:
         return await fetch_btc_network_snapshot_async()
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"BTC ağ API hatası: {exc}") from exc
+
+
+@router.get("/data/macro")
+async def hub_data_macro() -> Dict[str, Any]:
+    """Macro-Strategist — küresel piyasa ve döviz sepeti."""
+    from app.workers.macro_strategist import fetch_macro_snapshot_async
+
+    try:
+        return await fetch_macro_snapshot_async()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Makro API hatası: {exc}") from exc
+
+
+@router.get("/data/regulatory")
+async def hub_data_regulatory(
+    limit: int = Query(default=8, ge=3, le=20),
+) -> Dict[str, Any]:
+    """Regulatory-Radar — düzenleme ve politika haber akışı."""
+    from app.workers.regulatory_radar import fetch_regulatory_feed_async
+
+    try:
+        return await fetch_regulatory_feed_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Düzenleme akışı hatası: {exc}") from exc
+
+
+@router.get("/data/threat")
+async def hub_data_threat(
+    limit: int = Query(default=8, ge=3, le=25),
+) -> Dict[str, Any]:
+    """Threat-Intel — CISA bilinen istismar edilen zafiyetler."""
+    from app.workers.threat_intel import fetch_threat_snapshot_async
+
+    try:
+        return await fetch_threat_snapshot_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Tehdit istihbaratı hatası: {exc}") from exc
+
+
+@router.get("/data/yield")
+async def hub_data_yield(
+    limit: int = Query(default=6, ge=3, le=12),
+) -> Dict[str, Any]:
+    """Yield-Strategist — DeFi stabilcoin yield havuzları."""
+    from app.workers.yield_strategist import fetch_yield_snapshot_async
+
+    try:
+        return await fetch_yield_snapshot_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Yield API hatası: {exc}") from exc
 
 
 @router.get("/departments")

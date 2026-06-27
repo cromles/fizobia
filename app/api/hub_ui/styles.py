@@ -1774,6 +1774,31 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
   margin-bottom: 0.25rem;
 }}
 .worker-pick-supply {{ display: block; font-size: 0.62rem; color: var(--dim); }}
+.worker-pick-expert {{
+  border-color: rgba(255, 200, 87, 0.22);
+  background: rgba(255, 200, 87, 0.04);
+}}
+.worker-pick-expert:hover, .worker-pick-expert.active {{
+  border-color: rgba(255, 200, 87, 0.55);
+  background: rgba(255, 200, 87, 0.1);
+}}
+.worker-pick-tier {{
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #ffc857;
+  border: 1px solid rgba(255, 200, 87, 0.35);
+  border-radius: 4px; padding: 0.1rem 0.35rem; margin-left: 0.35rem;
+}}
+.worker-threat-list, .worker-yield-list {{
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.65rem;
+}}
+.worker-threat-item, .worker-yield-item {{
+  padding: 0.65rem 0.75rem; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25);
+  font-size: 0.78rem; line-height: 1.45;
+}}
+.worker-threat-item strong, .worker-yield-item strong {{ color: var(--text); display: block; margin-bottom: 0.15rem; }}
+.worker-threat-meta {{ display: block; font-size: 0.68rem; color: var(--dim); margin-top: 0.2rem; }}
+.worker-yield-item span {{ display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }}
 
 .worker-live {{
   display: flex; flex-direction: column; min-height: 400px;

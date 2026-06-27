@@ -11,7 +11,8 @@ def test_hub_workers_catalog():
     res = client.get("/hub/workers")
     assert res.status_code == 200
     body = res.json()
-    assert body["count"] == 7
+    assert body["count"] == 11
+    assert body["expert_count"] == 4
     assert body["default_agent_id"] == WEB_ID
     ids = {w["agent_id"] for w in body["workers"]}
     assert WEB_ID in ids

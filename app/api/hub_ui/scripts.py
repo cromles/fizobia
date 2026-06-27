@@ -1207,8 +1207,49 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     )).join('') + '</div>';
   }}
 
+  function renderThreatList(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Zafiyet bulunamadı</p>';
+    return '<ul class="worker-threat-list">' + items.map(it => (
+      '<li class="worker-threat-item">' +
+      '<strong>' + lbEsc(it.cve || '—') + '</strong>' +
+      '<span>' + lbEsc(it.vendor || '') + ' · ' + lbEsc(it.product || '') + '</span>' +
+      '<span class="worker-threat-meta">Eklendi: ' + lbEsc(it.date_added || '—') +
+      (it.ransomware === 'Known' ? ' · <em>ransomware</em>' : '') + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
+  function renderYieldPools(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Yield havuzu bulunamadı</p>';
+    return '<ul class="worker-yield-list">' + items.map(it => (
+      '<li class="worker-yield-item">' +
+      '<strong>' + lbEsc(it.project || '—') + '</strong> · ' + lbEsc(it.symbol || '') +
+      '<span>' + lbEsc(it.chain || '') + ' · %' + Number(it.apy_pct || 0).toFixed(2) + ' APY · TVL $' + Number(it.tvl_usd || 0).toLocaleString() + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
   function renderWorkerOutput(data, outputType) {{
-    if (outputType === 'news_feed' || data.items) return renderNewsFeed(data);
+    if (outputType === 'regulatory' || outputType === 'news_feed') {{
+      if (data.items) return renderNewsFeed(data);
+    }}
+    if (outputType === 'threat') return renderThreatList(data);
+    if (outputType === 'yield') return renderYieldPools(data);
+    if (outputType === 'macro' || data.btc_dominance_pct != null) {{
+      const fx = data.fx_basket || {{}};
+      const fxPairs = Object.keys(fx).slice(0, 4).map(k => ['USD/' + k, fx[k]]);
+      return renderKvGrid([
+        ['Piyasa cap', '$' + Number(data.total_market_cap_usd || 0).toLocaleString()],
+        ['24s değişim', (data.market_change_24h_pct != null ? data.market_change_24h_pct + '%' : '—')],
+        ['BTC dom', (data.btc_dominance_pct != null ? data.btc_dominance_pct + '%' : '—')],
+        ['Risk tonu', data.risk_tone || '—'],
+      ]) + (fxPairs.length ? '<div style="margin-top:0.65rem">' + renderKvGrid(fxPairs) + '</div>' : '') +
+      '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
     if (outputType === 'market' || data.price_usd != null) {{
       return renderKvGrid([
         ['Fiyat USD', '$' + Number(data.price_usd || 0).toLocaleString()],

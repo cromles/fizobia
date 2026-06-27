@@ -9,14 +9,18 @@ from app.mesh.proof_pipeline import MESH_PROOF_AGENTS
 from app.workers.btc_network import AGENT_ID as BTCNET_ID, DISPLAY_NAME as BTCNET_NAME
 from app.workers.defi_pulse import AGENT_ID as DEFI_ID, DISPLAY_NAME as DEFI_NAME
 from app.workers.fx_pulse import AGENT_ID as FX_ID, DISPLAY_NAME as FX_NAME
+from app.workers.macro_strategist import AGENT_ID as MACRO_ID, DISPLAY_NAME as MACRO_NAME
 from app.workers.market_pulse import AGENT_ID as MARKET_ID, DISPLAY_NAME as MARKET_NAME
 from app.workers.media_brand import AGENT_ID as BRAND_ID, DISPLAY_NAME as BRAND_NAME
 from app.workers.media_render import AGENT_ID as RENDER_ID, DISPLAY_NAME as RENDER_NAME
 from app.workers.media_story import AGENT_ID as STORY_ID, DISPLAY_NAME as STORY_NAME
 from app.workers.on_chain_watcher import AGENT_ID as ONCHAIN_ID, DISPLAY_NAME as ONCHAIN_NAME
+from app.workers.regulatory_radar import AGENT_ID as REG_ID, DISPLAY_NAME as REG_NAME
 from app.workers.sentiment_radar import AGENT_ID as SENTIMENT_ID, DISPLAY_NAME as SENTIMENT_NAME
 from app.workers.text_competitors import AGENT_HOOK_ID, AGENT_DATA_ID, AGENT_STORY_ID
+from app.workers.threat_intel import AGENT_ID as THREAT_ID, DISPLAY_NAME as THREAT_NAME
 from app.workers.web_crawler import AGENT_ID as WEB_ID, DISPLAY_NAME as WEB_NAME
+from app.workers.yield_strategist import AGENT_ID as YIELD_ID, DISPLAY_NAME as YIELD_NAME
 
 # Pasif ortaklık — gerçek dış veri / x402 geliri üreten çekirdek
 REVENUE_CORE_AGENT_IDS: Tuple[str, ...] = (
@@ -29,7 +33,18 @@ REVENUE_CORE_AGENT_IDS: Tuple[str, ...] = (
     BTCNET_ID,
 )
 
+# Gelecek odaklı uzman işçiler — gerçek API, işçi konsolunda seçilebilir
+EXPERT_AGENT_IDS: Tuple[str, ...] = (
+    MACRO_ID,
+    REG_ID,
+    THREAT_ID,
+    YIELD_ID,
+)
+
+WORKER_CONSOLE_AGENT_IDS: Tuple[str, ...] = REVENUE_CORE_AGENT_IDS + EXPERT_AGENT_IDS
+
 REVENUE_CORE_SET: FrozenSet[str] = frozenset(REVENUE_CORE_AGENT_IDS)
+EXPERT_AGENT_SET: FrozenSet[str] = frozenset(EXPERT_AGENT_IDS)
 
 AGENT_LABELS: Dict[str, str] = {
     WEB_ID: WEB_NAME,
@@ -39,6 +54,10 @@ AGENT_LABELS: Dict[str, str] = {
     FX_ID: FX_NAME,
     DEFI_ID: DEFI_NAME,
     BTCNET_ID: BTCNET_NAME,
+    MACRO_ID: MACRO_NAME,
+    REG_ID: REG_NAME,
+    THREAT_ID: THREAT_NAME,
+    YIELD_ID: YIELD_NAME,
     STORY_ID: STORY_NAME,
     BRAND_ID: BRAND_NAME,
     CRITIC_AGENT_ID: "Immune-Critic",
@@ -56,6 +75,10 @@ AGENT_API_TAG: Dict[str, str] = {
     FX_ID: "Frankfurter ECB",
     DEFI_ID: "DefiLlama TVL",
     BTCNET_ID: "mempool.space",
+    MACRO_ID: "CoinGecko Global · ECB",
+    REG_ID: "CoinDesk RSS · politika filtresi",
+    THREAT_ID: "CISA KEV kataloğu",
+    YIELD_ID: "DefiLlama Yields",
 }
 
 AGENT_MISSION: Dict[str, str] = {
@@ -66,6 +89,10 @@ AGENT_MISSION: Dict[str, str] = {
     FX_ID: "USD/TRY ve döviz — ücretsiz ECB verisi, 7/24.",
     DEFI_ID: "DeFi zincir TVL liderliği — DefiLlama.",
     BTCNET_ID: "BTC blok, mempool ücreti ve spot fiyat.",
+    MACRO_ID: "Küresel piyasa cap, BTC dominansı, USD/TRY sepeti — makro risk tonu.",
+    REG_ID: "SEC, ETF, MiCA ve politika haberleri — düzenleme erken uyarı.",
+    THREAT_ID: "CISA bilinen istismar edilen CVE'ler — siber tehdit radarı.",
+    YIELD_ID: "Stabilcoin yield havuzları — TVL + APY, sermaye verimliliği.",
 }
 
 MESH_PROOF_SET: FrozenSet[str] = frozenset(MESH_PROOF_AGENTS)
@@ -82,6 +109,10 @@ def agent_label(agent_id: str) -> str:
 
 def is_revenue_core(agent_id: str) -> bool:
     return agent_id in REVENUE_CORE_SET
+
+
+def is_expert_agent(agent_id: str) -> bool:
+    return agent_id in EXPERT_AGENT_SET
 
 
 def is_mesh_proof_agent(agent_id: str) -> bool:

@@ -11,11 +11,11 @@ from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
+from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS, WORKER_CONSOLE_AGENT_IDS
 from app.api.hub_ui.worker_console import render_worker_picker_items
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.27-worker-console-v27"
+HUB_UI_BUILD = "2026.06.28-expert-agents-v28"
 
 
 def render_hub_dashboard(
@@ -30,7 +30,7 @@ def render_hub_dashboard(
     brand_sub: str = "Dijital İşçiler",
 ) -> str:
     manifests = manifests or {}
-    agent_count = len(REVENUE_CORE_AGENT_IDS)
+    agent_count = len(WORKER_CONSOLE_AGENT_IDS)
 
     agents_html_parts: list[str] = []
     idx = 0
@@ -133,7 +133,7 @@ def render_hub_dashboard(
   <!-- ═══ KARŞILAMA — gerçek işçi konsolu ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="worker-console-hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} gerçek işçi · canlı API</span></div>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} işçi · 4 uzman · canlı API</span></div>
       <h1>Gerçek işçi seç.<br/><span class="gradient">Şimdi kullan.</span></h1>
       <p class="hero-sub worker-hero-sub">
         Oyun değil — her işçi dış API ile çalışır, kendi tokenine sahiptir (sabit arz).
@@ -294,8 +294,8 @@ def render_hub_dashboard(
 
           <section class="invest-workers">
             <div class="invest-workers-head">
-              <h4>7 gelir çekirdeği</h4>
-              <p>FX, DeFi, BTC ağı, piyasa, sentiment, web tarama, zincir izleme — pasif ortaklık için seç.</p>
+              <h4>7 gelir çekirdeği + 4 uzman</h4>
+              <p>FX, DeFi, BTC, piyasa, sentiment, web, zincir — ve makro, düzenleme, tehdit, yield uzmanları.</p>
             </div>
             <div class="workers-grid agents-grid" id="workersGrid">
               {agents_html or '<p class="invest-empty">Henüz ajan yok.</p>'}
