@@ -34,7 +34,7 @@ def fetch_macro_snapshot(*, fx_symbols: str = "TRY,EUR,GBP,JPY") -> Dict[str, An
         rates = _fetch_fx_basket(client)
 
     mcap_pct = global_data.get("market_cap_change_percentage_24h_usd") or 0
-    total_mcap = float(global_data.get("total_market_cap") or {}).get("usd") or 0
+    total_mcap = float((global_data.get("total_market_cap") or {}).get("usd") or 0)
     btc_dom = float((global_data.get("market_cap_percentage") or {}).get("btc") or 0)
     eth_dom = float((global_data.get("market_cap_percentage") or {}).get("eth") or 0)
     active_cryptos = int(global_data.get("active_cryptocurrencies") or 0)
@@ -74,7 +74,7 @@ async def fetch_macro_snapshot_async(*, fx_symbols: str = "TRY,EUR,GBP,JPY") -> 
         rates = {k.upper(): float(v) for k, v in (f_resp.json().get("rates") or {}).items()}
 
     mcap_pct = global_data.get("market_cap_change_percentage_24h_usd") or 0
-    total_mcap = float(global_data.get("total_market_cap") or {}).get("usd") or 0
+    total_mcap = float((global_data.get("total_market_cap") or {}).get("usd") or 0)
     btc_dom = float((global_data.get("market_cap_percentage") or {}).get("btc") or 0)
     eth_dom = float((global_data.get("market_cap_percentage") or {}).get("eth") or 0)
     active_cryptos = int(global_data.get("active_cryptocurrencies") or 0)
