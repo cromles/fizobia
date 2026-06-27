@@ -165,13 +165,9 @@ def get_deployer_address() -> Optional[str]:
     return payee or None
 
 
-def get_deployer_balance_eth() -> Optional[float]:
-    addr = get_deployer_address()
-    if not addr:
-        return None
+def _eth_balance(rpc_url: str, address: str) -> Optional[float]:
     try:
-        rpc_url = settings.onchain_rpc_url if settings.onchain_enabled else settings.x402_rpc_url
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_getBalance", "params": [addr, "latest"]}
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_getBalance", "params": [address, "latest"]}
         with httpx.Client(timeout=10.0) as client:
             response = client.post(rpc_url, json=payload)
             response.raise_for_status()
@@ -180,6 +176,30 @@ def get_deployer_balance_eth() -> Optional[float]:
         return round(wei / 1e18, 6)
     except Exception:
         return None
+
+
+def get_funding_status() -> Dict[str, Any]:
+    """Fonlama cüzdanı — Base vs Ethereum Sepolia bakiye."""
+    addr = get_deployer_address()
+    if not addr:
+        return {}
+    base_eth = _eth_balance("https://sepolia.base.org", addr)
+    eth_sep = _eth_balance("https://sepolia.drpc.org", addr)
+    bridge_needed = bool(eth_sep and eth_sep > 0 and (not base_eth or base_eth <= 0))
+    return {
+        "wallet": addr,
+        "base_sepolia_eth": base_eth,
+        "ethereum_sepolia_eth": eth_sep,
+        "bridge_needed": bridge_needed,
+        "bridge_url": "https://testnets.superbridge.app/base-sepolia",
+        "faucet_url": "https://www.alchemy.com/faucets/base-sepolia",
+        "deploy_ready": bool(base_eth and base_eth > 0),
+    }
+
+
+def get_deployer_balance_eth() -> Optional[float]:
+    status = get_funding_status()
+    return status.get("base_sepolia_eth")
 
 
 def build_public_config() -> Dict[str, Any]:
@@ -202,7 +222,8 @@ def build_public_config() -> Dict[str, Any]:
         stake_mode = "ledger_demo"
 
     deployer = get_deployer_address()
-    deployer_balance = get_deployer_balance_eth()
+    funding = get_funding_status()
+    deployer_balance = funding.get("base_sepolia_eth")
 
     return {
         "enabled": settings.onchain_enabled,
@@ -211,7 +232,8 @@ def build_public_config() -> Dict[str, Any]:
         "stake_mode": stake_mode,
         "deployer": deployer,
         "deployer_balance_eth": deployer_balance,
-        "deploy_ready": bool(deployer_balance and deployer_balance > 0),
+        "deploy_ready": bool(funding.get("deploy_ready")),
+        "funding": funding,
         "chain_id": chain_id,
         "network": deployment.network if deployment else settings.x402_network,
         "chain_name": ui_meta.get("chain_name", "Base Sepolia"),

@@ -616,7 +616,11 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         let text = data.stake_mode_label || 'Demo defter — gelir gerçek';
         const oc = data.onchain || {{}};
         if (mode !== 'onchain' && oc.deployer && !oc.deploy_ready) {{
-          text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH (faucet)';
+          if (oc.funding && oc.funding.bridge_needed) {{
+            text += ' · Ethereum Sepolia\\'da ETH var → Base köprüsü: testnets.superbridge.app/base-sepolia';
+          }} else {{
+            text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH';
+          }}
         }}
         stakeLabel.textContent = text;
       }}

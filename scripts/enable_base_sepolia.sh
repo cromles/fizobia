@@ -30,8 +30,14 @@ if [[ ! -d node_modules ]]; then
 fi
 
 KEY_FILE="${INSTALL_DIR}/.deployer.key"
+FUNDING_KEY_FILE="${INSTALL_DIR}/.funding.key"
+ENV="${INSTALL_DIR}/.env.server"
+touch "${ENV}"
+
 if [[ -z "${DEPLOYER_PRIVATE_KEY:-}" ]]; then
-  if [[ -f "${KEY_FILE}" ]]; then
+  if [[ -f "${FUNDING_KEY_FILE}" ]]; then
+    DEPLOYER_PRIVATE_KEY="$(cat "${FUNDING_KEY_FILE}")"
+  elif [[ -f "${KEY_FILE}" ]]; then
     DEPLOYER_PRIVATE_KEY="$(cat "${KEY_FILE}")"
   else
     DEPLOYER_PRIVATE_KEY="$(node -e "const {Wallet}=require('ethers'); const w=Wallet.createRandom(); console.log(w.privateKey)")"
@@ -48,11 +54,32 @@ fi
 
 export DEPLOYER_PRIVATE_KEY
 DEPLOY_ADDR="$(node -e "const {Wallet}=require('ethers'); console.log(new Wallet(process.env.DEPLOYER_PRIVATE_KEY).address)")"
+PAYEE_ADDR="${OAM_X402_PAYEE_ADDRESS:-}"
+if [[ -z "${PAYEE_ADDR}" ]] && [[ -f "${ENV}" ]]; then
+  PAYEE_ADDR="$(grep '^OAM_X402_PAYEE_ADDRESS=' "${ENV}" | cut -d= -f2- || true)"
+fi
+CHECK_ADDR="${PAYEE_ADDR:-$DEPLOY_ADDR}"
 BAL_WEI="$(curl -sS -X POST https://sepolia.base.org -H 'Content-Type: application/json' \
   -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBalance\",\"params\":[\"${DEPLOY_ADDR}\",\"latest\"],\"id\":1}" \
   | python3 -c "import sys,json; print(int(json.load(sys.stdin)['result'],16))")"
 BAL_ETH="$(python3 -c "print(${BAL_WEI}/1e18)")"
-echo "  Deployer: ${DEPLOY_ADDR} · bakiye: ${BAL_ETH} ETH"
+ETH_SEP_WEI="$(curl -sS -X POST https://sepolia.drpc.org -H 'Content-Type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBalance\",\"params\":[\"${CHECK_ADDR}\",\"latest\"],\"id\":1}" \
+  | python3 -c "import sys,json; print(int(json.load(sys.stdin)['result'],16))" 2>/dev/null || echo 0)"
+ETH_SEP_ETH="$(python3 -c "print(${ETH_SEP_WEI}/1e18)")"
+echo "  Deployer (key): ${DEPLOY_ADDR} · Base Sepolia: ${BAL_ETH} ETH"
+if [[ -n "${PAYEE_ADDR}" && "${PAYEE_ADDR,,}" != "${DEPLOY_ADDR,,}" ]]; then
+  echo "  Payee cüzdan: ${PAYEE_ADDR} · Ethereum Sepolia: ${ETH_SEP_ETH} ETH"
+fi
+if python3 -c "exit(0 if ${BAL_WEI} <= 0 and ${ETH_SEP_WEI} > 0 else 1)"; then
+  echo ""
+  echo "  ℹ ETH Ethereum Sepolia'da — Base Sepolia için köprü:"
+  echo "  https://testnets.superbridge.app/base-sepolia"
+  echo "  Aynı adrese köprüleyin, sonra .funding.key ile tekrar çalıştırın."
+  echo ""
+fi
+
+PAYEE_FINAL="${PAYEE_ADDR:-$DEPLOY_ADDR}"
 
 if python3 -c "exit(0 if ${BAL_WEI} > 0 else 1)"; then
   echo "  Sözleşmeler deploy ediliyor…"
@@ -70,7 +97,6 @@ else
 fi
 
 # .env.server on-chain blok
-ENV="${INSTALL_DIR}/.env.server"
 touch "${ENV}"
 grep -v '^OAM_ONCHAIN_\|^OAM_X402_DEV\|^OAM_X402_RPC\|^OAM_X402_CHAIN\|^OAM_X402_PAYEE\|^OAM_X402_NETWORK' "${ENV}" > "${ENV}.tmp" || true
 mv "${ENV}.tmp" "${ENV}"
@@ -87,7 +113,7 @@ OAM_X402_NETWORK=base-sepolia
 OAM_X402_RPC_URL=https://sepolia.base.org
 OAM_X402_CHAIN_ID=84532
 OAM_X402_USDC_CONTRACT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
-OAM_X402_PAYEE_ADDRESS=${DEPLOY_ADDR}
+OAM_X402_PAYEE_ADDRESS=${PAYEE_FINAL}
 OAM_X402_DEV_ACCEPT_PROOF=true
 EOF
 

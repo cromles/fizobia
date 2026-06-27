@@ -18,6 +18,13 @@ from app.protocol.schemas import AgentManifest
 def _stake_mode_label(stake_mode: str, onchain: Dict[str, Any]) -> str:
     if stake_mode == "onchain":
         return "Zincir stake aktif — MetaMask ile gerçek havuz"
+    funding = onchain.get("funding") or {}
+    if funding.get("bridge_needed"):
+        eth_sep = funding.get("ethereum_sepolia_eth") or 0
+        return (
+            f"Demo defter — payee cüzdanda Ethereum Sepolia'da {eth_sep:.4f} ETH var; "
+            "Base Sepolia köprüsü gerekli"
+        )
     chain = onchain.get("chain_name", "Base Sepolia")
     if onchain.get("connected"):
         return f"Demo defter — gelir gerçek, stake uygulama içi ({chain} RPC hazır)"
