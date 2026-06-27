@@ -68,6 +68,10 @@ def render_agent_card(
             f'Dene · ${price:.2f}</button>'
         )
 
+    apy_verified = getattr(f, "apy_verified", False) and f.estimated_apy > 0
+    apy_label = f"%{f.estimated_apy:.0f} APY" if apy_verified else "— APY"
+    apy_class = "wc-apy-badge" if apy_verified else "wc-apy-badge is-empty"
+
     return f"""
 <article class="worker-card {tone} wc-variant-{variant}{' is-live-worker' if is_live else ''}"
   style="--i:{index}"
@@ -89,7 +93,7 @@ def render_agent_card(
         {live_badge}
       </div>
     </div>
-    <div class="wc-apy-badge">{"%" + f"{f.estimated_apy:.0f} APY" if getattr(f, "apy_verified", False) and f.estimated_apy > 0 else "— APY"}</div>
+    <div class="{apy_class}">{apy_label}</div>
   </header>
 
   <p class="wc-mission-simple">{esc(p.mission)}</p>
@@ -103,22 +107,24 @@ def render_agent_card(
     </span>
   </div>
 
-  <div class="wc-stake wc-stake-simple">
-    <div class="stake-input-wrap">
-      <span class="currency">$</span>
-      <input type="number" class="amount" placeholder="100" min="1" step="1" inputmode="decimal" />
+  <footer class="wc-card-footer">
+    <div class="wc-stake-bar">
+      <div class="stake-input-wrap stake-input-compact">
+        <span class="currency">$</span>
+        <input type="number" class="amount" placeholder="100" min="1" step="1" inputmode="decimal" aria-label="Stake miktarı USDC" />
+      </div>
+      <button type="button" class="btn-stake btn-stake-inline" onclick="stake('{agent_id}', this)">
+        <span class="btn-text">Ortak Ol</span>
+        <span class="btn-loader"></span>
+      </button>
     </div>
-    <button type="button" class="btn-stake" onclick="stake('{agent_id}', this)">
-      <span class="btn-text">Ortak Ol</span>
-      <span class="btn-loader"></span>
-    </button>
-  </div>
-  <div class="wc-actions-row">
-    <button type="button" class="btn-claim-sm" onclick="claim('{agent_id}', this)">Ödül Al</button>
-    <button type="button" class="btn-unstake-sm" onclick="unstake('{agent_id}', this)">Çek</button>
-    {x402_btn}
-    <button type="button" class="btn-detail-sm" onclick="openAgentDetail('{agent_id}')">Detay</button>
-  </div>
+    <div class="wc-actions-row">
+      <button type="button" class="btn-claim-sm" onclick="claim('{agent_id}', this)">Ödül Al</button>
+      <button type="button" class="btn-unstake-sm" onclick="unstake('{agent_id}', this)">Çek</button>
+      {x402_btn}
+      <button type="button" class="btn-detail-sm" onclick="openAgentDetail('{agent_id}')">Detay</button>
+    </div>
+  </footer>
 </article>"""
 
 
