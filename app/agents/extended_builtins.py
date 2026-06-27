@@ -136,6 +136,42 @@ def _btc_network_handler(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": str(exc), "real_data": False, "agent_id": "oam.watcher.btcnet.local"}
 
 
+def _macro_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.macro_strategist import fetch_macro_snapshot
+
+    try:
+        return fetch_macro_snapshot()
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.expert.macro.local"}
+
+
+def _regulatory_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.regulatory_radar import fetch_regulatory_feed
+
+    try:
+        return fetch_regulatory_feed(limit=int(data.get("limit") or 8))
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.expert.regulatory.local"}
+
+
+def _threat_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.threat_intel import fetch_threat_snapshot
+
+    try:
+        return fetch_threat_snapshot(limit=int(data.get("limit") or 8))
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.expert.threat.local"}
+
+
+def _yield_handler(data: Dict[str, Any]) -> Dict[str, Any]:
+    from app.workers.yield_strategist import fetch_yield_snapshot
+
+    try:
+        return fetch_yield_snapshot(limit=int(data.get("limit") or 6))
+    except Exception as exc:
+        return {"error": str(exc), "real_data": False, "agent_id": "oam.expert.yield.local"}
+
+
 def _story_handler(data: Dict[str, Any]) -> Dict[str, Any]:
     from app.workers.media_story import weave_story
 
@@ -253,6 +289,10 @@ EXTENDED_HANDLERS: Dict[str, Dict[str, Any]] = {
     "oam.analyst.fx.local": {"fx_analyst": _fx_handler},
     "oam.analyst.defi.local": {"defi_analyst": _defi_handler},
     "oam.watcher.btcnet.local": {"btc_network_watcher": _btc_network_handler},
+    "oam.expert.macro.local": {"macro_strategist": _macro_handler},
+    "oam.expert.regulatory.local": {"regulatory_radar": _regulatory_handler},
+    "oam.expert.threat.local": {"threat_intel": _threat_handler},
+    "oam.expert.yield.local": {"yield_strategist": _yield_handler},
     "oam.media.story.local": {"story_weaver": _story_handler},
     "oam.media.brand.local": {"brand_voice": _brand_handler},
     "oam.media.outreach.local": {"outreach_pulse": _outreach_handler},
@@ -463,6 +503,38 @@ BTC_NETWORK = _manifest(
     "Bitcoin blok yüksekliği, mempool ücretleri ve spot fiyat",
     "btc_network_watcher",
 )
+MACRO_STRATEGIST = _manifest(
+    "oam.expert.macro.local",
+    8125,
+    0.0018,
+    "macro_strategist",
+    "Küresel makro piyasa ve döviz sepeti analizi",
+    "macro_strategist",
+)
+REGULATORY_RADAR = _manifest(
+    "oam.expert.regulatory.local",
+    8126,
+    0.0015,
+    "regulatory_radar",
+    "Kripto düzenleme ve politika haber radarı",
+    "regulatory_radar",
+)
+THREAT_INTEL = _manifest(
+    "oam.expert.threat.local",
+    8127,
+    0.0016,
+    "threat_intel",
+    "CISA KEV siber tehdit ve zafiyet istihbaratı",
+    "threat_intel",
+)
+YIELD_STRATEGIST = _manifest(
+    "oam.expert.yield.local",
+    8128,
+    0.0017,
+    "yield_strategist",
+    "DeFi stabilcoin yield havuzu taraması",
+    "yield_strategist",
+)
 
 EXTENDED_MANIFESTS: List[AgentManifest] = [
     MARKET_ANALYST,
@@ -486,4 +558,8 @@ EXTENDED_MANIFESTS: List[AgentManifest] = [
     FX_PULSE,
     DEFI_PULSE,
     BTC_NETWORK,
+    MACRO_STRATEGIST,
+    REGULATORY_RADAR,
+    THREAT_INTEL,
+    YIELD_STRATEGIST,
 ]

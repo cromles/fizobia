@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from html import unescape
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -22,31 +22,35 @@ def _strip_html(html: str) -> str:
     return re.sub(r"\s+", " ", unescape(cleaned)).strip()
 
 
-def _parse_rss(xml_text: str) -> Dict[str, str]:
+def _parse_rss_items(xml_text: str, limit: int = 12) -> List[Dict[str, str]]:
     root = ET.fromstring(xml_text)
-    channel = root.find("channel")
-    if channel is None:
-        channel = root.find("{http://www.w3.org/2005/Atom}entry")
-    item = root.find(".//item")
-    if item is None:
-        item = root.find(".//{http://www.w3.org/2005/Atom}entry")
-    if item is None:
-        raise ValueError("RSS akışında haber bulunamadı")
-
-    title = (item.findtext("title") or item.findtext("{http://www.w3.org/2005/Atom}title") or "").strip()
-    link = (item.findtext("link") or "").strip()
-    if not link:
+    items: List[Dict[str, str]] = []
+    for item in root.findall(".//item")[:limit]:
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        description = item.findtext("description") or ""
+        snippet = _strip_html(description)[:280]
+        if title:
+            items.append({"title": title, "link": link, "snippet": snippet})
+    if items:
+        return items
+    for item in root.findall(".//{http://www.w3.org/2005/Atom}entry")[:limit]:
+        title = (item.findtext("{http://www.w3.org/2005/Atom}title") or "").strip()
         link_el = item.find("{http://www.w3.org/2005/Atom}link")
-        if link_el is not None:
-            link = link_el.attrib.get("href", "")
-    description = (
-        item.findtext("description")
-        or item.findtext("summary")
-        or item.findtext("{http://www.w3.org/2005/Atom}summary")
-        or ""
-    )
-    snippet = _strip_html(description)[:400]
-    return {"title": title, "link": link, "snippet": snippet}
+        link = link_el.attrib.get("href", "") if link_el is not None else ""
+        summary = item.findtext("{http://www.w3.org/2005/Atom}summary") or ""
+        snippet = _strip_html(summary)[:280]
+        if title:
+            items.append({"title": title, "link": link, "snippet": snippet})
+    if not items:
+        raise ValueError("RSS akışında haber bulunamadı")
+    return items
+
+
+def _parse_rss(xml_text: str) -> Dict[str, str]:
+    items = _parse_rss_items(xml_text, limit=1)
+    first = items[0]
+    return {"title": first["title"], "link": first["link"], "snippet": first["snippet"]}
 
 
 def _validate_url(url: str) -> str:
@@ -96,6 +100,38 @@ def fetch_web_snapshot(url: Optional[str] = None) -> Dict[str, Any]:
         "source_kind": source_kind,
         "analysis": f"Çekildi: {headline[:90]}… ({len(snippet)} karakter)",
         "source": source_url,
+        "real_data": True,
+    }
+
+
+async def fetch_web_feed_async(url: Optional[str] = None, *, limit: int = 12) -> Dict[str, Any]:
+    """RSS/HTML kaynağından birden fazla haber başlığı."""
+    target = _validate_url(url) if url else _DEFAULT_RSS
+    headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml, text/html, */*"}
+
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=headers) as client:
+        response = await client.get(target)
+        response.raise_for_status()
+        content_type = response.headers.get("content-type", "").lower()
+        body = response.text
+
+    if "xml" in content_type or target.endswith(".rss") or "<rss" in body[:300].lower():
+        items = _parse_rss_items(body, limit=limit)
+        source_kind = "rss"
+    else:
+        text = _strip_html(body)
+        headline_match = re.search(r"<title[^>]*>([^<]+)</title>", body, re.I)
+        headline = unescape(headline_match.group(1)).strip() if headline_match else urlparse(target).netloc
+        items = [{"title": headline, "link": target, "snippet": text[:280]}]
+        source_kind = "html"
+
+    return {
+        "agent_id": AGENT_ID,
+        "worker": DISPLAY_NAME,
+        "feed_url": target,
+        "source_kind": source_kind,
+        "items": items,
+        "count": len(items),
         "real_data": True,
     }
 

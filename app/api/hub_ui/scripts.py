@@ -103,29 +103,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const w = getWallet();
     const pill = $('walletPill');
     const btn = $('btnConnect');
-    const landing = $('landing');
     const dash = $('dashboard');
+    document.body.classList.toggle('has-wallet', !!w);
     if (w) {{
       pill.classList.add('show');
       $('walletShort').textContent = shortAddr(w);
       btn.style.display = 'none';
-      landing.classList.add('hidden');
       dash.classList.add('visible');
-      $('dashWelcome').textContent = shortAddr(w) + ' · işçileriniz çalışıyor';
+      $('dashWelcome').textContent = shortAddr(w) + ' · ortaklık paneli';
       if (sessionStorage.getItem('hub_just_connected')) {{
         sessionStorage.removeItem('hub_just_connected');
-        showSplash();
-      }} else {{
-        startLiveFeed();
-        startDialoguePoll();
-        if (DEMO_MODE) startProcessAnimation();
       }}
-      window.scrollTo({{ top: 0, behavior: 'smooth' }});
+      startLiveFeed();
+      startDialoguePoll();
       refreshPortfolio();
+      switchHubTab('invest', document.querySelector('.terminal-tab[data-tab="invest"]'));
     }} else {{
       pill.classList.remove('show');
       btn.style.display = 'block';
-      landing.classList.remove('hidden');
       dash.classList.remove('visible');
       stopLiveFeed();
     }}
@@ -589,9 +584,47 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (tab === 'invest') {{
       refreshLeaderboard();
       refreshPortfolio();
+      refreshRevenueLoop();
     }}
   }}
   window.switchHubTab = switchHubTab;
+
+  async function refreshRevenueLoop() {{
+    try {{
+      const res = await fetch('/hub/revenue/summary?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const totals = data.totals || {{}};
+      const rlX402 = $('rlX402');
+      const rlStaking = $('rlStaking');
+      const rlProofs = $('rlProofs');
+      const rlTvl = $('rlTvl');
+      if (rlX402) rlX402.textContent = '$' + Number(totals.x402_revenue_usd || 0).toFixed(2);
+      if (rlStaking) rlStaking.textContent = '$' + Number(totals.staking_pool_usd || 0).toFixed(2);
+      if (rlProofs) rlProofs.textContent = String(totals.mesh_proofs || 0);
+      if (rlTvl) rlTvl.textContent = '$' + Number(totals.tvl_usd || 0).toFixed(0);
+      const stakeBanner = $('stakeModeBanner');
+      const stakeLabel = $('stakeModeLabel');
+      if (stakeBanner && stakeLabel) {{
+        const mode = data.stake_mode || 'ledger_demo';
+        stakeBanner.classList.toggle('onchain', mode === 'onchain');
+        let text = data.stake_mode_label || 'Demo defter — gelir gerçek';
+        const oc = data.onchain || {{}};
+        if (mode !== 'onchain' && oc.deployer && !oc.deploy_ready) {{
+          if (oc.funding && oc.funding.bridge_needed) {{
+            text += ' · Ethereum Sepolia\\'da ETH var → Base köprüsü: testnets.superbridge.app/base-sepolia';
+          }} else {{
+            text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH';
+          }}
+        }}
+        stakeLabel.textContent = text;
+      }}
+      (data.agents || []).forEach(a => {{
+        agentNameMap[a.agent_id] = a.display_name;
+      }});
+    }} catch (_) {{}}
+  }}
+  window.refreshRevenueLoop = refreshRevenueLoop;
 
   function lbEsc(s) {{
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -1003,10 +1036,15 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.runMeshProof = async function(btn) {{
     btn.classList.add('loading');
-    const resultEl = $('meshProofResult');
+    const resultEl = $('meshProofResult') || $('meshProofResultTop');
+    const mirrorEl = $('meshProofResultTop') !== resultEl ? $('meshProofResultTop') : $('meshProofResult');
     if (resultEl) {{
       resultEl.className = 'mesh-proof-result';
       resultEl.textContent = '4 işçi konuşarak çalışıyor…';
+    }}
+    if (mirrorEl && mirrorEl !== resultEl) {{
+      mirrorEl.className = 'mesh-proof-result revenue-loop-result';
+      mirrorEl.textContent = '4 işçi konuşarak çalışıyor…';
     }}
     const proof = JSON.stringify({{
       amount_usdc: {settings.x402_mesh_proof_price_usd},
@@ -1039,12 +1077,16 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
       const share = data.share || {{}};
+      const successHtml = share.card
+        ? '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>'
+        : '✓ ' + verdict;
       if (resultEl) {{
         resultEl.className = 'mesh-proof-result success';
-        resultEl.textContent = '✓ ' + verdict;
-        if (share.card) {{
-          resultEl.innerHTML = '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>';
-        }}
+        resultEl.innerHTML = successHtml;
+      }}
+      if (mirrorEl && mirrorEl !== resultEl) {{
+        mirrorEl.className = 'mesh-proof-result revenue-loop-result success';
+        mirrorEl.innerHTML = successHtml;
       }}
       showToast('Mesh kanıtı OK · paylaşım linki hazır');
       if (data.proof?.dialogue_thread) {{
@@ -1057,6 +1099,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       refreshLive();
       refreshHeroStats();
+      refreshRevenueLoop();
     }} catch (err) {{
       if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
       showToast(err.message || 'Bağlantı hatası', true);
@@ -1143,24 +1186,197 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }} catch (_) {{}}
   }}
 
+  let workerCatalog = null;
+  let selectedWorkerId = null;
+  let workerRefreshTimer = null;
+
+  function renderNewsFeed(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Haber bulunamadı</p>';
+    return '<ul class="worker-news-list">' + items.map(it => (
+      '<li class="worker-news-item">' +
+      '<a href="' + lbEsc(it.link || '#') + '" target="_blank" rel="noopener">' + lbEsc(it.title) + '</a>' +
+      (it.snippet ? '<p>' + lbEsc(it.snippet) + '</p>' : '') +
+      '</li>'
+    )).join('') + '</ul>';
+  }}
+
+  function renderKvGrid(pairs) {{
+    return '<div class="worker-kv-grid">' + pairs.map(([k, v]) => (
+      '<div class="worker-kv"><span>' + lbEsc(k) + '</span><strong>' + lbEsc(String(v)) + '</strong></div>'
+    )).join('') + '</div>';
+  }}
+
+  function renderThreatList(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Zafiyet bulunamadı</p>';
+    return '<ul class="worker-threat-list">' + items.map(it => (
+      '<li class="worker-threat-item">' +
+      '<strong>' + lbEsc(it.cve || '—') + '</strong>' +
+      '<span>' + lbEsc(it.vendor || '') + ' · ' + lbEsc(it.product || '') + '</span>' +
+      '<span class="worker-threat-meta">Eklendi: ' + lbEsc(it.date_added || '—') +
+      (it.ransomware === 'Known' ? ' · <em>ransomware</em>' : '') + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
+  function renderYieldPools(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Yield havuzu bulunamadı</p>';
+    return '<ul class="worker-yield-list">' + items.map(it => (
+      '<li class="worker-yield-item">' +
+      '<strong>' + lbEsc(it.project || '—') + '</strong> · ' + lbEsc(it.symbol || '') +
+      '<span>' + lbEsc(it.chain || '') + ' · %' + Number(it.apy_pct || 0).toFixed(2) + ' APY · TVL $' + Number(it.tvl_usd || 0).toLocaleString() + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
+  function renderWorkerOutput(data, outputType) {{
+    if (outputType === 'regulatory' || outputType === 'news_feed') {{
+      if (data.items) return renderNewsFeed(data);
+    }}
+    if (outputType === 'threat') return renderThreatList(data);
+    if (outputType === 'yield') return renderYieldPools(data);
+    if (outputType === 'macro' || data.btc_dominance_pct != null) {{
+      const fx = data.fx_basket || {{}};
+      const fxPairs = Object.keys(fx).slice(0, 4).map(k => ['USD/' + k, fx[k]]);
+      return renderKvGrid([
+        ['Piyasa cap', '$' + Number(data.total_market_cap_usd || 0).toLocaleString()],
+        ['24s değişim', (data.market_change_24h_pct != null ? data.market_change_24h_pct + '%' : '—')],
+        ['BTC dom', (data.btc_dominance_pct != null ? data.btc_dominance_pct + '%' : '—')],
+        ['Risk tonu', data.risk_tone || '—'],
+      ]) + (fxPairs.length ? '<div style="margin-top:0.65rem">' + renderKvGrid(fxPairs) + '</div>' : '') +
+      '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'market' || data.price_usd != null) {{
+      return renderKvGrid([
+        ['Fiyat USD', '$' + Number(data.price_usd || 0).toLocaleString()],
+        ['24s', (data.change_24h_pct != null ? data.change_24h_pct + '%' : '—')],
+        ['Hacim 24s', data.volume_24h_usd ? '$' + Number(data.volume_24h_usd).toLocaleString() : '—'],
+        ['Kaynak', data.source || 'CoinGecko'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'sentiment' || data.fear_greed_index != null) {{
+      return renderKvGrid([
+        ['Fear & Greed', data.fear_greed_index + ' · ' + (data.fear_greed_class || '')],
+        ['Metin', data.text_sentiment || data.sentiment || '—'],
+        ['Skor', data.text_score != null ? data.text_score : (data.score != null ? data.score : '—')],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'fx' || data.usd_try != null) {{
+      const rates = data.rates || {{}};
+      const pairs = Object.keys(rates).slice(0, 6).map(k => [k, rates[k]]);
+      if (data.usd_try) pairs.unshift(['USD/TRY', data.usd_try]);
+      return renderKvGrid(pairs) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'defi' || data.leader_chain) {{
+      const chains = (data.top_chains || []).slice(0, 5).map(c => [c.name || c.chain, '$' + Number(c.tvl_usd || c.tvl || 0).toLocaleString()]);
+      return renderKvGrid([
+        ['Lider', data.leader_chain],
+        ['TVL', '$' + Number(data.leader_tvl_usd || 0).toLocaleString()],
+      ]) + (chains.length ? '<div style="margin-top:0.65rem">' + renderKvGrid(chains) + '</div>' : '');
+    }}
+    if (outputType === 'btc_network' || data.btc_usd != null) {{
+      const fees = data.fees_sat_vb || {{}};
+      return renderKvGrid([
+        ['BTC USD', '$' + Number(data.btc_usd || 0).toLocaleString()],
+        ['Blok', data.block_height || '—'],
+        ['Mempool', data.mempool_congestion || '—'],
+        ['Ücret hızlı', fees.fastestFee || fees.halfHourFee || '—'],
+      ]);
+    }}
+    if (outputType === 'chain' || data.block_number != null) {{
+      return renderKvGrid([
+        ['Ağ', data.network || '—'],
+        ['Chain ID', data.chain_id || '—'],
+        ['Blok', data.block_number || '—'],
+        ['x402', data.x402_enabled ? 'açık' : 'kapalı'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    return '<pre style="font-size:0.72rem;color:var(--muted);white-space:pre-wrap">' + lbEsc(JSON.stringify(data, null, 2)) + '</pre>';
+  }}
+
+  async function loadWorkerCatalog() {{
+    const res = await fetch('/hub/workers?_=' + Date.now(), {{ cache: 'no-store' }});
+    if (!res.ok) throw new Error('İşçi kataloğu yüklenemedi');
+    workerCatalog = await res.json();
+    return workerCatalog;
+  }}
+
+  async function refreshWorkerLive() {{
+    const out = $('workerLiveOutput');
+    if (!out || !selectedWorkerId) return;
+    const worker = (workerCatalog?.workers || []).find(w => w.agent_id === selectedWorkerId);
+    if (!worker) return;
+    out.innerHTML = '<div class="worker-live-loading">Yükleniyor…</div>';
+    try {{
+      const res = await fetch(worker.live_route + '?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) throw new Error('Veri alınamadı');
+      const data = await res.json();
+      out.innerHTML = renderWorkerOutput(data, worker.output_type);
+      const proof = $('workerLiveProof');
+      if (proof) proof.textContent = (data.real_data ? '● Gerçek veri' : '—') + ' · ' + worker.api_tag;
+    }} catch (err) {{
+      out.innerHTML = '<p class="worker-live-loading">' + lbEsc(err.message || 'Hata') + '</p>';
+    }}
+  }}
+
+  window.selectWorker = function(agentId, btn) {{
+    selectedWorkerId = agentId;
+    document.querySelectorAll('.worker-pick-item').forEach(el => el.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const worker = (workerCatalog?.workers || []).find(w => w.agent_id === agentId);
+    const title = $('workerLiveTitle');
+    const meta = $('workerLiveMeta');
+    if (worker && title) title.textContent = worker.display_name;
+    if (worker && meta) {{
+      meta.textContent = worker.api_tag + ' · ' + worker.token_symbol + ' · sabit arz ' + Number(worker.fixed_supply).toLocaleString();
+    }}
+    refreshWorkerLive();
+    if (workerRefreshTimer) clearInterval(workerRefreshTimer);
+    workerRefreshTimer = setInterval(refreshWorkerLive, 45000);
+  }};
+  window.refreshWorkerLive = refreshWorkerLive;
+
+  window.focusWorkerStake = function() {{
+    const w = getWallet();
+    if (!w) {{ openWalletModal(); return; }}
+    if (selectedWorkerId) focusStakeAgent(selectedWorkerId);
+    else {{
+      document.getElementById('dashboard')?.scrollIntoView({{ behavior: 'smooth' }});
+      switchHubTab('invest', document.querySelector('.terminal-tab[data-tab="invest"]'));
+    }}
+  }};
+
+  async function initWorkerConsole() {{
+    if (!$('workerConsole')) return;
+    try {{
+      const cat = await loadWorkerCatalog();
+      const first = cat.default_agent_id || (cat.workers && cat.workers[0]?.agent_id);
+      const btn = document.querySelector('.worker-pick-item[data-agent="' + first + '"]');
+      if (first) selectWorker(first, btn);
+    }} catch (_) {{
+      const out = $('workerLiveOutput');
+      if (out) out.innerHTML = '<p class="worker-live-loading">İşçiler yüklenemedi</p>';
+    }}
+  }}
+
   async function refreshHeroStats() {{
     try {{
       const res = await fetch('/hub/stats?_=' + Date.now(), {{ cache: 'no-store' }});
       if (!res.ok) return;
       const s = await res.json();
-      const el = $('heroProofStats');
-      if (!el) return;
-      const proofs = s.mesh_proofs?.proofs_recorded || 0;
-      const rev = s.total_revenue_usd || 0;
-      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 4) + ' API · diyalog</span>';
       const badge = $('heroLiveBadge');
-      if (badge) badge.textContent = (s.live_workers || 4) + ' canlı API · ajan diyaloğu';
+      if (badge) badge.textContent = (s.live_workers || 7) + ' gerçek işçi · canlı API';
     }} catch (_) {{}}
   }}
 
   initMeshCanvas();
   ensureLatestBuild();
-  refreshHeroStats();
+  initWorkerConsole();
+  refreshRevenueLoop();
   refreshLeaderboard();
   refreshPortfolio();
   updateWalletUI();
@@ -1171,7 +1387,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (e.key === 'Enter') {{ e.preventDefault(); submitUserPrompt(); }}
     }});
   }}
-  if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
+  if (EMBED_MODE && !getWallet()) {{ /* işçi konsolu önce — otomatik cüzdan açma */ }}
   console.info('[Hub] build:', '{build}');
 }})();
 </script>

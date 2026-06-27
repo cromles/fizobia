@@ -10,6 +10,7 @@ from app.api.hub_ui.helpers import (
     esc,
     format_num,
 )
+from app.mesh.agent_catalog import AGENT_API_TAG, is_mesh_proof_agent
 from app.config import settings
 from app.investment.schemas import AgentIdentityCard
 from app.mesh.departments import primary_department
@@ -45,6 +46,13 @@ def render_agent_card(
     variant = index % 4
     contract = esc(pool.contract_address or "")
     is_live = live_spec is not None
+    api_tag = esc(live_spec.api_tag if live_spec else AGENT_API_TAG.get(p.agent_id, ""))
+    proof_badge = (
+        '<span class="tag proof-tag">Mesh kanıtı</span>'
+        if is_mesh_proof_agent(p.agent_id)
+        else ""
+    )
+    api_badge = f'<span class="tag api-tag">{api_tag}</span>' if api_tag else ""
 
     live_badge = (
         '<span class="wc-live-pill"><span class="pulse-dot"></span> Canlı</span>'
@@ -59,6 +67,10 @@ def render_agent_card(
             f'onclick="{live_spec.x402_js_handler}(\'{agent_id}\', this)">'
             f'Dene · ${price:.2f}</button>'
         )
+
+    apy_verified = getattr(f, "apy_verified", False) and f.estimated_apy > 0
+    apy_label = f"%{f.estimated_apy:.0f} APY" if apy_verified else "— APY"
+    apy_class = "wc-apy-badge" if apy_verified else "wc-apy-badge is-empty"
 
     return f"""
 <article class="worker-card {tone} wc-variant-{variant}{' is-live-worker' if is_live else ''}"
@@ -75,11 +87,13 @@ def render_agent_card(
     <div class="wc-title-simple">
       <h3>{esc(p.display_name)}</h3>
       <div class="wc-meta-row">
+        {api_badge}
+        {proof_badge}
         <span class="tag dept-tag dept-{dept_esc}">{dept_label}</span>
         {live_badge}
       </div>
     </div>
-    <div class="wc-apy-badge">%{f.estimated_apy:.0f} APY</div>
+    <div class="{apy_class}">{apy_label}</div>
   </header>
 
   <p class="wc-mission-simple">{esc(p.mission)}</p>
@@ -93,22 +107,24 @@ def render_agent_card(
     </span>
   </div>
 
-  <div class="wc-stake wc-stake-simple">
-    <div class="stake-input-wrap">
-      <span class="currency">$</span>
-      <input type="number" class="amount" placeholder="100" min="1" step="1" inputmode="decimal" />
+  <footer class="wc-card-footer">
+    <div class="wc-stake-bar">
+      <div class="stake-input-wrap stake-input-compact">
+        <span class="currency">$</span>
+        <input type="number" class="amount" placeholder="100" min="1" step="1" inputmode="decimal" aria-label="Stake miktarı USDC" />
+      </div>
+      <button type="button" class="btn-stake btn-stake-inline" onclick="stake('{agent_id}', this)">
+        <span class="btn-text">Ortak Ol</span>
+        <span class="btn-loader"></span>
+      </button>
     </div>
-    <button type="button" class="btn-stake" onclick="stake('{agent_id}', this)">
-      <span class="btn-text">Ortak Ol</span>
-      <span class="btn-loader"></span>
-    </button>
-  </div>
-  <div class="wc-actions-row">
-    <button type="button" class="btn-claim-sm" onclick="claim('{agent_id}', this)">Ödül Al</button>
-    <button type="button" class="btn-unstake-sm" onclick="unstake('{agent_id}', this)">Çek</button>
-    {x402_btn}
-    <button type="button" class="btn-detail-sm" onclick="openAgentDetail('{agent_id}')">Detay</button>
-  </div>
+    <div class="wc-actions-row">
+      <button type="button" class="btn-claim-sm" onclick="claim('{agent_id}', this)">Ödül Al</button>
+      <button type="button" class="btn-unstake-sm" onclick="unstake('{agent_id}', this)">Çek</button>
+      {x402_btn}
+      <button type="button" class="btn-detail-sm" onclick="openAgentDetail('{agent_id}')">Detay</button>
+    </div>
+  </footer>
 </article>"""
 
 
