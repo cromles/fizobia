@@ -11,11 +11,11 @@ from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS, WORKER_CONSOLE_AGENT_IDS
-from app.api.hub_ui.worker_console import render_worker_picker_items
+from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
+from app.mesh.cellular_taxonomy import CELLULAR_AGENT_IDS
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.28-cellular-organism-v29"
+HUB_UI_BUILD = "2026.06.28-synapse-net-v30"
 
 
 def render_hub_dashboard(
@@ -30,7 +30,7 @@ def render_hub_dashboard(
     brand_sub: str = "Dijital İşçiler",
 ) -> str:
     manifests = manifests or {}
-    agent_count = len(WORKER_CONSOLE_AGENT_IDS)
+    agent_count = len(CELLULAR_AGENT_IDS)
 
     agents_html_parts: list[str] = []
     idx = 0
@@ -88,8 +88,6 @@ def render_hub_dashboard(
     )
     landing_hidden = " hidden" if embed_mode else ""
 
-    worker_picker = render_worker_picker_items()
-
     return f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -133,19 +131,29 @@ def render_hub_dashboard(
   <!-- ═══ KARŞILAMA — gerçek işçi konsolu ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="worker-console-hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} işçi · 4 uzman · canlı API</span></div>
-      <h1>Gerçek işçi seç.<br/><span class="gradient">Şimdi kullan.</span></h1>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} hücre · sinaps ağı · canlı</span></div>
+      <h1>Sinaps ağında hücre seç.<br/><span class="gradient">Bağlantıya tıkla, kullan.</span></h1>
       <p class="hero-sub worker-hero-sub">
-        Oyun değil — her işçi dış API ile çalışır, kendi tokenine sahiptir (sabit arz).
-        Haber, piyasa, döviz, zincir… Seç ve anlık çıktıyı gör. Beğenirsen ortak ol.
+        Her daire bir uzman hücre — duyu, beyin, kas, bağışıklık. Çizgiler gerçek mesh sinapsları.
+        Tıkla, anlık çıktıyı gör. Fabrika bandı değil, yaşayan ağ.
       </p>
     </section>
 
-    <section class="worker-console" id="workerConsole" aria-label="İşçi konsolu">
-      <aside class="worker-picker" id="workerPicker" role="tablist" aria-label="İşçi listesi">
-        {worker_picker}
-      </aside>
-      <div class="worker-live" role="tabpanel">
+    <section class="synapse-console" id="workerConsole" aria-label="Sinaps ağı">
+      <div class="synapse-net-panel">
+        <div class="synapse-net-head">
+          <span class="synapse-net-kicker">Synapse Net</span>
+          <div class="synapse-legend">
+            <span class="leg leg-sensory">Duyu</span>
+            <span class="leg leg-brain">Beyin</span>
+            <span class="leg leg-muscle">Kas</span>
+            <span class="leg leg-immune">Bağışıklık</span>
+          </div>
+        </div>
+        <canvas id="synapseNet" class="synapse-canvas" aria-label="10 hücre sinaps ağı"></canvas>
+        <p class="synapse-hint">Hücreye tıkla · bağlı sinapslar parlar · yeni ajan ağa eklenince otomatik bağlanır</p>
+      </div>
+      <div class="worker-live synapse-output" role="tabpanel">
         <header class="worker-live-head">
           <div>
             <span class="worker-live-kicker">Canlı çıktı</span>
@@ -299,8 +307,8 @@ def render_hub_dashboard(
 
           <section class="invest-workers">
             <div class="invest-workers-head">
-              <h4>7 gelir çekirdeği + 4 uzman</h4>
-              <p>FX, DeFi, BTC, piyasa, sentiment, web, zincir — ve makro, düzenleme, tehdit, yield uzmanları.</p>
+              <h4>10 hücresel ajan</h4>
+              <p>Duyu, beyin, kas, bağışıklık — sinaps ağında uzmanlaşmış hücreler. Stake için gelir çekirdeği.</p>
             </div>
             <div class="workers-grid agents-grid" id="workersGrid">
               {agents_html or '<p class="invest-empty">Henüz ajan yok.</p>'}

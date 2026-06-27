@@ -168,9 +168,9 @@ def test_hub_api_endpoints():
 
     html = client.get("/hub")
     assert html.status_code == 200
-    assert "worker-console" in html.text
-    assert "Gerçek işçi seç" in html.text
-    assert "Uzman" in html.text
+    assert "synapse-console" in html.text
+    assert "synapseNet" in html.text
+    assert "Sinaps" in html.text
     assert "worker-card" in html.text
 
     live = client.get("/hub/live")

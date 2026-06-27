@@ -1761,7 +1761,7 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 }}
 .dept-filter-compact {{ margin-top: 0.75rem; margin-bottom: 0.5rem; }}
 
-/* ── İşçi konsolu (v27) ── */
+/* ── Sinaps ağı (v30) ── */
 .worker-console-hero {{
   text-align: center; padding: 1.5rem 1rem 1rem; max-width: 52rem; margin: 0 auto;
 }}
@@ -1772,15 +1772,46 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 .worker-hero-sub {{
   max-width: 40rem; margin: 0 auto; line-height: 1.7; color: var(--text-soft);
 }}
-.worker-console {{
-  display: grid; grid-template-columns: minmax(240px, 300px) 1fr;
-  gap: 1rem; max-width: 1100px; margin: 0 auto 1.5rem; padding: 0 1rem;
+.synapse-console {{
+  display: grid; grid-template-columns: 1fr minmax(280px, 380px);
+  gap: 1rem; max-width: 1200px; margin: 0 auto 1.5rem; padding: 0 1rem;
   min-height: 420px;
 }}
-.worker-picker {{
-  display: flex; flex-direction: column; gap: 0.45rem;
-  max-height: 520px; overflow-y: auto; padding-right: 0.25rem;
+.synapse-net-panel {{
+  display: flex; flex-direction: column; min-height: 380px;
+  border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+  background: radial-gradient(ellipse at 50% 40%, rgba(40,30,80,0.35), rgba(4,4,12,0.95));
+  overflow: hidden; position: relative;
 }}
+.synapse-net-head {{
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.65rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);
+}}
+.synapse-net-kicker {{
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--mint);
+}}
+.synapse-legend {{ display: flex; gap: 0.5rem; flex-wrap: wrap; }}
+.synapse-legend .leg {{
+  font-size: 0.58rem; font-weight: 700; padding: 0.15rem 0.4rem;
+  border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em;
+}}
+.leg-sensory {{ color: #6ec8ff; border: 1px solid rgba(110,200,255,0.35); }}
+.leg-brain {{ color: #c9a0ff; border: 1px solid rgba(201,160,255,0.35); }}
+.leg-muscle {{ color: #ff9b6e; border: 1px solid rgba(255,155,110,0.35); }}
+.leg-immune {{ color: #7dffb2; border: 1px solid rgba(125,255,178,0.35); }}
+.synapse-canvas {{
+  flex: 1; width: 100%; min-height: 340px; display: block; cursor: pointer;
+}}
+.synapse-hint {{
+  margin: 0; padding: 0.45rem 1rem 0.65rem; font-size: 0.65rem;
+  color: var(--dim); text-align: center;
+}}
+.synapse-output {{ min-height: 380px; }}
+.worker-story-block h3 {{ font-size: 0.95rem; margin-bottom: 0.5rem; }}
+.worker-story-block p {{ font-size: 0.82rem; line-height: 1.65; color: var(--muted); }}
+.worker-picker {{ display: none !important; }}
+.worker-console {{ display: none !important; }}
 .worker-pick-item {{
   text-align: left; padding: 0.75rem 0.85rem; border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35);
@@ -1910,9 +1941,8 @@ body.has-wallet #dashboard {{ margin-top: 0.5rem; }}
 @media (max-width: 900px) {{
   .stats-invest {{ grid-template-columns: 1fr; }}
   .revenue-loop-stats {{ grid-template-columns: repeat(2, 1fr); }}
-  .worker-console {{ grid-template-columns: 1fr; }}
-  .worker-picker {{ max-height: 220px; flex-direction: row; overflow-x: auto; overflow-y: hidden; }}
-  .worker-pick-item {{ min-width: 220px; flex-shrink: 0; }}
+  .synapse-console {{ grid-template-columns: 1fr; }}
+  .synapse-canvas {{ min-height: 280px; }}
   .wc-stake-bar {{ flex-direction: column; }}
   .btn-stake-inline {{ width: 100%; }}
   .dept-filter-bar {{ flex-direction: column; align-items: stretch; }}

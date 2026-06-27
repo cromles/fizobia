@@ -134,7 +134,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.28-cellular-organism-v29"
+HUB_BUILD = "2026.06.28-synapse-net-v30"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -978,6 +978,63 @@ async def hub_data_yield(
         return await fetch_yield_snapshot_async(limit=limit)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Yield API hatası: {exc}") from exc
+
+
+@router.get("/data/coordinator")
+async def hub_data_coordinator() -> Dict[str, Any]:
+    """Koordinatör — mesh durumu, otopilot, homeostazi."""
+    from app.mesh.cellular_organism import get_cellular_organism_status
+
+    try:
+        status = get_cellular_organism_status()
+        hs = status.get("homeostasis", {})
+        return {
+            "agent_id": "oam.orchestrator.pipeline.local",
+            "worker": "Pipeline Orchestrator",
+            "mode": hs.get("mode"),
+            "energy_usd": hs.get("energy_usd"),
+            "halted_muscles": status.get("nervous_system", {}).get("halted_muscles", {}),
+            "feedback_summary": status.get("feedback", {}).get("summary", ""),
+            "cell_count": status.get("cellular", {}).get("total_agents", 10),
+            "analysis": f"Koordinatör aktif — {hs.get('mode', 'normal')} mod · {hs.get('energy_usd', 0):.2f} USD enerji",
+            "real_data": True,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Koordinatör hatası: {exc}") from exc
+
+
+@router.get("/data/story")
+async def hub_data_story(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Story-Weaver — canlı hikaye taslağı."""
+    from app.workers.media_story import weave_story_async
+    from app.workers.market_pulse import fetch_market_snapshot_async
+
+    try:
+        market = await fetch_market_snapshot_async(symbol)
+        story = await weave_story_async(
+            symbol=symbol,
+            headline=str(market.get("analysis", ""))[:120],
+            sentiment=str(market.get("change_24h_pct", "")),
+            price_usd=market.get("price_usd"),
+        )
+        return story
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Story hatası: {exc}") from exc
+
+
+@router.get("/data/critic")
+async def hub_data_critic(
+    text: str = Query(default="Bitcoin ETF inflows rise while macro risk stays elevated"),
+) -> Dict[str, Any]:
+    """Immune-Critic — örnek metin denetimi."""
+    from app.mesh.critic import audit_article
+
+    try:
+        result = audit_article(text)
+        result["real_data"] = True
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Critic hatası: {exc}") from exc
 
 
 @router.get("/departments")

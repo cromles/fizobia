@@ -1215,6 +1215,157 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
   let workerCatalog = null;
   let selectedWorkerId = null;
   let workerRefreshTimer = null;
+  let synapseNet = null;
+
+  const CELL_COLORS = {{
+    sensory: '#6ec8ff',
+    brain: '#c9a0ff',
+    muscle: '#ff9b6e',
+    immune: '#7dffb2',
+  }};
+
+  function initSynapseNet(catalog) {{
+    const canvas = $('synapseNet');
+    if (!canvas || !catalog?.workers?.length) return null;
+
+    const ctx = canvas.getContext('2d');
+    const workers = catalog.workers;
+    const edges = catalog.mesh_edges || [];
+    const nodes = workers.map((w, i) => {{
+      const angle = (i / workers.length) * Math.PI * 2 - Math.PI / 2;
+      const ring = w.cell_type === 'brain' ? 0.22 : w.cell_type === 'sensory' ? 0.38 : w.cell_type === 'immune' ? 0.32 : 0.28;
+      return {{
+        id: w.agent_id,
+        label: w.display_name,
+        cellType: w.cell_type || 'muscle',
+        x: 0.5 + Math.cos(angle) * ring,
+        y: 0.5 + Math.sin(angle) * ring,
+        vx: 0, vy: 0,
+        phase: Math.random() * Math.PI * 2,
+      }};
+    }});
+    const nodeById = {{}};
+    nodes.forEach(n => {{ nodeById[n.id] = n; }});
+
+    let selectedId = catalog.default_agent_id || nodes[0]?.id;
+    let pulseT = 0;
+    let raf = 0;
+
+    function resize() {{
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(320, rect.width) * dpr;
+      canvas.height = Math.max(340, rect.height) * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = Math.max(340, rect.height) + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }}
+
+    function draw() {{
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      pulseT += 0.016;
+
+      nodes.forEach(n => {{
+        n.x += n.vx; n.y += n.vy;
+        n.vx *= 0.92; n.vy *= 0.92;
+        const drift = Math.sin(pulseT + n.phase) * 0.00008;
+        n.x += drift; n.y += Math.cos(pulseT * 0.7 + n.phase) * 0.00006;
+        n.x = Math.max(0.08, Math.min(0.92, n.x));
+        n.y = Math.max(0.08, Math.min(0.92, n.y));
+      }});
+
+      edges.forEach((e, ei) => {{
+        const a = nodeById[e.from];
+        const b = nodeById[e.to];
+        if (!a || !b) return;
+        const active = selectedId === a.id || selectedId === b.id;
+        const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
+        const grad = ctx.createLinearGradient(ax, ay, bx, by);
+        grad.addColorStop(0, active ? 'rgba(0,255,163,0.55)' : 'rgba(100,140,200,0.15)');
+        grad.addColorStop(0.5, active ? 'rgba(201,160,255,0.65)' : 'rgba(80,100,140,0.25)');
+        grad.addColorStop(1, active ? 'rgba(0,255,163,0.45)' : 'rgba(100,140,200,0.12)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = active ? 2.2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+        const t = (pulseT * 0.4 + ei * 0.1) % 1;
+        const px = ax + (bx - ax) * t;
+        const py = ay + (by - ay) * t;
+        ctx.fillStyle = active ? 'rgba(0,255,163,0.9)' : 'rgba(150,180,220,0.35)';
+        ctx.beginPath();
+        ctx.arc(px, py, active ? 3 : 2, 0, Math.PI * 2);
+        ctx.fill();
+      }});
+
+      nodes.forEach(n => {{
+        const cx = n.x * w, cy = n.y * h;
+        const sel = n.id === selectedId;
+        const col = CELL_COLORS[n.cellType] || '#aaa';
+        const r = n.cellType === 'brain' ? (sel ? 26 : 22) : (sel ? 20 : 16);
+        ctx.shadowColor = sel ? col : 'transparent';
+        ctx.shadowBlur = sel ? 18 : 0;
+        if (n.cellType === 'brain') {{
+          ctx.fillStyle = col + (sel ? 'ee' : '99');
+          const s = r * 1.05;
+          ctx.beginPath();
+          ctx.arc(cx, cy, s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.lineWidth = sel ? 3 : 2;
+          ctx.strokeStyle = sel ? '#fff' : col;
+          ctx.stroke();
+        }} else {{
+          ctx.fillStyle = col + (sel ? 'dd' : '88');
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = sel ? '#fff' : 'rgba(255,255,255,0.25)';
+          ctx.lineWidth = sel ? 2 : 1;
+          ctx.stroke();
+        }}
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.font = (sel ? '600 ' : '500 ') + (sel ? '10px' : '9px') + ' DM Sans, sans-serif';
+        ctx.textAlign = 'center';
+        const short = n.label.split('-')[0].slice(0, 12);
+        ctx.fillText(short, cx, cy + r + 14);
+      }});
+      raf = requestAnimationFrame(draw);
+    }}
+
+    function pick(mx, my) {{
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      let hit = null, best = 999;
+      nodes.forEach(n => {{
+        const dx = mx - n.x * w, dy = my - n.y * h;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 28 && d < best) {{ best = d; hit = n.id; }}
+      }});
+      return hit;
+    }}
+
+    canvas.addEventListener('click', (ev) => {{
+      const rect = canvas.getBoundingClientRect();
+      const id = pick(ev.clientX - rect.left, ev.clientY - rect.top);
+      if (id) {{
+        selectedId = id;
+        selectWorker(id, null);
+      }}
+    }});
+
+    resize();
+    window.addEventListener('resize', resize);
+    draw();
+
+    return {{
+      select(id) {{ selectedId = id; }},
+      destroy() {{ cancelAnimationFrame(raf); window.removeEventListener('resize', resize); }},
+    }};
+  }}
 
   function renderNewsFeed(data) {{
     const items = data.items || [];
@@ -1265,6 +1416,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }}
     if (outputType === 'threat') return renderThreatList(data);
     if (outputType === 'yield') return renderYieldPools(data);
+    if (outputType === 'story' || data.narrative) {{
+      return '<div class="worker-story-block"><h3>' + lbEsc(data.headline || 'Hikaye') + '</h3><p>' + lbEsc(data.narrative || '') + '</p></div>';
+    }}
+    if (outputType === 'coordinator' || data.mode != null) {{
+      return renderKvGrid([
+        ['Mod', data.mode || '—'],
+        ['Enerji USD', '$' + Number(data.energy_usd || 0).toFixed(2)],
+        ['Hücre', data.cell_count || '10'],
+        ['Geri besleme', (data.feedback_summary || '—').slice(0, 80)],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'critic' || data.critic_score != null) {{
+      return renderKvGrid([
+        ['Skor', data.critic_score != null ? data.critic_score : '—'],
+        ['Karar', data.verdict || '—'],
+        ['Kelime', data.word_count || '—'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.rationale || '') + '</p>';
+    }}
     if (outputType === 'macro' || data.btc_dominance_pct != null) {{
       const fx = data.fx_basket || {{}};
       const fxPairs = Object.keys(fx).slice(0, 4).map(k => ['USD/' + k, fx[k]]);
@@ -1351,8 +1520,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.selectWorker = function(agentId, btn) {{
     selectedWorkerId = agentId;
-    document.querySelectorAll('.worker-pick-item').forEach(el => el.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    if (synapseNet) synapseNet.select(agentId);
     const worker = (workerCatalog?.workers || []).find(w => w.agent_id === agentId);
     const title = $('workerLiveTitle');
     const meta = $('workerLiveMeta');
@@ -1380,12 +1548,12 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (!$('workerConsole')) return;
     try {{
       const cat = await loadWorkerCatalog();
+      synapseNet = initSynapseNet(cat);
       const first = cat.default_agent_id || (cat.workers && cat.workers[0]?.agent_id);
-      const btn = document.querySelector('.worker-pick-item[data-agent="' + first + '"]');
-      if (first) selectWorker(first, btn);
+      if (first) selectWorker(first, null);
     }} catch (_) {{
       const out = $('workerLiveOutput');
-      if (out) out.innerHTML = '<p class="worker-live-loading">İşçiler yüklenemedi</p>';
+      if (out) out.innerHTML = '<p class="worker-live-loading">Sinaps ağı yüklenemedi</p>';
     }}
   }}
 
@@ -1395,7 +1563,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (!res.ok) return;
       const s = await res.json();
       const badge = $('heroLiveBadge');
-      if (badge) badge.textContent = (s.live_workers || 7) + ' gerçek işçi · canlı API';
+      if (badge) badge.textContent = '10 hücre · sinaps ağı · canlı';
     }} catch (_) {{}}
   }}
 

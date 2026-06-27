@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, FrozenSet, Tuple
 
 from app.mesh.critic import CRITIC_AGENT_ID
+from app.mesh.founders import ORCHESTRATOR_ID, ORCHESTRATOR_NAME
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS
 from app.workers.btc_network import AGENT_ID as BTCNET_ID, DISPLAY_NAME as BTCNET_NAME
 from app.workers.defi_pulse import AGENT_ID as DEFI_ID, DISPLAY_NAME as DEFI_NAME
@@ -58,6 +59,7 @@ AGENT_LABELS: Dict[str, str] = {
     REG_ID: REG_NAME,
     THREAT_ID: THREAT_NAME,
     YIELD_ID: YIELD_NAME,
+    ORCHESTRATOR_ID: ORCHESTRATOR_NAME,
     STORY_ID: STORY_NAME,
     BRAND_ID: BRAND_NAME,
     CRITIC_AGENT_ID: "Immune-Critic",
@@ -79,6 +81,9 @@ AGENT_API_TAG: Dict[str, str] = {
     REG_ID: "CoinDesk RSS · politika filtresi",
     THREAT_ID: "CISA KEV kataloğu",
     YIELD_ID: "DefiLlama Yields",
+    ORCHESTRATOR_ID: "Mesh koordinasyon",
+    STORY_ID: "Story-Weaver",
+    CRITIC_AGENT_ID: "Immune denetim",
 }
 
 AGENT_MISSION: Dict[str, str] = {
@@ -93,6 +98,9 @@ AGENT_MISSION: Dict[str, str] = {
     REG_ID: "SEC, ETF, MiCA ve politika haberleri — düzenleme erken uyarı.",
     THREAT_ID: "CISA bilinen istismar edilen CVE'ler — siber tehdit radarı.",
     YIELD_ID: "Stabilcoin yield havuzları — TVL + APY, sermaye verimliliği.",
+    ORCHESTRATOR_ID: "Karar merkezi — pipeline açar, hücreleri koordine eder.",
+    STORY_ID: "İçerik üret ve yayınla — metin, hikaye, çıktı.",
+    CRITIC_AGENT_ID: "Çıktı denetimi — hatalı kas hücresini durdur.",
 }
 
 MESH_PROOF_SET: FrozenSet[str] = frozenset(MESH_PROOF_AGENTS)
