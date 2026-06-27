@@ -60,7 +60,7 @@ from app.mesh.hierarchy import (
     record_founder_command,
 )
 from app.mesh.organism import get_organism_status
-from app.mesh.proof_vault import get_proof_vault
+from app.mesh.worker_catalog import build_workers_catalog
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentCapability, AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
@@ -133,7 +133,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.27-ui-readability-v26"
+HUB_BUILD = "2026.06.27-worker-console-v27"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -840,6 +840,57 @@ async def hub_data_apis(probe: bool = Query(default=False)) -> Dict[str, Any]:
             "btc_network": f"{settings.public_base_url.rstrip('/')}/hub/data/btc-network",
         },
     }
+
+
+@router.get("/workers")
+async def hub_workers_catalog() -> Dict[str, Any]:
+    """Gerçek işçiler — token, API, canlı veri rotası."""
+    return build_workers_catalog()
+
+
+@router.get("/data/web")
+async def hub_data_web(
+    url: str | None = Query(default=None, description="Opsiyonel RSS/HTML URL"),
+    limit: int = Query(default=12, ge=1, le=30),
+) -> Dict[str, Any]:
+    """Web-Crawler — canlı haber akışı (CoinDesk RSS varsayılan)."""
+    from app.workers.web_crawler import fetch_web_feed_async
+
+    try:
+        return await fetch_web_feed_async(url, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Haber akışı hatası: {exc}") from exc
+
+
+@router.get("/data/market")
+async def hub_data_market(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Market-Pulse — ücretsiz piyasa özeti."""
+    try:
+        return await fetch_market_snapshot_async(symbol)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Piyasa API hatası: {exc}") from exc
+
+
+@router.get("/data/sentiment")
+async def hub_data_sentiment(
+    text: str = Query(default="Bitcoin ETF inflows rise while macro risk stays elevated"),
+) -> Dict[str, Any]:
+    """Sentiment-Radar — Fear&Greed + metin skoru."""
+    try:
+        return await fetch_sentiment_snapshot_async(text)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sentiment API hatası: {exc}") from exc
+
+
+@router.get("/data/onchain")
+async def hub_data_onchain(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """On-Chain-Watcher — zincir durumu."""
+    from app.workers.on_chain_watcher import fetch_chain_snapshot_async
+
+    try:
+        return await fetch_chain_snapshot_async(symbol=symbol)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Zincir API hatası: {exc}") from exc
 
 
 @router.get("/data/fx")

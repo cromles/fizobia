@@ -12,9 +12,10 @@ from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
 from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
+from app.api.hub_ui.worker_console import render_worker_picker_items
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.27-ui-readability-v26"
+HUB_UI_BUILD = "2026.06.27-worker-console-v27"
 
 
 def render_hub_dashboard(
@@ -87,6 +88,8 @@ def render_hub_dashboard(
     )
     landing_hidden = " hidden" if embed_mode else ""
 
+    worker_picker = render_worker_picker_items()
+
     return f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -127,78 +130,44 @@ def render_hub_dashboard(
     </div>
   </nav>
 
-  <!-- ═══ LANDING ═══ -->
+  <!-- ═══ KARŞILAMA — gerçek işçi konsolu ═══ -->
   <main id="landing"{landing_hidden}>
-    <section class="hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} gelir işçisi · canlı veri</span></div>
-      <h1>Uyurken<br/><span class="gradient">kazan</span></h1>
-      <p class="hero-sub">
-        AI işçilerine ortak ol. Sen çalıştırma — mesh 7/24 çalışsın.
-        Her görev gelirinin <strong style="color:var(--mint)">%65'i</strong> sana aksın.
+    <section class="worker-console-hero">
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} gerçek işçi · canlı API</span></div>
+      <h1>Gerçek işçi seç.<br/><span class="gradient">Şimdi kullan.</span></h1>
+      <p class="hero-sub worker-hero-sub">
+        Oyun değil — her işçi dış API ile çalışır, kendi tokenine sahiptir (sabit arz).
+        Haber, piyasa, döviz, zincir… Seç ve anlık çıktıyı gör. Beğenirsen ortak ol.
       </p>
-      <div class="hero-cta">
-        <button class="btn-hero primary" onclick="openWalletModal()">Hemen Başla</button>
-        <button class="btn-hero ghost" onclick="document.getElementById('meshProofHero')?.scrollIntoView({{behavior:'smooth'}})">Mesh kanıtını gör</button>
-      </div>
-      <div class="hero-proof-stats" id="heroProofStats">
-        <span>— kanıt</span><span>— gelir</span><span>4 gerçek API · ajan diyaloğu</span>
+    </section>
+
+    <section class="worker-console" id="workerConsole" aria-label="İşçi konsolu">
+      <aside class="worker-picker" id="workerPicker" role="tablist" aria-label="İşçi listesi">
+        {worker_picker}
+      </aside>
+      <div class="worker-live" role="tabpanel">
+        <header class="worker-live-head">
+          <div>
+            <span class="worker-live-kicker">Canlı çıktı</span>
+            <h2 id="workerLiveTitle">Web-Crawler-Pro</h2>
+            <p id="workerLiveMeta">CoinDesk RSS · WEB-TKN · sabit arz 1,000,000</p>
+          </div>
+          <button type="button" class="btn-worker-refresh" id="btnWorkerRefresh" onclick="refreshWorkerLive()">Yenile</button>
+        </header>
+        <div class="worker-live-output" id="workerLiveOutput">
+          <div class="worker-live-loading">Haber akışı yükleniyor…</div>
+        </div>
+        <footer class="worker-live-foot">
+          <span class="worker-live-proof" id="workerLiveProof">Gerçek veri — mock yok</span>
+          <button type="button" class="btn-hero primary btn-worker-stake" onclick="focusWorkerStake()">Bu işçiye ortak ol</button>
+        </footer>
       </div>
     </section>
 
-    <section class="steps" id="steps">
-      <div class="step" style="--i:0">
-        <div class="step-num">01</div>
-        <h3>Cüzdan bağla</h3>
-        <p>MetaMask ile 30 saniyede. KYC yok, karmaşık kayıt yok.</p>
-      </div>
-      <div class="step" style="--i:1">
-        <div class="step-num">02</div>
-        <h3>İşçi seç, ortak ol</h3>
-        <p>USDC stake et. Elektrik ve API maliyetini karşıla, pay al.</p>
-      </div>
-      <div class="step" style="--i:2">
-        <div class="step-num">03</div>
-        <h3>Gelir topla</h3>
-        <p>İşçin çalıştıkça havuz büyür. İstediğin zaman ödülünü çek.</p>
-      </div>
+    <section class="landing-footer-strip">
+      <p>Görev gelirinin <strong style="color:var(--mint)">%{staking_pct:.0f}'i</strong> stake edenlere. Pasif ortaklık — mesh 7/24 çalışır.</p>
+      <button type="button" class="btn-hero ghost" onclick="openWalletModal()">Cüzdan bağla · yatırım paneli</button>
     </section>
-
-    <section class="split-section">
-      <h2>Gelir nereye gidiyor?</h2>
-      <div class="split-bar">
-        <div class="split-seg seg-stake"></div>
-        <div class="split-seg seg-platform"></div>
-        <div class="split-seg seg-operator"></div>
-      </div>
-      <div class="split-legend">
-        <span><strong>%{staking_pct:.0f}</strong> Sana (staking)</span>
-        <span><strong>%{platform_pct:.0f}</strong> Platform</span>
-        <span><strong>%{operator_pct:.0f}</strong> Operatör</span>
-      </div>
-    </section>
-
-    <section class="compare-strip">
-      <div class="compare-item">
-        <span class="vs">Virtuals</span>
-        <span class="us">Biz: iş geliri, onlar: token spekülasyonu</span>
-      </div>
-      <div class="compare-item">
-        <span class="vs">Olas Pearl</span>
-        <span class="us">Biz: pasif ortaklık, onlar: sen çalıştır</span>
-      </div>
-      <div class="compare-item">
-        <span class="vs">AgentBazaar</span>
-        <span class="us">Biz: yatırımcı katmanı + gelir havuzu</span>
-      </div>
-      <div class="compare-item">
-        <span class="vs">Bittensor</span>
-        <span class="us">Biz: görev geliri, onlar: subnet bahsi</span>
-      </div>
-    </section>
-
-    <div style="text-align:center;padding:3rem 0 2rem">
-      <button class="btn-hero primary" onclick="openWalletModal()">İşçilerimi Gör</button>
-    </div>
   </main>
 
   <!-- ═══ DASHBOARD ═══ -->
@@ -256,12 +225,12 @@ def render_hub_dashboard(
             <p class="terminal-sub" id="dashWelcome">Üretim ve yatırım — tek ekran</p>
           </div>
           <div class="terminal-tabs" role="tablist">
-            <button type="button" class="terminal-tab active" data-tab="produce" onclick="switchHubTab('produce', this)">Üretim</button>
-            <button type="button" class="terminal-tab" data-tab="invest" onclick="switchHubTab('invest', this)">Yatırım</button>
+            <button type="button" class="terminal-tab" data-tab="produce" onclick="switchHubTab('produce', this)">Üretim (gelişmiş)</button>
+            <button type="button" class="terminal-tab active" data-tab="invest" onclick="switchHubTab('invest', this)">Ortaklık</button>
           </div>
         </header>
 
-        <div id="tabProduce" class="terminal-panel active" role="tabpanel">
+        <div id="tabProduce" class="terminal-panel" role="tabpanel" hidden>
           <section class="zero-ui" id="zeroUi">
             <p class="zero-ui-hint">Ne üretelim? Tek cümle yazın — arka plandaki organizma gerisini halleder.</p>
             <div class="zero-ui-row">
@@ -286,7 +255,7 @@ def render_hub_dashboard(
           </section>
         </div>
 
-        <div id="tabInvest" class="terminal-panel" role="tabpanel" hidden>
+        <div id="tabInvest" class="terminal-panel active" role="tabpanel">
           <section class="revenue-loop-panel" id="revenueLoopPanel">
             <div class="revenue-loop-head">
               <div>

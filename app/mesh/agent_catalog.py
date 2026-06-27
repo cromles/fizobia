@@ -61,7 +61,7 @@ AGENT_API_TAG: Dict[str, str] = {
 AGENT_MISSION: Dict[str, str] = {
     MARKET_ID: "Gerçek piyasa fiyatı ve momentum — görev geliri x402 ile havuza akar.",
     SENTIMENT_ID: "Haber ve Fear&Greed sentiment — ödeme sonrası canlı skor.",
-    WEB_ID: "Mesh kanıtının 1. halkası — gerçek URL'den veri çeker.",
+    WEB_ID: "CoinDesk RSS ve canlı URL — haber akışı, anlık başlıklar.",
     ONCHAIN_ID: "Zincir durumu ve ödeme doğrulama — mesh kanıtı 4. adım.",
     FX_ID: "USD/TRY ve döviz — ücretsiz ECB verisi, 7/24.",
     DEFI_ID: "DeFi zincir TVL liderliği — DefiLlama.",

@@ -1730,6 +1730,112 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 }}
 .dept-filter-compact {{ margin-top: 0.75rem; margin-bottom: 0.5rem; }}
 
+/* ── İşçi konsolu (v27) ── */
+.worker-console-hero {{
+  text-align: center; padding: 1.5rem 1rem 1rem; max-width: 52rem; margin: 0 auto;
+}}
+.worker-console-hero h1 {{
+  font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 800; line-height: 1.1; margin-bottom: 0.65rem;
+}}
+.worker-hero-sub {{
+  max-width: 40rem; margin: 0 auto; line-height: 1.7; color: var(--text-soft);
+}}
+.worker-console {{
+  display: grid; grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 1rem; max-width: 1100px; margin: 0 auto 1.5rem; padding: 0 1rem;
+  min-height: 420px;
+}}
+.worker-picker {{
+  display: flex; flex-direction: column; gap: 0.45rem;
+  max-height: 520px; overflow-y: auto; padding-right: 0.25rem;
+}}
+.worker-pick-item {{
+  text-align: left; padding: 0.75rem 0.85rem; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35);
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  font-family: inherit; color: inherit;
+}}
+.worker-pick-item:hover, .worker-pick-item.active {{
+  border-color: rgba(0,255,163,0.45); background: rgba(0,255,163,0.08);
+}}
+.worker-pick-head {{
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}}
+.worker-pick-head strong {{ font-size: 0.88rem; color: var(--text); }}
+.worker-pick-token {{
+  font-size: 0.65rem; font-weight: 800; color: var(--gold);
+  letter-spacing: 0.04em;
+}}
+.worker-pick-api {{ display: block; font-size: 0.68rem; color: var(--mint); margin-bottom: 0.2rem; }}
+.worker-pick-mission {{
+  display: block; font-size: 0.72rem; color: var(--muted); line-height: 1.45;
+  margin-bottom: 0.25rem;
+}}
+.worker-pick-supply {{ display: block; font-size: 0.62rem; color: var(--dim); }}
+
+.worker-live {{
+  display: flex; flex-direction: column; min-height: 400px;
+  border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(8,8,15,0.85); overflow: hidden;
+}}
+.worker-live-head {{
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 0.75rem; padding: 1rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-live-kicker {{
+  display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--mint); margin-bottom: 0.2rem;
+}}
+.worker-live-head h2 {{
+  font-family: 'Syne', sans-serif; font-size: 1.15rem; margin-bottom: 0.2rem;
+}}
+.worker-live-head p {{ font-size: 0.74rem; color: var(--muted); }}
+.btn-worker-refresh {{
+  padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05); color: var(--text-soft); font-size: 0.72rem;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}}
+.worker-live-output {{
+  flex: 1; overflow-y: auto; padding: 0.85rem 1.1rem; min-height: 260px;
+}}
+.worker-live-loading {{ color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }}
+.worker-news-list {{ list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }}
+.worker-news-item {{
+  padding: 0.75rem 0.85rem; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-news-item a {{
+  color: var(--text); font-weight: 700; font-size: 0.88rem; text-decoration: none;
+  line-height: 1.4;
+}}
+.worker-news-item a:hover {{ color: var(--mint); }}
+.worker-news-item p {{ margin-top: 0.35rem; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }}
+.worker-kv-grid {{
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.55rem;
+}}
+.worker-kv {{
+  padding: 0.65rem 0.75rem; border-radius: 10px; background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-kv span {{ display: block; font-size: 0.6rem; text-transform: uppercase; color: var(--dim); }}
+.worker-kv strong {{ display: block; margin-top: 0.2rem; font-size: 0.95rem; color: var(--text); }}
+.worker-live-foot {{
+  display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1.1rem; border-top: 1px solid rgba(255,255,255,0.08);
+  flex-wrap: wrap;
+}}
+.worker-live-proof {{ font-size: 0.72rem; color: var(--mint); font-weight: 600; }}
+.btn-worker-stake {{ padding: 0.55rem 1rem !important; font-size: 0.82rem !important; }}
+.landing-footer-strip {{
+  text-align: center; padding: 1.25rem 1rem 2.5rem; color: var(--muted); font-size: 0.85rem;
+}}
+.landing-footer-strip p {{ margin-bottom: 0.75rem; line-height: 1.55; }}
+body:not(.has-wallet) .yield-ticker {{ display: none !important; }}
+body.has-wallet #landing {{ padding-bottom: 0.5rem; }}
+body.has-wallet #dashboard {{ margin-top: 0.5rem; }}
+
 /* Keyframes */
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(24px); }} to {{ opacity: 1; transform: none; }} }}
 @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
@@ -1748,7 +1854,9 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 @media (max-width: 900px) {{
   .stats-invest {{ grid-template-columns: 1fr; }}
   .revenue-loop-stats {{ grid-template-columns: repeat(2, 1fr); }}
-  .revenue-loop-head {{ flex-direction: column; }}
+  .worker-console {{ grid-template-columns: 1fr; }}
+  .worker-picker {{ max-height: 220px; flex-direction: row; overflow-x: auto; overflow-y: hidden; }}
+  .worker-pick-item {{ min-width: 220px; flex-shrink: 0; }}
   .wc-stake-bar {{ flex-direction: column; }}
   .btn-stake-inline {{ width: 100%; }}
   .dept-filter-bar {{ flex-direction: column; align-items: stretch; }}
