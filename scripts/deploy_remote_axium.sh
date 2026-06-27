@@ -4,6 +4,7 @@ set -euo pipefail
 
 SERVER_IP="${AXIUM_SERVER_IP:-}"
 SERVER_USER="${AXIUM_SERVER_USER:-root}"
+BRANCH="${AXIUM_DEPLOY_BRANCH:-cursor/runtime-arch-v31-0b7c}"
 PASS="${AXIUM_SSH_PASSWORD:-${SERVER_SSH_PASSWORD:-${SSH_PASSWORD:-}}}"
 
 if [[ -z "${PASS}" ]]; then
@@ -30,7 +31,7 @@ sshpass -p "${PASS}" ssh \
   -o PreferredAuthentications=password \
   -o PubkeyAuthentication=no \
   "${SERVER_USER}@${SERVER_IP}" \
-  'curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/main/scripts/deploy_axium_production.sh | bash -s --'
+  "export BRANCH='${BRANCH}' && curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/${BRANCH}/scripts/deploy_axium_production.sh | bash -s --"
 
 echo ""
 echo "  SSL kurulumu (opsiyonel)…"
@@ -39,7 +40,7 @@ sshpass -p "${PASS}" ssh \
   -o PreferredAuthentications=password \
   -o PubkeyAuthentication=no \
   "${SERVER_USER}@${SERVER_IP}" \
-  "cd /opt/fizobia && git pull -q origin main && bash scripts/setup_ssl_axium.sh" \
+  "cd /opt/fizobia && git fetch origin ${BRANCH} && git checkout ${BRANCH} && git pull origin ${BRANCH} && bash scripts/setup_ssl_axium.sh" \
   || echo "  SSL atlandı veya başarısız — HTTP ile devam"
 
 echo ""

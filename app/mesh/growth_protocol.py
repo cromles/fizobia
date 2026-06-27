@@ -174,6 +174,56 @@ class MeshGrowthProtocol:
         mesh_proof: kurucu üçlü sabit pipeline
         goal: router üzerinden dinamik işe alma
         """
+        from app.mesh.feedback import (
+            get_coordinator_actions,
+            record_pipeline_feedback,
+            should_skip_pipeline,
+        )
+        from app.mesh.homeostasis import check_pipeline_allowed, sync_energy_from_revenue
+        from app.mesh.mesh_nervous import is_muscle_halted, send_mesh_signal
+        from app.mesh.metabolism import can_agent_act, record_pipeline_metabolism
+        from app.mesh.backpressure import health_score, budget_usd
+        from app.mesh.decision_trace import trace_decision
+
+        try:
+            from app.investment.factory import get_investment_hub
+
+            hub = get_investment_hub()
+            cards = hub.list_identity_cards(self.router.list_agents())
+            rev = sum(c.finance.total_revenue_usd for c in cards)
+            sync_energy_from_revenue(rev)
+        except Exception:
+            pass
+
+        skip, skip_reason = should_skip_pipeline(ORCHESTRATOR_ID, pipeline)
+        if skip:
+            trace_decision(
+                "pipeline_skipped",
+                agent_id=ORCHESTRATOR_ID,
+                pipeline=pipeline,
+                health_score=health_score(),
+                budget_usd=budget_usd(),
+                allowed=False,
+                reason=skip_reason,
+            )
+            raise ValueError(skip_reason)
+
+        allowed, block_reason = check_pipeline_allowed(pipeline)
+        if not allowed:
+            raise ValueError(block_reason)
+
+        actions = get_coordinator_actions()
+        if actions:
+            from app.workers.macro_strategist import AGENT_ID as MACRO_ID
+
+            send_mesh_signal(
+                ORCHESTRATOR_ID,
+                MACRO_ID,
+                "coordinator_actions",
+                intent="structured_feedback",
+                payload={"actions": actions},
+            )
+
         hired: List[str] = []
         result: Dict[str, Any]
 
@@ -188,6 +238,12 @@ class MeshGrowthProtocol:
                 )
             if not hired:
                 raise ValueError("Tüm mesh proof ajanları elendi — pipeline çalıştırılamaz")
+            for aid in hired:
+                if is_muscle_halted(aid):
+                    raise ValueError(f"Bağışıklık — kas hücresi durduruldu: {aid}")
+                ok, why = can_agent_act(aid)
+                if not ok:
+                    raise ValueError(why)
             self._emit(
                 "hire_started",
                 f"Koordinatör {len(hired)} ajanı işe aldı — aralarında konuşarak (mesh proof)",
@@ -227,6 +283,14 @@ class MeshGrowthProtocol:
                 "agent_standings": standings,
                 "real_data": True,
             }
+            ok = proof.get("verdict") in ("ok", "bullish", "bearish", "neutral", "")
+            record_pipeline_metabolism(hired, success=ok, revenue_usd=0.02 if ok else 0.0)
+            record_pipeline_feedback(
+                agent_ids=hired,
+                pipeline=pipeline,
+                success=ok,
+                detail={"proof_id": proof.get("proof_id")},
+            )
         elif pipeline == "ecosystem_assembly":
             hired = filter_eligible_agents(list(ECOSYSTEM_ASSEMBLY_AGENTS))
             self._emit(

@@ -103,29 +103,24 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     const w = getWallet();
     const pill = $('walletPill');
     const btn = $('btnConnect');
-    const landing = $('landing');
     const dash = $('dashboard');
+    document.body.classList.toggle('has-wallet', !!w);
     if (w) {{
       pill.classList.add('show');
       $('walletShort').textContent = shortAddr(w);
       btn.style.display = 'none';
-      landing.classList.add('hidden');
       dash.classList.add('visible');
-      $('dashWelcome').textContent = shortAddr(w) + ' · işçileriniz çalışıyor';
+      $('dashWelcome').textContent = shortAddr(w) + ' · ortaklık paneli';
       if (sessionStorage.getItem('hub_just_connected')) {{
         sessionStorage.removeItem('hub_just_connected');
-        showSplash();
-      }} else {{
-        startLiveFeed();
-        startDialoguePoll();
-        if (DEMO_MODE) startProcessAnimation();
       }}
-      window.scrollTo({{ top: 0, behavior: 'smooth' }});
+      startLiveFeed();
+      startDialoguePoll();
       refreshPortfolio();
+      switchHubTab('invest', document.querySelector('.terminal-tab[data-tab="invest"]'));
     }} else {{
       pill.classList.remove('show');
       btn.style.display = 'block';
-      landing.classList.remove('hidden');
       dash.classList.remove('visible');
       stopLiveFeed();
     }}
@@ -210,6 +205,32 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
           ap.textContent = 'Otopilot: ' + running + ' · ' + cycles + ' döngü · sermaye modu';
         }}
       }}
+      await refreshCellularOrganism();
+    }} catch (_) {{}}
+  }}
+
+  async function refreshCellularOrganism() {{
+    try {{
+      const res = await fetch('/hub/cellular?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const modeEl = $('runtimeHealth');
+      const energyEl = $('runtimeBudget');
+      const grid = $('cellularGrid');
+      const bp = data.backpressure || data.homeostasis || {{}};
+      if (modeEl) modeEl.textContent = 'Health: ' + (bp.health_score != null ? bp.health_score.toFixed(2) : '—');
+      if (energyEl) energyEl.textContent = 'Budget: $' + Number(bp.budget_usd || 0).toFixed(2);
+      if (!grid) return;
+      const types = (data.cellular && data.cellular.cell_types) || [];
+      grid.innerHTML = types.map(ct => (
+        '<div class="cellular-col cell-' + lbEsc(ct.code) + '">' +
+        '<span class="cellular-col-title">' + lbEsc(ct.label) + ' (' + ct.count + ')</span>' +
+        (ct.agents || []).map(a => (
+          '<span class="cellular-agent-chip" title="' + lbEsc(a.mission || '') + '">' +
+          lbEsc(a.display_name) + '</span>'
+        )).join('') +
+        '</div>'
+      )).join('');
     }} catch (_) {{}}
   }}
 
@@ -589,9 +610,47 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (tab === 'invest') {{
       refreshLeaderboard();
       refreshPortfolio();
+      refreshRevenueLoop();
     }}
   }}
   window.switchHubTab = switchHubTab;
+
+  async function refreshRevenueLoop() {{
+    try {{
+      const res = await fetch('/hub/revenue/summary?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const totals = data.totals || {{}};
+      const rlX402 = $('rlX402');
+      const rlStaking = $('rlStaking');
+      const rlProofs = $('rlProofs');
+      const rlTvl = $('rlTvl');
+      if (rlX402) rlX402.textContent = '$' + Number(totals.x402_revenue_usd || 0).toFixed(2);
+      if (rlStaking) rlStaking.textContent = '$' + Number(totals.staking_pool_usd || 0).toFixed(2);
+      if (rlProofs) rlProofs.textContent = String(totals.mesh_proofs || 0);
+      if (rlTvl) rlTvl.textContent = '$' + Number(totals.tvl_usd || 0).toFixed(0);
+      const stakeBanner = $('stakeModeBanner');
+      const stakeLabel = $('stakeModeLabel');
+      if (stakeBanner && stakeLabel) {{
+        const mode = data.stake_mode || 'ledger_demo';
+        stakeBanner.classList.toggle('onchain', mode === 'onchain');
+        let text = data.stake_mode_label || 'Demo defter — gelir gerçek';
+        const oc = data.onchain || {{}};
+        if (mode !== 'onchain' && oc.deployer && !oc.deploy_ready) {{
+          if (oc.funding && oc.funding.bridge_needed) {{
+            text += ' · Ethereum Sepolia\\'da ETH var → Base köprüsü: testnets.superbridge.app/base-sepolia';
+          }} else {{
+            text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH';
+          }}
+        }}
+        stakeLabel.textContent = text;
+      }}
+      (data.agents || []).forEach(a => {{
+        agentNameMap[a.agent_id] = a.display_name;
+      }});
+    }} catch (_) {{}}
+  }}
+  window.refreshRevenueLoop = refreshRevenueLoop;
 
   function lbEsc(s) {{
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -1003,10 +1062,15 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.runMeshProof = async function(btn) {{
     btn.classList.add('loading');
-    const resultEl = $('meshProofResult');
+    const resultEl = $('meshProofResult') || $('meshProofResultTop');
+    const mirrorEl = $('meshProofResultTop') !== resultEl ? $('meshProofResultTop') : $('meshProofResult');
     if (resultEl) {{
       resultEl.className = 'mesh-proof-result';
       resultEl.textContent = '4 işçi konuşarak çalışıyor…';
+    }}
+    if (mirrorEl && mirrorEl !== resultEl) {{
+      mirrorEl.className = 'mesh-proof-result revenue-loop-result';
+      mirrorEl.textContent = '4 işçi konuşarak çalışıyor…';
     }}
     const proof = JSON.stringify({{
       amount_usdc: {settings.x402_mesh_proof_price_usd},
@@ -1039,12 +1103,16 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
       const share = data.share || {{}};
+      const successHtml = share.card
+        ? '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>'
+        : '✓ ' + verdict;
       if (resultEl) {{
         resultEl.className = 'mesh-proof-result success';
-        resultEl.textContent = '✓ ' + verdict;
-        if (share.card) {{
-          resultEl.innerHTML = '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>';
-        }}
+        resultEl.innerHTML = successHtml;
+      }}
+      if (mirrorEl && mirrorEl !== resultEl) {{
+        mirrorEl.className = 'mesh-proof-result revenue-loop-result success';
+        mirrorEl.innerHTML = successHtml;
       }}
       showToast('Mesh kanıtı OK · paylaşım linki hazır');
       if (data.proof?.dialogue_thread) {{
@@ -1057,6 +1125,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       refreshLive();
       refreshHeroStats();
+      refreshRevenueLoop();
     }} catch (err) {{
       if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
       showToast(err.message || 'Bağlantı hatası', true);
@@ -1143,24 +1212,438 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }} catch (_) {{}}
   }}
 
+  let workerCatalog = null;
+  let selectedWorkerId = null;
+  let workerRefreshTimer = null;
+  let synapseNet = null;
+
+  const CELL_COLORS = {{
+    sensory: '#6ec8ff',
+    brain: '#c9a0ff',
+    muscle: '#ff9b6e',
+    immune: '#7dffb2',
+  }};
+
+  function initSynapseNet(catalog) {{
+    const canvas = $('synapseNet');
+    const panel = canvas?.parentElement;
+    if (!canvas || !panel || !catalog?.workers?.length) return null;
+
+    const ctx = canvas.getContext('2d');
+    const workers = catalog.workers;
+    const edges = catalog.mesh_edges || [];
+
+    function spreadArc(list, cx, cy, rx, ry, a0, a1) {{
+      const n = list.length;
+      if (!n) return;
+      list.forEach((w, i) => {{
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const ang = a0 + (a1 - a0) * t;
+        w._bx = cx + Math.cos(ang) * rx;
+        w._by = cy + Math.sin(ang) * ry;
+      }});
+    }}
+
+    const byType = {{ sensory: [], brain: [], muscle: [], immune: [] }};
+    workers.forEach(w => {{
+      const t = w.cell_type || 'muscle';
+      (byType[t] || byType.muscle).push(w);
+    }});
+    spreadArc(byType.sensory, 0.5, 0.17, 0.44, 0.11, Math.PI * 1.12, Math.PI * -0.12);
+    spreadArc(byType.brain, 0.5, 0.46, 0.20, 0.10, Math.PI * 1.05, Math.PI * -0.05);
+    spreadArc(byType.muscle, 0.5, 0.78, 0.42, 0.11, Math.PI * 0.12, Math.PI * 0.88);
+    if (byType.immune.length === 1) {{
+      byType.immune[0]._bx = 0.5; byType.immune[0]._by = 0.58;
+    }} else {{
+      spreadArc(byType.immune, 0.5, 0.54, 0.46, 0.18, Math.PI * 0.62, Math.PI * 1.38);
+    }}
+
+    const nodes = workers.map((w, i) => ({{
+      id: w.agent_id,
+      label: w.display_name,
+      cellType: w.cell_type || 'muscle',
+      bx: w._bx ?? 0.5,
+      by: w._by ?? 0.5,
+      x: w._bx ?? 0.5,
+      y: w._by ?? 0.5,
+      phase: i * 0.7 + Math.random() * 0.4,
+    }}));
+    const nodeById = {{}};
+    nodes.forEach(n => {{ nodeById[n.id] = n; }});
+
+    let selectedId = catalog.default_agent_id || nodes[0]?.id;
+    let pulseT = 0;
+    let raf = 0;
+    let running = true;
+    let ro = null;
+
+    function resize() {{
+      const rect = panel.getBoundingClientRect();
+      const cssW = Math.max(360, rect.width);
+      const cssH = Math.max(400, Math.min(540, cssW * 0.62));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }}
+
+    function drawBg(w, h) {{
+      const g = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, w * 0.55);
+      g.addColorStop(0, 'rgba(30,24,60,0.35)');
+      g.addColorStop(1, 'rgba(4,4,12,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(100,130,180,0.06)';
+      ctx.lineWidth = 1;
+      const step = 48;
+      for (let x = step; x < w; x += step) {{
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }}
+      for (let y = step; y < h; y += step) {{
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }}
+    }}
+
+    function edgeCurve(ax, ay, bx, by) {{
+      const mx = (ax + bx) * 0.5;
+      const my = (ay + by) * 0.5;
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const bend = Math.min(28, len * 0.12);
+      return {{ cpx: mx + nx * bend, cpy: my + ny * bend }};
+    }}
+
+    function draw(now) {{
+      if (!running) return;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (w < 10 || h < 10) {{ raf = requestAnimationFrame(draw); return; }}
+      pulseT += 0.012;
+
+      nodes.forEach(n => {{
+        const float = Math.sin(pulseT + n.phase) * 0.006;
+        const floatY = Math.cos(pulseT * 0.85 + n.phase) * 0.005;
+        n.x = n.bx + float;
+        n.y = n.by + floatY;
+      }});
+
+      ctx.clearRect(0, 0, w, h);
+      drawBg(w, h);
+
+      edges.forEach((e, ei) => {{
+        const a = nodeById[e.from];
+        const b = nodeById[e.to];
+        if (!a || !b) return;
+        const active = selectedId === a.id || selectedId === b.id;
+        const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
+        const {{ cpx, cpy }} = edgeCurve(ax, ay, bx, by);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(cpx, cpy, bx, by);
+        ctx.strokeStyle = active
+          ? 'rgba(0,255,163,0.35)'
+          : 'rgba(90,120,170,0.14)';
+        ctx.lineWidth = active ? 1.8 : 0.9;
+        ctx.stroke();
+        const pulses = active ? 2 : 1;
+        for (let pi = 0; pi < pulses; pi++) {{
+          const t = (pulseT * (active ? 0.22 : 0.12) + ei * 0.07 + pi * 0.45) % 1;
+          const omt = 1 - t;
+          const px = omt * omt * ax + 2 * omt * t * cpx + t * t * bx;
+          const py = omt * omt * ay + 2 * omt * t * cpy + t * t * by;
+          const alpha = active ? 0.35 + 0.55 * (1 - Math.abs(t - 0.5) * 2) : 0.25;
+          const pr = active ? 2.5 + Math.sin(pulseT * 3 + pi) * 0.5 : 1.5;
+          ctx.fillStyle = active ? `rgba(0,255,163,${{alpha}})` : `rgba(140,170,210,${{alpha * 0.6}})`;
+          ctx.beginPath();
+          ctx.arc(px, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }}
+      }});
+
+      nodes.forEach(n => {{
+        const cx = n.x * w, cy = n.y * h;
+        const sel = n.id === selectedId;
+        const col = CELL_COLORS[n.cellType] || '#aaa';
+        const r = n.cellType === 'brain' ? (sel ? 24 : 20) : (sel ? 18 : 14);
+        if (sel) {{
+          ctx.fillStyle = col + '22';
+          ctx.beginPath();
+          ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
+          ctx.fill();
+        }}
+        ctx.shadowColor = sel ? col : 'transparent';
+        ctx.shadowBlur = sel ? 16 : 0;
+        ctx.fillStyle = col + (sel ? 'ee' : '99');
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = sel ? 2.5 : 1.2;
+        ctx.strokeStyle = sel ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = sel ? '#fff' : 'rgba(255,255,255,0.85)';
+        ctx.font = (sel ? '600 10px' : '500 9px') + ' "DM Sans", sans-serif';
+        ctx.textAlign = 'center';
+        const short = (n.label.split('-')[0] || n.label).slice(0, 14);
+        ctx.fillText(short, cx, cy + r + 13);
+      }});
+
+      raf = requestAnimationFrame(draw);
+    }}
+
+    function pick(mx, my) {{
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      let hit = null, best = 999;
+      nodes.forEach(n => {{
+        const dx = mx - n.x * w, dy = my - n.y * h;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 32 && d < best) {{ best = d; hit = n.id; }}
+      }});
+      return hit;
+    }}
+
+    canvas.addEventListener('click', (ev) => {{
+      const rect = canvas.getBoundingClientRect();
+      const id = pick(ev.clientX - rect.left, ev.clientY - rect.top);
+      if (id) {{
+        selectedId = id;
+        selectWorker(id, null);
+      }}
+    }});
+
+    resize();
+    if (typeof ResizeObserver !== 'undefined') {{
+      ro = new ResizeObserver(() => resize());
+      ro.observe(panel);
+    }} else {{
+      window.addEventListener('resize', resize);
+    }}
+    document.addEventListener('visibilitychange', () => {{
+      running = !document.hidden;
+      if (running) draw();
+    }});
+    draw();
+
+    return {{
+      select(id) {{ selectedId = id; }},
+      destroy() {{
+        running = false;
+        cancelAnimationFrame(raf);
+        if (ro) ro.disconnect();
+        else window.removeEventListener('resize', resize);
+      }},
+    }};
+  }}
+
+  function renderNewsFeed(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Haber bulunamadı</p>';
+    return '<ul class="worker-news-list">' + items.map(it => (
+      '<li class="worker-news-item">' +
+      '<a href="' + lbEsc(it.link || '#') + '" target="_blank" rel="noopener">' + lbEsc(it.title) + '</a>' +
+      (it.snippet ? '<p>' + lbEsc(it.snippet) + '</p>' : '') +
+      '</li>'
+    )).join('') + '</ul>';
+  }}
+
+  function renderKvGrid(pairs) {{
+    return '<div class="worker-kv-grid">' + pairs.map(([k, v]) => (
+      '<div class="worker-kv"><span>' + lbEsc(k) + '</span><strong>' + lbEsc(String(v)) + '</strong></div>'
+    )).join('') + '</div>';
+  }}
+
+  function renderThreatList(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Zafiyet bulunamadı</p>';
+    return '<ul class="worker-threat-list">' + items.map(it => (
+      '<li class="worker-threat-item">' +
+      '<strong>' + lbEsc(it.cve || '—') + '</strong>' +
+      '<span>' + lbEsc(it.vendor || '') + ' · ' + lbEsc(it.product || '') + '</span>' +
+      '<span class="worker-threat-meta">Eklendi: ' + lbEsc(it.date_added || '—') +
+      (it.ransomware === 'Known' ? ' · <em>ransomware</em>' : '') + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
+  function renderYieldPools(data) {{
+    const items = data.items || [];
+    if (!items.length) return '<p class="worker-live-loading">Yield havuzu bulunamadı</p>';
+    return '<ul class="worker-yield-list">' + items.map(it => (
+      '<li class="worker-yield-item">' +
+      '<strong>' + lbEsc(it.project || '—') + '</strong> · ' + lbEsc(it.symbol || '') +
+      '<span>' + lbEsc(it.chain || '') + ' · %' + Number(it.apy_pct || 0).toFixed(2) + ' APY · TVL $' + Number(it.tvl_usd || 0).toLocaleString() + '</span>' +
+      '</li>'
+    )).join('') + '</ul>' +
+    '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+  }}
+
+  function renderWorkerOutput(data, outputType) {{
+    if (outputType === 'regulatory' || outputType === 'news_feed') {{
+      if (data.items) return renderNewsFeed(data);
+    }}
+    if (outputType === 'threat') return renderThreatList(data);
+    if (outputType === 'yield') return renderYieldPools(data);
+    if (outputType === 'story' || data.narrative) {{
+      return '<div class="worker-story-block"><h3>' + lbEsc(data.headline || 'Hikaye') + '</h3><p>' + lbEsc(data.narrative || '') + '</p></div>';
+    }}
+    if (outputType === 'coordinator' || data.health_score != null) {{
+      return renderKvGrid([
+        ['Health', data.health_score != null ? data.health_score : '—'],
+        ['Throttle', data.throttle_factor != null ? data.throttle_factor : '—'],
+        ['Budget USD', '$' + Number(data.budget_usd || 0).toFixed(2)],
+        ['Onay gerekli', data.approval_required ? 'evet' : 'hayır'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'critic' || data.critic_score != null) {{
+      return renderKvGrid([
+        ['Skor', data.critic_score != null ? data.critic_score : '—'],
+        ['Karar', data.verdict || '—'],
+        ['Kelime', data.word_count || '—'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.rationale || '') + '</p>';
+    }}
+    if (outputType === 'macro' || data.btc_dominance_pct != null) {{
+      const fx = data.fx_basket || {{}};
+      const fxPairs = Object.keys(fx).slice(0, 4).map(k => ['USD/' + k, fx[k]]);
+      return renderKvGrid([
+        ['Piyasa cap', '$' + Number(data.total_market_cap_usd || 0).toLocaleString()],
+        ['24s değişim', (data.market_change_24h_pct != null ? data.market_change_24h_pct + '%' : '—')],
+        ['BTC dom', (data.btc_dominance_pct != null ? data.btc_dominance_pct + '%' : '—')],
+        ['Risk tonu', data.risk_tone || '—'],
+      ]) + (fxPairs.length ? '<div style="margin-top:0.65rem">' + renderKvGrid(fxPairs) + '</div>' : '') +
+      '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'market' || data.price_usd != null) {{
+      return renderKvGrid([
+        ['Fiyat USD', '$' + Number(data.price_usd || 0).toLocaleString()],
+        ['24s', (data.change_24h_pct != null ? data.change_24h_pct + '%' : '—')],
+        ['Hacim 24s', data.volume_24h_usd ? '$' + Number(data.volume_24h_usd).toLocaleString() : '—'],
+        ['Kaynak', data.source || 'CoinGecko'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'sentiment' || data.fear_greed_index != null) {{
+      return renderKvGrid([
+        ['Fear & Greed', data.fear_greed_index + ' · ' + (data.fear_greed_class || '')],
+        ['Metin', data.text_sentiment || data.sentiment || '—'],
+        ['Skor', data.text_score != null ? data.text_score : (data.score != null ? data.score : '—')],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'fx' || data.usd_try != null) {{
+      const rates = data.rates || {{}};
+      const pairs = Object.keys(rates).slice(0, 6).map(k => [k, rates[k]]);
+      if (data.usd_try) pairs.unshift(['USD/TRY', data.usd_try]);
+      return renderKvGrid(pairs) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    if (outputType === 'defi' || data.leader_chain) {{
+      const chains = (data.top_chains || []).slice(0, 5).map(c => [c.name || c.chain, '$' + Number(c.tvl_usd || c.tvl || 0).toLocaleString()]);
+      return renderKvGrid([
+        ['Lider', data.leader_chain],
+        ['TVL', '$' + Number(data.leader_tvl_usd || 0).toLocaleString()],
+      ]) + (chains.length ? '<div style="margin-top:0.65rem">' + renderKvGrid(chains) + '</div>' : '');
+    }}
+    if (outputType === 'btc_network' || data.btc_usd != null) {{
+      const fees = data.fees_sat_vb || {{}};
+      return renderKvGrid([
+        ['BTC USD', '$' + Number(data.btc_usd || 0).toLocaleString()],
+        ['Blok', data.block_height || '—'],
+        ['Mempool', data.mempool_congestion || '—'],
+        ['Ücret hızlı', fees.fastestFee || fees.halfHourFee || '—'],
+      ]);
+    }}
+    if (outputType === 'chain' || data.block_number != null) {{
+      return renderKvGrid([
+        ['Ağ', data.network || '—'],
+        ['Chain ID', data.chain_id || '—'],
+        ['Blok', data.block_number || '—'],
+        ['x402', data.x402_enabled ? 'açık' : 'kapalı'],
+      ]) + '<p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted)">' + lbEsc(data.analysis || '') + '</p>';
+    }}
+    return '<pre style="font-size:0.72rem;color:var(--muted);white-space:pre-wrap">' + lbEsc(JSON.stringify(data, null, 2)) + '</pre>';
+  }}
+
+  async function loadWorkerCatalog() {{
+    const res = await fetch('/hub/workers?_=' + Date.now(), {{ cache: 'no-store' }});
+    if (!res.ok) throw new Error('İşçi kataloğu yüklenemedi');
+    workerCatalog = await res.json();
+    return workerCatalog;
+  }}
+
+  async function refreshWorkerLive() {{
+    const out = $('workerLiveOutput');
+    if (!out || !selectedWorkerId) return;
+    const worker = (workerCatalog?.workers || []).find(w => w.agent_id === selectedWorkerId);
+    if (!worker) return;
+    out.innerHTML = '<div class="worker-live-loading">Yükleniyor…</div>';
+    try {{
+      const res = await fetch(worker.live_route + '?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) throw new Error('Veri alınamadı');
+      const data = await res.json();
+      out.innerHTML = renderWorkerOutput(data, worker.output_type);
+      const proof = $('workerLiveProof');
+      if (proof) proof.textContent = (data.real_data ? '● Gerçek veri' : '—') + ' · ' + worker.api_tag;
+    }} catch (err) {{
+      out.innerHTML = '<p class="worker-live-loading">' + lbEsc(err.message || 'Hata') + '</p>';
+    }}
+  }}
+
+  window.selectWorker = function(agentId, btn) {{
+    selectedWorkerId = agentId;
+    if (synapseNet) synapseNet.select(agentId);
+    const worker = (workerCatalog?.workers || []).find(w => w.agent_id === agentId);
+    const title = $('workerLiveTitle');
+    const meta = $('workerLiveMeta');
+    if (worker && title) title.textContent = worker.display_name;
+    if (worker && meta) {{
+      meta.textContent = worker.api_tag + ' · ' + worker.token_symbol + ' · sabit arz ' + Number(worker.fixed_supply).toLocaleString();
+    }}
+    refreshWorkerLive();
+    if (workerRefreshTimer) clearInterval(workerRefreshTimer);
+    workerRefreshTimer = setInterval(refreshWorkerLive, 45000);
+  }};
+  window.refreshWorkerLive = refreshWorkerLive;
+
+  window.focusWorkerStake = function() {{
+    const w = getWallet();
+    if (!w) {{ openWalletModal(); return; }}
+    if (selectedWorkerId) focusStakeAgent(selectedWorkerId);
+    else {{
+      document.getElementById('dashboard')?.scrollIntoView({{ behavior: 'smooth' }});
+      switchHubTab('invest', document.querySelector('.terminal-tab[data-tab="invest"]'));
+    }}
+  }};
+
+  async function initWorkerConsole() {{
+    if (!$('workerConsole')) return;
+    try {{
+      const cat = await loadWorkerCatalog();
+      synapseNet = initSynapseNet(cat);
+      const first = cat.default_agent_id || (cat.workers && cat.workers[0]?.agent_id);
+      if (first) selectWorker(first, null);
+    }} catch (_) {{
+      const out = $('workerLiveOutput');
+      if (out) out.innerHTML = '<p class="worker-live-loading">Sinaps ağı yüklenemedi</p>';
+    }}
+  }}
+
   async function refreshHeroStats() {{
     try {{
       const res = await fetch('/hub/stats?_=' + Date.now(), {{ cache: 'no-store' }});
       if (!res.ok) return;
       const s = await res.json();
-      const el = $('heroProofStats');
-      if (!el) return;
-      const proofs = s.mesh_proofs?.proofs_recorded || 0;
-      const rev = s.total_revenue_usd || 0;
-      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 4) + ' API · diyalog</span>';
       const badge = $('heroLiveBadge');
-      if (badge) badge.textContent = (s.live_workers || 4) + ' canlı API · ajan diyaloğu';
+      if (badge) badge.textContent = '10 hücre · sinaps ağı · canlı';
     }} catch (_) {{}}
   }}
 
   initMeshCanvas();
   ensureLatestBuild();
-  refreshHeroStats();
+  initWorkerConsole();
+  refreshRevenueLoop();
   refreshLeaderboard();
   refreshPortfolio();
   updateWalletUI();
@@ -1171,7 +1654,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (e.key === 'Enter') {{ e.preventDefault(); submitUserPrompt(); }}
     }});
   }}
-  if (EMBED_MODE && !getWallet()) setTimeout(openWalletModal, 500);
+  if (EMBED_MODE && !getWallet()) {{ /* işçi konsolu önce — otomatik cüzdan açma */ }}
   console.info('[Hub] build:', '{build}');
 }})();
 </script>
