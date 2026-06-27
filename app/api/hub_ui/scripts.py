@@ -589,9 +589,47 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     if (tab === 'invest') {{
       refreshLeaderboard();
       refreshPortfolio();
+      refreshRevenueLoop();
     }}
   }}
   window.switchHubTab = switchHubTab;
+
+  async function refreshRevenueLoop() {{
+    try {{
+      const res = await fetch('/hub/revenue/summary?_=' + Date.now(), {{ cache: 'no-store' }});
+      if (!res.ok) return;
+      const data = await res.json();
+      const totals = data.totals || {{}};
+      const rlX402 = $('rlX402');
+      const rlStaking = $('rlStaking');
+      const rlProofs = $('rlProofs');
+      const rlTvl = $('rlTvl');
+      if (rlX402) rlX402.textContent = '$' + Number(totals.x402_revenue_usd || 0).toFixed(2);
+      if (rlStaking) rlStaking.textContent = '$' + Number(totals.staking_pool_usd || 0).toFixed(2);
+      if (rlProofs) rlProofs.textContent = String(totals.mesh_proofs || 0);
+      if (rlTvl) rlTvl.textContent = '$' + Number(totals.tvl_usd || 0).toFixed(0);
+      const stakeBanner = $('stakeModeBanner');
+      const stakeLabel = $('stakeModeLabel');
+      if (stakeBanner && stakeLabel) {{
+        const mode = data.stake_mode || 'ledger_demo';
+        stakeBanner.classList.toggle('onchain', mode === 'onchain');
+        let text = data.stake_mode_label || 'Demo defter — gelir gerçek';
+        const oc = data.onchain || {{}};
+        if (mode !== 'onchain' && oc.deployer && !oc.deploy_ready) {{
+          if (oc.funding && oc.funding.bridge_needed) {{
+            text += ' · Ethereum Sepolia\\'da ETH var → Base köprüsü: testnets.superbridge.app/base-sepolia';
+          }} else {{
+            text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH';
+          }}
+        }}
+        stakeLabel.textContent = text;
+      }}
+      (data.agents || []).forEach(a => {{
+        agentNameMap[a.agent_id] = a.display_name;
+      }});
+    }} catch (_) {{}}
+  }}
+  window.refreshRevenueLoop = refreshRevenueLoop;
 
   function lbEsc(s) {{
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -1003,10 +1041,15 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   window.runMeshProof = async function(btn) {{
     btn.classList.add('loading');
-    const resultEl = $('meshProofResult');
+    const resultEl = $('meshProofResult') || $('meshProofResultTop');
+    const mirrorEl = $('meshProofResultTop') !== resultEl ? $('meshProofResultTop') : $('meshProofResult');
     if (resultEl) {{
       resultEl.className = 'mesh-proof-result';
       resultEl.textContent = '4 işçi konuşarak çalışıyor…';
+    }}
+    if (mirrorEl && mirrorEl !== resultEl) {{
+      mirrorEl.className = 'mesh-proof-result revenue-loop-result';
+      mirrorEl.textContent = '4 işçi konuşarak çalışıyor…';
     }}
     const proof = JSON.stringify({{
       amount_usdc: {settings.x402_mesh_proof_price_usd},
@@ -1039,12 +1082,16 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       const verdict = data.proof?.verdict || data.message || 'Kanıt tamamlandı';
       const share = data.share || {{}};
+      const successHtml = share.card
+        ? '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>'
+        : '✓ ' + verdict;
       if (resultEl) {{
         resultEl.className = 'mesh-proof-result success';
-        resultEl.textContent = '✓ ' + verdict;
-        if (share.card) {{
-          resultEl.innerHTML = '✓ ' + verdict + '<br/><a href="' + share.card + '" target="_blank" rel="noopener" style="color:var(--mint);font-size:0.72rem">Paylaşılabilir kanıt kartı →</a>';
-        }}
+        resultEl.innerHTML = successHtml;
+      }}
+      if (mirrorEl && mirrorEl !== resultEl) {{
+        mirrorEl.className = 'mesh-proof-result revenue-loop-result success';
+        mirrorEl.innerHTML = successHtml;
       }}
       showToast('Mesh kanıtı OK · paylaşım linki hazır');
       if (data.proof?.dialogue_thread) {{
@@ -1057,6 +1104,7 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       }}
       refreshLive();
       refreshHeroStats();
+      refreshRevenueLoop();
     }} catch (err) {{
       if (resultEl) resultEl.textContent = err.message || 'Bağlantı hatası';
       showToast(err.message || 'Bağlantı hatası', true);
@@ -1152,15 +1200,16 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (!el) return;
       const proofs = s.mesh_proofs?.proofs_recorded || 0;
       const rev = s.total_revenue_usd || 0;
-      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>' + (s.live_workers || 4) + ' API · diyalog</span>';
+      el.innerHTML = '<span>' + proofs + ' kanıt</span><span>$' + rev.toFixed(2) + ' gelir</span><span>7 gelir işçisi · mesh</span>';
       const badge = $('heroLiveBadge');
-      if (badge) badge.textContent = (s.live_workers || 4) + ' canlı API · ajan diyaloğu';
+      if (badge) badge.textContent = (s.live_workers || 7) + ' gelir işçisi · canlı veri';
     }} catch (_) {{}}
   }}
 
   initMeshCanvas();
   ensureLatestBuild();
   refreshHeroStats();
+  refreshRevenueLoop();
   refreshLeaderboard();
   refreshPortfolio();
   updateWalletUI();

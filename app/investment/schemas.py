@@ -81,9 +81,11 @@ class AgentHealthMetrics(BaseModel):
 class FinancialReport(BaseModel):
     total_revenue_usd: float = Field(default=0.0, ge=0.0)
     volume_24h_usd: float = Field(default=0.0, ge=0.0)
-    estimated_apy: float = Field(default=0.0, description="Yıllık tahmini getiri (%)")
+    estimated_apy: float = Field(default=0.0, description="Yıllık tahmini getiri (%) — yalnızca gerçek 24s gelir")
     staking_pool_tvl_usd: float = Field(default=0.0, ge=0.0)
     token_price_usdc: float = Field(default=0.01, gt=0)
+    apy_verified: bool = Field(default=False, description="Son 24s gerçek gelir + stake var")
+    real_revenue_events: int = Field(default=0, ge=0)
 
 
 class StakingPool(BaseModel):
