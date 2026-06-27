@@ -33,6 +33,10 @@ KEY_FILE="${INSTALL_DIR}/.deployer.key"
 FUNDING_KEY_FILE="${INSTALL_DIR}/.funding.key"
 ENV="${INSTALL_DIR}/.env.server"
 touch "${ENV}"
+if [[ -z "${DEPLOYER_PRIVATE_KEY:-}" ]] && [[ -f "${ENV}" ]]; then
+  DEPLOYER_PRIVATE_KEY="$(grep -E '^DEPLOYER_PRIVATE_KEY=' "${ENV}" | tail -1 | cut -d= -f2- || true)"
+  export DEPLOYER_PRIVATE_KEY
+fi
 
 if [[ -z "${DEPLOYER_PRIVATE_KEY:-}" ]]; then
   if [[ -f "${FUNDING_KEY_FILE}" ]]; then
