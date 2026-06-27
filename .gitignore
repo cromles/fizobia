@@ -8,3 +8,5 @@ cache/
 artifacts/
 typechain-types/
 .env.server
+data/hub_revenue.jsonl
+.deployer.key

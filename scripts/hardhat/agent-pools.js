@@ -1,10 +1,10 @@
-/** Hub canlı ajanları — staking havuzu deploy listesi */
+/** 7 gelir çekirdeği — staking havuzu deploy listesi (REVENUE_CORE) */
 module.exports = [
-  { agentId: "oam.fetcher.web.local", tokenSymbol: "WCP-TKN" },
-  { agentId: "oam.analyst.sentiment.local", tokenSymbol: "SR-TKN" },
-  { agentId: "oam.analyst.market.local", tokenSymbol: "MP-TKN" },
+  { agentId: "oam.fetcher.web.local", tokenSymbol: "WEB-TKN" },
+  { agentId: "oam.analyst.sentiment.local", tokenSymbol: "SEN-TKN" },
+  { agentId: "oam.analyst.market.local", tokenSymbol: "MAR-TKN" },
   { agentId: "oam.watcher.onchain.local", tokenSymbol: "OCH-TKN" },
-  { agentId: "oam.orchestrator.pipeline.local", tokenSymbol: "ORC-TKN" },
-  { agentId: "oam.media.story.local", tokenSymbol: "STY-TKN" },
-  { agentId: "oam.capital.fundraise.local", tokenSymbol: "FND-TKN" },
+  { agentId: "oam.analyst.fx.local", tokenSymbol: "FX-TKN" },
+  { agentId: "oam.analyst.defi.local", tokenSymbol: "DEF-TKN" },
+  { agentId: "oam.watcher.btcnet.local", tokenSymbol: "BTC-TKN" },
 ];

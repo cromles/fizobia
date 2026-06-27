@@ -81,6 +81,41 @@ def test_hub_stake_and_rewards():
     assert claimed > 0
 
 
+def test_hub_revenue_summary_endpoint():
+    from fastapi.testclient import TestClient
+
+    from app.api.main import app, router_mesh
+    from app.registry.agent_registry import InMemoryAgentRegistry
+    from app.workers.web_crawler import AGENT_ID as WEB_ID
+
+    router_mesh.registry = InMemoryAgentRegistry()
+    client = TestClient(app)
+
+    manifest = AgentManifest(
+        agent_id=WEB_ID,
+        endpoint="http://127.0.0.1:9001",
+        cost_per_token=1.0,
+        capabilities=[
+            AgentCapability(
+                name="web_crawler",
+                description="web veri çeker",
+                input_schema={"type": "object", "properties": {}},
+                output_schema={"type": "object", "properties": {}},
+            )
+        ],
+    )
+    client.post("/agents/register", json={"manifest": manifest.model_dump()})
+
+    response = client.get("/hub/revenue/summary")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["revenue_core_count"] == 7
+    assert body["stake_mode"] in ("ledger_demo", "onchain")
+    assert "totals" in body
+    assert "agents" in body
+    assert body["split"]["staking_share"] == 0.65
+
+
 def test_hub_identity_card():
     hub = InvestmentHub()
     manifest = _fetcher_manifest()
@@ -133,8 +168,9 @@ def test_hub_api_endpoints():
 
     html = client.get("/hub")
     assert html.status_code == 200
-    assert "Uyurken" in html.text or "kazan" in html.text
-    assert "mesh-canvas" in html.text
+    assert "worker-console" in html.text
+    assert "Gerçek işçi seç" in html.text
+    assert "Uzman" in html.text
     assert "worker-card" in html.text
 
     live = client.get("/hub/live")

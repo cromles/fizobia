@@ -18,6 +18,7 @@ from app.mesh.ecosystem_registry import ECOSYSTEM_GROWTH_IDS_SET, MEDIA_AGENT_ID
 from app.mesh.founders import ORCHESTRATOR_ID
 from app.mesh.hierarchy import ASSISTANT_ID, FOUNDER_OPERATOR_ID
 from app.mesh.mission import MISSION_THREAD_ID
+from app.mesh.cellular_organism import get_cellular_organism_status
 
 ORGANISM_THREAD_ID = "organism_wave"
 
@@ -238,6 +239,7 @@ def get_organism_status() -> Dict[str, Any]:
             "merit_criteria": list(synapse["merit_criteria"]),
         },
         "architecture": synapse["architecture_layers"],
+        "cellular_organism": get_cellular_organism_status(),
         "thread_id": ORGANISM_THREAD_ID,
         "announced": _organism_announced,
     }

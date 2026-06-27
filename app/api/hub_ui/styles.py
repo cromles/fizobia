@@ -8,8 +8,9 @@ def hub_styles(staking_pct: float, platform_pct: float, operator_pct: float) -> 
   --border: rgba(255,255,255,0.06);
   --border-bright: rgba(0,255,163,0.22);
   --text: #f8fafc;
-  --muted: #94a3b8;
-  --dim: #64748b;
+  --muted: #b4c2d4;
+  --dim: #8fa3bc;
+  --text-soft: #d1dae6;
   --mint: #00ffa3;
   --mint-dim: rgba(0,255,163,0.12);
   --gold: #ffd166;
@@ -736,7 +737,7 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 .feed-item.feed-setup {{ border-left-color: var(--danger); background: rgba(251,113,133,0.08); }}
 .feed-item.feed-fail {{ border-left-color: var(--danger); opacity: 0.75; }}
 .feed-agent {{ color: var(--text); font-weight: 600; display: block; }}
-.feed-meta {{ color: var(--dim); font-size: 0.65rem; margin-top: 0.2rem; }}
+.feed-meta {{ color: var(--muted); font-size: 0.68rem; margin-top: 0.25rem; line-height: 1.45; }}
 
 /* Family mission */
 .family-mission-banner {{
@@ -757,9 +758,10 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 }}
 .family-mission-text {{
   margin: 0;
-  font-size: 0.72rem;
-  line-height: 1.5;
-  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.75;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
 }}
 .hierarchy-chain {{
   display: flex;
@@ -795,6 +797,37 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}}
+.cellular-status-bar {{
+  display: flex; flex-wrap: wrap; gap: 0.5rem 0.85rem;
+  margin: 0.5rem 0 0.65rem; font-size: 0.68rem;
+}}
+.cellular-mode {{ color: var(--mint); font-weight: 600; }}
+.cellular-energy {{ color: var(--gold); }}
+.cellular-grid {{
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}}
+@media (min-width: 900px) {{
+  .cellular-grid {{ grid-template-columns: repeat(4, 1fr); }}
+}}
+.cellular-col {{
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+  padding: 0.45rem 0.5rem; background: rgba(0,0,0,0.25);
+}}
+.cellular-col-title {{
+  display: block; font-size: 0.58rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); margin-bottom: 0.35rem;
+}}
+.cell-sensory .cellular-col-title {{ color: #6ec8ff; }}
+.cell-brain .cellular-col-title {{ color: #c9a0ff; }}
+.cell-muscle .cellular-col-title {{ color: #ff9b6e; }}
+.cell-immune .cellular-col-title {{ color: #7dffb2; }}
+.cellular-agent-chip {{
+  display: inline-block; font-size: 0.62rem; margin: 0.12rem 0.2rem 0.12rem 0;
+  padding: 0.12rem 0.35rem; border-radius: 4px;
+  background: rgba(255,255,255,0.06); color: var(--text);
 }}
 
 /* Agent dialogue */
@@ -835,9 +868,9 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
   scrollbar-color: var(--border) transparent;
 }}
 .dialogue-empty {{
-  font-size: 0.72rem;
-  color: var(--dim);
-  line-height: 1.5;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.65;
   padding: 0.5rem 0;
 }}
 .dialogue-msg {{
@@ -1366,17 +1399,17 @@ body.arena-frozen .dash-main > *:not(.synapse-prompt) {{ opacity: 0.45; pointer-
 .stake-input-wrap {{
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 0.85rem; border-radius: 12px;
-  background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+  background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.1);
   margin-bottom: 0.5rem; transition: border-color 0.3s;
 }}
 .stake-input-wrap:focus-within {{ border-color: var(--border-bright); }}
-.currency {{ color: var(--dim); font-weight: 600; }}
+.currency {{ color: var(--muted); font-weight: 700; }}
 .stake-input-wrap input {{
   flex: 1; background: none; border: none; outline: none;
-  color: var(--text); font-family: inherit; font-size: 1rem; font-weight: 600;
+  color: var(--text); font-family: inherit; font-size: 0.95rem; font-weight: 600;
   min-width: 0;
 }}
-.stake-input-wrap input::placeholder {{ color: var(--dim); font-weight: 400; }}
+.stake-input-wrap input::placeholder {{ color: var(--muted); font-weight: 500; opacity: 0.85; }}
 .token-tag {{ font-size: 0.65rem; color: var(--gold); font-weight: 700; }}
 .stake-actions {{ display: grid; grid-template-columns: 1fr auto auto; gap: 0.5rem; }}
 .btn-unstake {{
@@ -1570,9 +1603,15 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 }}
 .wc-meta-row {{ display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }}
 .wc-apy-badge {{
-  flex-shrink: 0; font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 800;
-  color: var(--mint); padding: 0.25rem 0.5rem; border-radius: 8px;
-  background: var(--mint-dim); border: 1px solid var(--border-bright);
+  flex-shrink: 0; font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 800;
+  color: #00ffb8; letter-spacing: 0.03em;
+  padding: 0.35rem 0.6rem; border-radius: 8px;
+  background: rgba(0,255,163,0.18); border: 1px solid rgba(0,255,163,0.45);
+  text-shadow: 0 0 20px rgba(0,255,163,0.25);
+}}
+.wc-apy-badge.is-empty {{
+  color: var(--muted); background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12); text-shadow: none; font-weight: 700;
 }}
 .wc-live-pill {{
   display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.62rem;
@@ -1583,16 +1622,34 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 .dept-tag.dept-technical {{ color: #fde68a; background: rgba(255,209,102,0.15); }}
 
 .wc-mission-simple {{
-  font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.65rem;
+  font-size: 0.82rem; color: var(--text-soft); line-height: 1.65; margin-bottom: 0.7rem;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }}
 .wc-stats-simple {{
   display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
-  font-size: 0.72rem; color: var(--dim); margin-bottom: 0.75rem;
+  font-size: 0.76rem; color: var(--muted); margin-bottom: 0.85rem;
 }}
-.wc-stats-simple strong {{ color: var(--text); }}
-.wc-status-inline {{ display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; }}
+.wc-stats-simple strong {{ color: var(--text); font-weight: 700; }}
+.wc-status-inline {{ display: inline-flex; align-items: center; gap: 0.35rem; margin-left: auto; }}
+.wc-status-inline .status-label {{ color: var(--text-soft); font-weight: 600; }}
 
+.wc-card-footer {{
+  display: flex; flex-direction: column; gap: 0.55rem;
+  padding-top: 0.65rem; border-top: 1px solid rgba(255,255,255,0.08);
+}}
+.wc-stake-bar {{
+  display: flex; align-items: stretch; gap: 0.5rem; flex-wrap: wrap;
+}}
+.stake-input-compact {{
+  flex: 1 1 7rem; min-width: 6.5rem; margin-bottom: 0;
+  padding: 0.5rem 0.75rem;
+}}
+.btn-stake-inline {{
+  flex: 0 0 auto; align-self: stretch;
+  padding: 0.5rem 1.1rem; min-height: 2.5rem;
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em;
+  white-space: nowrap; border-radius: 10px;
+}}
 .wc-stake-simple {{
   display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: stretch;
   margin-bottom: 0.5rem;
@@ -1601,19 +1658,26 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 .wc-stake-simple .btn-stake {{ padding: 0.65rem 1rem; }}
 
 .wc-actions-row {{
-  display: flex; gap: 0.35rem; flex-wrap: wrap;
+  display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center;
 }}
 .btn-claim-sm, .btn-unstake-sm, .btn-detail-sm {{
-  padding: 0.35rem 0.6rem; border-radius: 8px; font-size: 0.68rem; font-weight: 600;
-  font-family: inherit; cursor: pointer; border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03); color: var(--muted); transition: all 0.2s;
+  padding: 0.48rem 0.8rem; border-radius: 9px; font-size: 0.74rem; font-weight: 700;
+  font-family: inherit; cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06); color: var(--text-soft); transition: all 0.2s;
+  line-height: 1.2; min-height: 2.15rem;
 }}
-.btn-claim-sm:hover {{ border-color: var(--gold); color: var(--gold); }}
-.btn-unstake-sm:hover {{ border-color: var(--danger); color: var(--danger); }}
-.btn-detail-sm:hover {{ border-color: var(--cyan); color: var(--cyan); }}
+.btn-claim-sm:hover {{ border-color: var(--gold); color: var(--gold); background: rgba(255,209,102,0.08); }}
+.btn-unstake-sm:hover {{ border-color: var(--danger); color: var(--danger); background: rgba(251,113,133,0.08); }}
+.btn-detail-sm:hover {{ border-color: var(--cyan); color: var(--cyan); background: rgba(56,189,248,0.08); }}
 .btn-x402-sm {{
-  padding: 0.35rem 0.6rem !important; width: auto !important; margin: 0 !important;
-  font-size: 0.68rem !important; border-style: dashed !important;
+  padding: 0.48rem 0.85rem !important; width: auto !important; margin: 0 !important;
+  font-size: 0.74rem !important; font-weight: 700 !important;
+  border-style: dashed !important; border-color: rgba(0,255,163,0.45) !important;
+  color: var(--mint) !important; background: rgba(0,255,163,0.1) !important;
+  min-height: 2.15rem !important; line-height: 1.2 !important;
+}}
+.btn-x402-sm:hover {{
+  background: rgba(0,255,163,0.18) !important;
 }}
 
 .invest-extra {{
@@ -1629,6 +1693,204 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
   box-shadow: 0 12px 40px rgba(0,0,0,0.35);
   border-color: rgba(var(--card-r), var(--card-g), var(--card-b), 0.4);
 }}
+
+/* ── Gelir döngüsü (v24) ── */
+.revenue-loop-panel {{
+  margin-bottom: 1rem; padding: 1.1rem 1.25rem; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0,255,163,0.07), rgba(56,189,248,0.05));
+  border: 1px solid rgba(0,255,163,0.22);
+}}
+.revenue-loop-head {{
+  display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; margin-bottom: 0.85rem;
+}}
+.revenue-kicker {{
+  display: block; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--mint); margin-bottom: 0.25rem;
+}}
+.revenue-loop-head h3 {{
+  font-family: 'Syne', sans-serif; font-size: 1.1rem; margin-bottom: 0.3rem;
+}}
+.revenue-loop-desc {{ font-size: 0.84rem; color: var(--text-soft); line-height: 1.6; max-width: 36rem; }}
+.btn-mesh-proof-prominent {{
+  padding: 0.7rem 1.1rem; font-weight: 700; white-space: nowrap;
+}}
+.revenue-loop-stats {{
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem;
+}}
+.rl-stat {{
+  padding: 0.55rem 0.7rem; border-radius: 10px; background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+}}
+.rl-stat span {{
+  display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--dim); margin-bottom: 0.2rem;
+}}
+.rl-stat strong {{ font-family: 'Syne', sans-serif; font-size: 0.95rem; color: var(--mint); }}
+.revenue-loop-result {{ margin-top: 0.65rem; font-size: 0.78rem; }}
+
+.stake-mode-banner {{
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+  padding: 0.65rem 0.9rem; border-radius: 12px;
+  background: rgba(255,209,102,0.06); border: 1px solid rgba(255,209,102,0.28);
+  font-size: 0.78rem; color: #fde68a; line-height: 1.45;
+}}
+.stake-mode-banner.onchain {{
+  background: rgba(0,255,163,0.06); border-color: rgba(0,255,163,0.28); color: var(--mint);
+}}
+.stake-mode-dot {{
+  width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; flex-shrink: 0;
+}}
+.stake-mode-banner.onchain .stake-mode-dot {{ background: var(--mint); }}
+
+.invest-workers-head {{
+  margin-bottom: 0.75rem;
+}}
+.invest-workers-head h4 {{
+  font-family: 'Syne', sans-serif; font-size: 0.95rem; margin-bottom: 0.2rem;
+}}
+.invest-workers-head p {{ font-size: 0.78rem; color: var(--dim); line-height: 1.5; }}
+
+.tag.api-tag {{
+  border-color: rgba(0,255,163,0.35); color: var(--mint); background: rgba(0,255,163,0.08);
+  font-size: 0.62rem;
+}}
+.tag.proof-tag {{
+  border-color: rgba(56,189,248,0.35); color: #7dd3fc; background: rgba(56,189,248,0.08);
+  font-size: 0.62rem;
+}}
+.dept-filter-compact {{ margin-top: 0.75rem; margin-bottom: 0.5rem; }}
+
+/* ── İşçi konsolu (v27) ── */
+.worker-console-hero {{
+  text-align: center; padding: 1.5rem 1rem 1rem; max-width: 52rem; margin: 0 auto;
+}}
+.worker-console-hero h1 {{
+  font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 800; line-height: 1.1; margin-bottom: 0.65rem;
+}}
+.worker-hero-sub {{
+  max-width: 40rem; margin: 0 auto; line-height: 1.7; color: var(--text-soft);
+}}
+.worker-console {{
+  display: grid; grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: 1rem; max-width: 1100px; margin: 0 auto 1.5rem; padding: 0 1rem;
+  min-height: 420px;
+}}
+.worker-picker {{
+  display: flex; flex-direction: column; gap: 0.45rem;
+  max-height: 520px; overflow-y: auto; padding-right: 0.25rem;
+}}
+.worker-pick-item {{
+  text-align: left; padding: 0.75rem 0.85rem; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35);
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  font-family: inherit; color: inherit;
+}}
+.worker-pick-item:hover, .worker-pick-item.active {{
+  border-color: rgba(0,255,163,0.45); background: rgba(0,255,163,0.08);
+}}
+.worker-pick-head {{
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}}
+.worker-pick-head strong {{ font-size: 0.88rem; color: var(--text); }}
+.worker-pick-token {{
+  font-size: 0.65rem; font-weight: 800; color: var(--gold);
+  letter-spacing: 0.04em;
+}}
+.worker-pick-api {{ display: block; font-size: 0.68rem; color: var(--mint); margin-bottom: 0.2rem; }}
+.worker-pick-mission {{
+  display: block; font-size: 0.72rem; color: var(--muted); line-height: 1.45;
+  margin-bottom: 0.25rem;
+}}
+.worker-pick-supply {{ display: block; font-size: 0.62rem; color: var(--dim); }}
+.worker-pick-expert {{
+  border-color: rgba(255, 200, 87, 0.22);
+  background: rgba(255, 200, 87, 0.04);
+}}
+.worker-pick-expert:hover, .worker-pick-expert.active {{
+  border-color: rgba(255, 200, 87, 0.55);
+  background: rgba(255, 200, 87, 0.1);
+}}
+.worker-pick-tier {{
+  font-size: 0.58rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #ffc857;
+  border: 1px solid rgba(255, 200, 87, 0.35);
+  border-radius: 4px; padding: 0.1rem 0.35rem; margin-left: 0.35rem;
+}}
+.worker-threat-list, .worker-yield-list {{
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.65rem;
+}}
+.worker-threat-item, .worker-yield-item {{
+  padding: 0.65rem 0.75rem; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25);
+  font-size: 0.78rem; line-height: 1.45;
+}}
+.worker-threat-item strong, .worker-yield-item strong {{ color: var(--text); display: block; margin-bottom: 0.15rem; }}
+.worker-threat-meta {{ display: block; font-size: 0.68rem; color: var(--dim); margin-top: 0.2rem; }}
+.worker-yield-item span {{ display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }}
+
+.worker-live {{
+  display: flex; flex-direction: column; min-height: 400px;
+  border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(8,8,15,0.85); overflow: hidden;
+}}
+.worker-live-head {{
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 0.75rem; padding: 1rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-live-kicker {{
+  display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--mint); margin-bottom: 0.2rem;
+}}
+.worker-live-head h2 {{
+  font-family: 'Syne', sans-serif; font-size: 1.15rem; margin-bottom: 0.2rem;
+}}
+.worker-live-head p {{ font-size: 0.74rem; color: var(--muted); }}
+.btn-worker-refresh {{
+  padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05); color: var(--text-soft); font-size: 0.72rem;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}}
+.worker-live-output {{
+  flex: 1; overflow-y: auto; padding: 0.85rem 1.1rem; min-height: 260px;
+}}
+.worker-live-loading {{ color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }}
+.worker-news-list {{ list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }}
+.worker-news-item {{
+  padding: 0.75rem 0.85rem; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-news-item a {{
+  color: var(--text); font-weight: 700; font-size: 0.88rem; text-decoration: none;
+  line-height: 1.4;
+}}
+.worker-news-item a:hover {{ color: var(--mint); }}
+.worker-news-item p {{ margin-top: 0.35rem; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }}
+.worker-kv-grid {{
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.55rem;
+}}
+.worker-kv {{
+  padding: 0.65rem 0.75rem; border-radius: 10px; background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+}}
+.worker-kv span {{ display: block; font-size: 0.6rem; text-transform: uppercase; color: var(--dim); }}
+.worker-kv strong {{ display: block; margin-top: 0.2rem; font-size: 0.95rem; color: var(--text); }}
+.worker-live-foot {{
+  display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1.1rem; border-top: 1px solid rgba(255,255,255,0.08);
+  flex-wrap: wrap;
+}}
+.worker-live-proof {{ font-size: 0.72rem; color: var(--mint); font-weight: 600; }}
+.btn-worker-stake {{ padding: 0.55rem 1rem !important; font-size: 0.82rem !important; }}
+.landing-footer-strip {{
+  text-align: center; padding: 1.25rem 1rem 2.5rem; color: var(--muted); font-size: 0.85rem;
+}}
+.landing-footer-strip p {{ margin-bottom: 0.75rem; line-height: 1.55; }}
+body:not(.has-wallet) .yield-ticker {{ display: none !important; }}
+body.has-wallet #landing {{ padding-bottom: 0.5rem; }}
+body.has-wallet #dashboard {{ margin-top: 0.5rem; }}
 
 /* Keyframes */
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(24px); }} to {{ opacity: 1; transform: none; }} }}
@@ -1647,6 +1909,12 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 
 @media (max-width: 900px) {{
   .stats-invest {{ grid-template-columns: 1fr; }}
+  .revenue-loop-stats {{ grid-template-columns: repeat(2, 1fr); }}
+  .worker-console {{ grid-template-columns: 1fr; }}
+  .worker-picker {{ max-height: 220px; flex-direction: row; overflow-x: auto; overflow-y: hidden; }}
+  .worker-pick-item {{ min-width: 220px; flex-shrink: 0; }}
+  .wc-stake-bar {{ flex-direction: column; }}
+  .btn-stake-inline {{ width: 100%; }}
   .dept-filter-bar {{ flex-direction: column; align-items: stretch; }}
   .color-legend {{ margin-left: 0; }}
   .agents-grid {{ grid-template-columns: 1fr; }}
