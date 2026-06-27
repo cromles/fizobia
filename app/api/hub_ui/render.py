@@ -11,10 +11,10 @@ from app.api.hub_ui.scripts import hub_scripts
 from app.api.hub_ui.styles import hub_styles
 from app.investment.schemas import AgentIdentityCard, RevenueSplitConfig
 from app.protocol.schemas import AgentManifest
-from app.mesh.qualified_agents import HUB_QUALIFIED_AGENT_IDS, is_hub_qualified
+from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-qualified-agents-v23"
+HUB_UI_BUILD = "2026.06.26-onchain-honest-v25"
 
 
 def render_hub_dashboard(
@@ -29,7 +29,7 @@ def render_hub_dashboard(
     brand_sub: str = "Dijital İşçiler",
 ) -> str:
     manifests = manifests or {}
-    agent_count = len(HUB_QUALIFIED_AGENT_IDS)
+    agent_count = len(REVENUE_CORE_AGENT_IDS)
 
     agents_html_parts: list[str] = []
     idx = 0
@@ -130,7 +130,7 @@ def render_hub_dashboard(
   <!-- ═══ LANDING ═══ -->
   <main id="landing"{landing_hidden}>
     <section class="hero">
-      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{len(HUB_QUALIFIED_AGENT_IDS)} kalifiye ajan · canlı veri</span></div>
+      <div class="hero-badge"><span class="pulse-dot"></span> <span id="heroLiveBadge">{agent_count} gelir işçisi · canlı veri</span></div>
       <h1>Uyurken<br/><span class="gradient">kazan</span></h1>
       <p class="hero-sub">
         AI işçilerine ortak ol. Sen çalıştırma — mesh 7/24 çalışsın.
@@ -287,10 +287,31 @@ def render_hub_dashboard(
         </div>
 
         <div id="tabInvest" class="terminal-panel" role="tabpanel" hidden>
-          <section class="invest-intro">
-            <h3>İşçi seç, USDC ile ortak ol</h3>
-            <p>Gelirin <strong>%{staking_pct:.0f}'i</strong> stake edenlere gider. Sen çalıştırmazsın — mesh 7/24 çalışır.</p>
+          <section class="revenue-loop-panel" id="revenueLoopPanel">
+            <div class="revenue-loop-head">
+              <div>
+                <span class="revenue-kicker">Gelir döngüsü</span>
+                <h3>Gerçek kanıt → x402 gelir → %65 havuz</h3>
+                <p class="revenue-loop-desc">Mock yok. Dış API ve mesh kanıtı çalışır; stake payı görev gelirinden akar.</p>
+              </div>
+              <button type="button" class="btn-mesh-proof btn-mesh-proof-prominent" id="btnMeshProofTop" onclick="runMeshProof(this)">
+                <span class="btn-text">Mesh Kanıtı · ${settings.x402_mesh_proof_price_usd:.2f}</span>
+                <span class="btn-loader"></span>
+              </button>
+            </div>
+            <div class="revenue-loop-stats" id="revenueLoopStats">
+              <div class="rl-stat"><span>x402 gelir</span><strong id="rlX402">$0</strong></div>
+              <div class="rl-stat"><span>Havuza aktarılan</span><strong id="rlStaking">$0</strong></div>
+              <div class="rl-stat"><span>Mesh kanıtı</span><strong id="rlProofs">0</strong></div>
+              <div class="rl-stat"><span>TVL</span><strong id="rlTvl">$0</strong></div>
+            </div>
+            <p class="mesh-proof-result revenue-loop-result" id="meshProofResultTop"></p>
           </section>
+
+          <div class="stake-mode-banner" id="stakeModeBanner">
+            <span class="stake-mode-dot"></span>
+            <span id="stakeModeLabel">Stake modu yükleniyor…</span>
+          </div>
 
           <section class="portfolio-strip" id="portfolioStrip">
             <div class="portfolio-empty">Cüzdan bağlayınca pozisyonların burada görünür</div>
@@ -299,26 +320,18 @@ def render_hub_dashboard(
           <div class="stats-grid stats-compact stats-invest">
             <div class="stat" style="--i:0"><span class="stat-label">TVL</span><span class="stat-value gold" id="statTvl">$0</span></div>
             <div class="stat" style="--i:1"><span class="stat-label">Gelir</span><span class="stat-value" id="statRevenue">$0</span></div>
-            <div class="stat" style="--i:2"><span class="stat-label">Ajan</span><span class="stat-value mint" id="statAgents">{agent_count}</span></div>
+            <div class="stat" style="--i:2"><span class="stat-label">İşçi</span><span class="stat-value mint" id="statAgents">{agent_count}</span></div>
           </div>
 
-          <div class="dept-filter-bar">
-            <div class="filter-tabs" id="deptFilterTabs">
-              <button type="button" class="filter-tab active" data-dept="all" onclick="filterByDepartment('all', this)">Tümü</button>
-              {dept_tabs}
+          <section class="invest-workers">
+            <div class="invest-workers-head">
+              <h4>7 gelir çekirdeği</h4>
+              <p>FX, DeFi, BTC ağı, piyasa, sentiment, web tarama, zincir izleme — pasif ortaklık için seç.</p>
             </div>
-            <div class="color-legend" aria-hidden="true">
-              <span class="legend-item legend-media">Video</span>
-              <span class="legend-item legend-copy">Makale</span>
-              <span class="legend-item legend-tech">Teknik</span>
-            </div>
-          </div>
-
-          <div class="invest-workers">
             <div class="workers-grid agents-grid" id="workersGrid">
               {agents_html or '<p class="invest-empty">Henüz ajan yok.</p>'}
             </div>
-          </div>
+          </section>
 
           <details class="invest-extra">
             <summary>Sıralama tablosu</summary>
@@ -351,7 +364,13 @@ def render_hub_dashboard(
           </div>
 
           <details class="terminal-advanced">
-            <summary>Gelişmiş — Mesh Kanıtı · {onchain_status}</summary>
+            <summary>Gelişmiş — departman filtresi · {onchain_status}</summary>
+            <div class="dept-filter-bar dept-filter-compact">
+              <div class="filter-tabs" id="deptFilterTabs">
+                <button type="button" class="filter-tab active" data-dept="all" onclick="filterByDepartment('all', this)">Tümü</button>
+                {dept_tabs}
+              </div>
+            </div>
             <div class="mesh-proof-hero mesh-proof-compact" id="meshProofHero">
               <div class="mesh-proof-copy">
                 <p>4 gerçek işçi konuşarak çalışır — x402 ${settings.x402_mesh_proof_price_usd:.2f}</p>

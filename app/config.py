@@ -49,6 +49,8 @@ class OAMSettings:
     x402_dev_accept_proof: bool
     x402_rpc_url: str
     x402_usdc_contract: str
+    hub_revenue_store: str
+    hub_seed_demo: bool
 
     @classmethod
     def from_env(cls) -> OAMSettings:
@@ -103,6 +105,8 @@ class OAMSettings:
             "OAM_X402_USDC_CONTRACT",
             "0x036CbD53842c5426634e7929541eC2318f3dCF7e",  # Base Sepolia USDC
         )
+        hub_revenue_store = os.getenv("OAM_HUB_REVENUE_STORE", "data/hub_revenue.jsonl")
+        hub_seed_demo = os.getenv("OAM_HUB_SEED_DEMO", "false").lower() in ("1", "true", "yes")
         return cls(
             registry_backend=os.getenv("OAM_REGISTRY_BACKEND", "memory").lower(),
             redis_url=os.getenv("OAM_REDIS_URL", "redis://localhost:6379/0"),
@@ -145,6 +149,8 @@ class OAMSettings:
             x402_dev_accept_proof=x402_dev_accept_proof,
             x402_rpc_url=x402_rpc_url,
             x402_usdc_contract=x402_usdc_contract,
+            hub_revenue_store=hub_revenue_store,
+            hub_seed_demo=hub_seed_demo,
         )
 
     @property

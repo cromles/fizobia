@@ -10,6 +10,7 @@ from app.api.hub_ui.helpers import (
     esc,
     format_num,
 )
+from app.mesh.agent_catalog import AGENT_API_TAG, is_mesh_proof_agent
 from app.config import settings
 from app.investment.schemas import AgentIdentityCard
 from app.mesh.departments import primary_department
@@ -45,6 +46,13 @@ def render_agent_card(
     variant = index % 4
     contract = esc(pool.contract_address or "")
     is_live = live_spec is not None
+    api_tag = esc(live_spec.api_tag if live_spec else AGENT_API_TAG.get(p.agent_id, ""))
+    proof_badge = (
+        '<span class="tag proof-tag">Mesh kanıtı</span>'
+        if is_mesh_proof_agent(p.agent_id)
+        else ""
+    )
+    api_badge = f'<span class="tag api-tag">{api_tag}</span>' if api_tag else ""
 
     live_badge = (
         '<span class="wc-live-pill"><span class="pulse-dot"></span> Canlı</span>'
@@ -75,11 +83,13 @@ def render_agent_card(
     <div class="wc-title-simple">
       <h3>{esc(p.display_name)}</h3>
       <div class="wc-meta-row">
+        {api_badge}
+        {proof_badge}
         <span class="tag dept-tag dept-{dept_esc}">{dept_label}</span>
         {live_badge}
       </div>
     </div>
-    <div class="wc-apy-badge">%{f.estimated_apy:.0f} APY</div>
+    <div class="wc-apy-badge">{"%" + f"{f.estimated_apy:.0f} APY" if getattr(f, "apy_verified", False) and f.estimated_apy > 0 else "— APY"}</div>
   </header>
 
   <p class="wc-mission-simple">{esc(p.mission)}</p>

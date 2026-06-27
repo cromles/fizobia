@@ -18,6 +18,7 @@ from app.investment.schemas import (
 from app.investment.seed import DEFAULT_PROFILES
 from app.investment.staking import StakingPoolManager
 from app.config import settings
+from app.mesh.agent_catalog import agent_label
 from app.mesh.qualified_agents import is_hub_qualified
 from app.protocol.schemas import AgentManifest
 
@@ -52,7 +53,7 @@ class InvestmentHub:
         token_symbol = _token_symbol(manifest.agent_id)
         profile = AgentInvestmentProfile(
             agent_id=manifest.agent_id,
-            display_name=_display_name(manifest.agent_id),
+            display_name=agent_label(manifest.agent_id),
             agent_class=agent_class,
             mission=_mission_from_manifest(manifest),
             token_symbol=token_symbol,
@@ -144,26 +145,26 @@ class InvestmentHub:
             return None
 
         health = self.metrics.get_health(agent_id, reliability_score)
-        total_revenue = self.revenue.total_revenue(agent_id)
+        total_revenue = self.revenue.total_revenue(agent_id, real_only=True)
         volume_24h = self.metrics.volume_24h(agent_id)
         token_price = self.pools.token_price(agent_id)
         staking_tvl = pool.total_staked_usdc
 
+        daily_staking = self.revenue.staking_revenue_24h(agent_id, real_only=True)
         apy = 0.0
-        if staking_tvl > 0:
-            daily_staking = self.revenue.staking_revenue_24h(agent_id)
-            if daily_staking <= 0:
-                daily_staking = self.revenue.staking_revenue(agent_id) / max(
-                    len(self.revenue.list_events(agent_id=agent_id)), 1
-                )
+        apy_verified = False
+        if staking_tvl > 0 and daily_staking > 0:
             apy = (daily_staking * 365 / staking_tvl) * 100
+            apy_verified = True
 
         finance = FinancialReport(
             total_revenue_usd=round(total_revenue, 4),
             volume_24h_usd=round(volume_24h, 4),
-            estimated_apy=round(min(apy, 999.0), 2),
+            estimated_apy=round(min(apy, 999.0), 2) if apy_verified else 0.0,
             staking_pool_tvl_usd=round(staking_tvl, 4),
             token_price_usdc=round(token_price, 6),
+            apy_verified=apy_verified,
+            real_revenue_events=self.revenue.real_event_count(agent_id),
         )
 
         return AgentIdentityCard(
@@ -259,14 +260,14 @@ def _token_symbol(agent_id: str) -> str:
     return f"{prefix}-TKN"
 
 
-def _display_name(agent_id: str) -> str:
-    return agent_id.split(".")[0].replace("-", " ").title()
-
-
 def _mission_from_manifest(manifest: AgentManifest) -> str:
+    from app.mesh.agent_catalog import AGENT_MISSION
+
+    if manifest.agent_id in AGENT_MISSION:
+        return AGENT_MISSION[manifest.agent_id]
     if manifest.capabilities:
         return manifest.capabilities[0].description
-    return f"{manifest.agent_id} ağ görevlerini yürütür."
+    return f"{agent_label(manifest.agent_id)} — mesh görevleri."
 
 
 def _estimate_task_revenue(manifest: AgentManifest) -> float:
