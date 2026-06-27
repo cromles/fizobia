@@ -613,7 +613,12 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       if (stakeBanner && stakeLabel) {{
         const mode = data.stake_mode || 'ledger_demo';
         stakeBanner.classList.toggle('onchain', mode === 'onchain');
-        stakeLabel.textContent = data.stake_mode_label || 'Demo defter — gelir gerçek';
+        let text = data.stake_mode_label || 'Demo defter — gelir gerçek';
+        const oc = data.onchain || {{}};
+        if (mode !== 'onchain' && oc.deployer && !oc.deploy_ready) {{
+          text += ' · Factory deploy: ' + shortAddr(oc.deployer) + ' cüzdana Base Sepolia ETH (faucet)';
+        }}
+        stakeLabel.textContent = text;
       }}
       (data.agents || []).forEach(a => {{
         agentNameMap[a.agent_id] = a.display_name;

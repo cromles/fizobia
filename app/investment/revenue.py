@@ -2,20 +2,36 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Optional
 
+from app.config import settings
+from app.investment.persistence import (
+    append_revenue_event,
+    is_demo_event,
+    is_real_event,
+    load_revenue_events,
+    rebuild_agent_totals,
+    rebuild_platform_total,
+)
 from app.investment.schemas import RevenueEvent, RevenueSource, RevenueSplitConfig
 
 
 class RevenueLedger:
-    """Gerçek zamanlı kâr payı akışı — her görev çalıştırması bir gelir olayı üretir."""
+    """Gerçek zamanlı kâr payı akışı — kalıcı kayıt, demo hariç."""
 
-    def __init__(self, split: RevenueSplitConfig | None = None) -> None:
+    def __init__(
+        self,
+        split: RevenueSplitConfig | None = None,
+        *,
+        store_path: Optional[Path] = None,
+    ) -> None:
         self.split = split or RevenueSplitConfig()
         self.split.validate_total()
-        self._events: List[RevenueEvent] = []
-        self._platform_total: float = 0.0
-        self._agent_totals: Dict[str, float] = {}
+        self._store_path = store_path or Path(settings.hub_revenue_store)
+        self._events: List[RevenueEvent] = load_revenue_events(self._store_path)
+        self._platform_total: float = rebuild_platform_total(self._events)
+        self._agent_totals: Dict[str, float] = rebuild_agent_totals(self._events)
 
     def record_task_revenue(
         self,
@@ -98,33 +114,50 @@ class RevenueLedger:
         self._events.append(event)
         self._platform_total += platform
         self._agent_totals[agent_id] = self._agent_totals.get(agent_id, 0.0) + gross_usd
+        append_revenue_event(self._store_path, event)
         return event
 
-    def list_events(self, agent_id: str | None = None, limit: int = 100) -> List[RevenueEvent]:
+    def list_events(
+        self,
+        agent_id: str | None = None,
+        limit: int = 100,
+        *,
+        real_only: bool = False,
+    ) -> List[RevenueEvent]:
         events = self._events
         if agent_id:
             events = [e for e in events if e.agent_id == agent_id]
+        if real_only:
+            events = [e for e in events if is_real_event(e)]
         return events[-limit:]
 
-    def total_revenue(self, agent_id: str) -> float:
-        return self._agent_totals.get(agent_id, 0.0)
+    def total_revenue(self, agent_id: str, *, real_only: bool = False) -> float:
+        if not real_only:
+            return self._agent_totals.get(agent_id, 0.0)
+        return sum(e.gross_usd for e in self._events if e.agent_id == agent_id and is_real_event(e))
 
     def platform_revenue(self) -> float:
         return self._platform_total
 
-    def staking_revenue(self, agent_id: str) -> float:
-        return sum(e.staking_usd for e in self._events if e.agent_id == agent_id)
+    def staking_revenue(self, agent_id: str, *, real_only: bool = False) -> float:
+        events = self._events
+        if real_only:
+            events = [e for e in events if is_real_event(e)]
+        return sum(e.staking_usd for e in events if e.agent_id == agent_id)
 
-    def staking_revenue_24h(self, agent_id: str) -> float:
+    def staking_revenue_24h(self, agent_id: str, *, real_only: bool = True) -> float:
         cutoff = datetime.utcnow().timestamp() - 86400
+        events = self._events
+        if real_only:
+            events = [e for e in events if is_real_event(e)]
         return sum(
             e.staking_usd
-            for e in self._events
+            for e in events
             if e.agent_id == agent_id and e.created_at.timestamp() >= cutoff
         )
 
     def external_revenue_total(self, agent_id: str | None = None) -> float:
-        events = self._events
+        events = [e for e in self._events if is_real_event(e)]
         if agent_id:
             events = [e for e in events if e.agent_id == agent_id]
         return sum(
@@ -132,3 +165,9 @@ class RevenueLedger:
             for e in events
             if e.source in (RevenueSource.X402, RevenueSource.EXTERNAL)
         )
+
+    def real_event_count(self, agent_id: str | None = None) -> int:
+        events = [e for e in self._events if is_real_event(e)]
+        if agent_id:
+            events = [e for e in events if e.agent_id == agent_id]
+        return len(events)

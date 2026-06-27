@@ -84,7 +84,7 @@ def run_suite() -> Suite:
 
     code, body, ms = req("GET", "/hub/version")
     build = body.get("hub_build", "?") if isinstance(body, dict) else "?"
-    s.record("hub/version", code == 200 and "revenue-mission" in str(build), f"build={build}", ms)
+    s.record("hub/version", code == 200 and "onchain-honest" in str(build), f"build={build}", ms)
 
     code, body, ms = req("GET", "/hub/llm")
     if isinstance(body, dict):

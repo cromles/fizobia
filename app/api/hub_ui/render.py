@@ -14,7 +14,7 @@ from app.protocol.schemas import AgentManifest
 from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.26-revenue-mission-v24"
+HUB_UI_BUILD = "2026.06.26-onchain-honest-v25"
 
 
 def render_hub_dashboard(

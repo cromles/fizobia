@@ -157,6 +157,31 @@ def _address_from_topic(topic: str) -> str:
     return _checksum("0x" + topic[-40:])
 
 
+def get_deployer_address() -> Optional[str]:
+    deployment = get_deployment()
+    if deployment and deployment.deployer:
+        return deployment.deployer
+    payee = settings.x402_payee_address.strip()
+    return payee or None
+
+
+def get_deployer_balance_eth() -> Optional[float]:
+    addr = get_deployer_address()
+    if not addr:
+        return None
+    try:
+        rpc_url = settings.onchain_rpc_url if settings.onchain_enabled else settings.x402_rpc_url
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_getBalance", "params": [addr, "latest"]}
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(rpc_url, json=payload)
+            response.raise_for_status()
+            body = response.json()
+        wei = int(body["result"], 16)
+        return round(wei / 1e18, 6)
+    except Exception:
+        return None
+
+
 def build_public_config() -> Dict[str, Any]:
     deployment = get_deployment()
     connected = is_onchain_connected()
@@ -176,11 +201,17 @@ def build_public_config() -> Dict[str, Any]:
     else:
         stake_mode = "ledger_demo"
 
+    deployer = get_deployer_address()
+    deployer_balance = get_deployer_balance_eth()
+
     return {
         "enabled": settings.onchain_enabled,
         "connected": connected,
         "ready": ready,
         "stake_mode": stake_mode,
+        "deployer": deployer,
+        "deployer_balance_eth": deployer_balance,
+        "deploy_ready": bool(deployer_balance and deployer_balance > 0),
         "chain_id": chain_id,
         "network": deployment.network if deployment else settings.x402_network,
         "chain_name": ui_meta.get("chain_name", "Base Sepolia"),

@@ -89,6 +89,10 @@ def build_revenue_summary(
             "ready": onchain.get("ready"),
             "chain_name": onchain.get("chain_name"),
             "pool_count": len(onchain.get("pools") or {}),
+            "deployer": onchain.get("deployer"),
+            "deployer_balance_eth": onchain.get("deployer_balance_eth"),
+            "deploy_ready": onchain.get("deploy_ready", False),
+            "faucet_url": "https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet",
         },
         "demo_mode": settings.hub_demo_mode,
     }

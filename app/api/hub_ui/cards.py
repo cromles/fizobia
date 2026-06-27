@@ -89,7 +89,7 @@ def render_agent_card(
         {live_badge}
       </div>
     </div>
-    <div class="wc-apy-badge">%{f.estimated_apy:.0f} APY</div>
+    <div class="wc-apy-badge">{"%" + f"{f.estimated_apy:.0f} APY" if getattr(f, "apy_verified", False) and f.estimated_apy > 0 else "— APY"}</div>
   </header>
 
   <p class="wc-mission-simple">{esc(p.mission)}</p>

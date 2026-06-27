@@ -145,26 +145,26 @@ class InvestmentHub:
             return None
 
         health = self.metrics.get_health(agent_id, reliability_score)
-        total_revenue = self.revenue.total_revenue(agent_id)
+        total_revenue = self.revenue.total_revenue(agent_id, real_only=True)
         volume_24h = self.metrics.volume_24h(agent_id)
         token_price = self.pools.token_price(agent_id)
         staking_tvl = pool.total_staked_usdc
 
+        daily_staking = self.revenue.staking_revenue_24h(agent_id, real_only=True)
         apy = 0.0
-        if staking_tvl > 0:
-            daily_staking = self.revenue.staking_revenue_24h(agent_id)
-            if daily_staking <= 0:
-                daily_staking = self.revenue.staking_revenue(agent_id) / max(
-                    len(self.revenue.list_events(agent_id=agent_id)), 1
-                )
+        apy_verified = False
+        if staking_tvl > 0 and daily_staking > 0:
             apy = (daily_staking * 365 / staking_tvl) * 100
+            apy_verified = True
 
         finance = FinancialReport(
             total_revenue_usd=round(total_revenue, 4),
             volume_24h_usd=round(volume_24h, 4),
-            estimated_apy=round(min(apy, 999.0), 2),
+            estimated_apy=round(min(apy, 999.0), 2) if apy_verified else 0.0,
             staking_pool_tvl_usd=round(staking_tvl, 4),
             token_price_usdc=round(token_price, 6),
+            apy_verified=apy_verified,
+            real_revenue_events=self.revenue.real_event_count(agent_id),
         )
 
         return AgentIdentityCard(
