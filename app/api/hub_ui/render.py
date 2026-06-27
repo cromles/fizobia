@@ -212,8 +212,8 @@ def render_hub_dashboard(
           </div>
           <p class="family-mission-text" id="familyMissionText">Mesh sinir ağı — fabrika bandı değil. Duyu, beyin, kas, bağışıklık.</p>
           <div class="cellular-status-bar" id="cellularStatusBar">
-            <span class="cellular-mode" id="homeostasisMode">Health: —</span>
-            <span class="cellular-energy" id="organismEnergy">Budget: —</span>
+            <span class="cellular-mode" id="runtimeHealth">Health: —</span>
+            <span class="cellular-energy" id="runtimeBudget">Budget: —</span>
           </div>
           <div class="cellular-grid" id="cellularGrid" aria-label="Hücresel ajan haritası"></div>
           <div class="autopilot-status" id="autopilotStatus">Otopilot: —</div>

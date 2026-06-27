@@ -33,6 +33,7 @@ from app.investment.schemas import (
     X402RevenueRequest,
 )
 from app.investment.revenue_summary import build_revenue_summary
+from app.investment.x402 import parse_x402_payment, verify_webhook_secret
 from app.investment.x402_gateway import (
     PaymentRequiredError,
     arena_price_usd,
@@ -51,6 +52,7 @@ from app.mesh.prompt_intent import prompt_mode
 from app.mesh.quick_compose import run_quick_compose
 from app.mesh.agent_wallets import credit_agent, list_ledger, list_wallets, record_loss
 from app.mesh.proof_pipeline import MESH_PROOF_AGENTS, run_mesh_proof_pipeline
+from app.mesh.proof_vault import get_proof_vault
 from app.mesh.growth_protocol import get_growth_protocol
 from app.mesh.agent_dialogue import get_dialogue_bus
 from app.mesh.mission import get_mission_status

@@ -214,8 +214,8 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
       const res = await fetch('/hub/cellular?_=' + Date.now(), {{ cache: 'no-store' }});
       if (!res.ok) return;
       const data = await res.json();
-      const modeEl = $('homeostasisMode');
-      const energyEl = $('organismEnergy');
+      const modeEl = $('runtimeHealth');
+      const energyEl = $('runtimeBudget');
       const grid = $('cellularGrid');
       const bp = data.backpressure || data.homeostasis || {{}};
       if (modeEl) modeEl.textContent = 'Health: ' + (bp.health_score != null ? bp.health_score.toFixed(2) : '—');
