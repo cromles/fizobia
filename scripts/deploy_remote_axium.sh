@@ -31,7 +31,7 @@ sshpass -p "${PASS}" ssh \
   -o PreferredAuthentications=password \
   -o PubkeyAuthentication=no \
   "${SERVER_USER}@${SERVER_IP}" \
-  "BRANCH=${BRANCH} curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/${BRANCH}/scripts/deploy_axium_production.sh | bash -s --"
+  "export BRANCH='${BRANCH}' && curl -fsSL https://raw.githubusercontent.com/cromles/fizobia/${BRANCH}/scripts/deploy_axium_production.sh | bash -s --"
 
 echo ""
 echo "  SSL kurulumu (opsiyonel)…"
