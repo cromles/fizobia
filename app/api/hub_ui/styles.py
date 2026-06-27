@@ -539,7 +539,7 @@ body:not(.has-banner) {{ --banner-offset: 0px; }}
 #landing {{
   position: relative; z-index: 1;
   padding: calc(var(--nav-h) + var(--banner-offset) + 2rem) 1.5rem 4rem;
-  max-width: 1100px; margin: 0 auto;
+  max-width: 1280px; margin: 0 auto; width: 100%;
 }}
 .hero {{
   text-align: center; padding: 3rem 0 4rem;
@@ -1773,15 +1773,19 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
   max-width: 40rem; margin: 0 auto; line-height: 1.7; color: var(--text-soft);
 }}
 .synapse-console {{
-  display: grid; grid-template-columns: 1fr minmax(280px, 380px);
-  gap: 1rem; max-width: 1200px; margin: 0 auto 1.5rem; padding: 0 1rem;
-  min-height: 420px;
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 400px);
+  gap: 1rem; max-width: 1280px; margin: 0 auto 1.5rem; padding: 0 1rem;
+  min-height: 460px; width: 100%;
 }}
 .synapse-net-panel {{
-  display: flex; flex-direction: column; min-height: 380px;
+  display: flex; flex-direction: column; min-height: 460px; width: 100%; min-width: 0;
   border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
-  background: radial-gradient(ellipse at 50% 40%, rgba(40,30,80,0.35), rgba(4,4,12,0.95));
+  background: radial-gradient(ellipse 120% 80% at 50% 45%, rgba(40,30,80,0.4), rgba(4,4,12,0.97));
   overflow: hidden; position: relative;
+}}
+.synapse-net-panel::before {{
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle at 50% 50%, rgba(0,255,163,0.04), transparent 55%);
 }}
 .synapse-net-head {{
   display: flex; justify-content: space-between; align-items: center;
@@ -1801,7 +1805,9 @@ body.embed-mode .dash-layout {{ padding-top: var(--nav-h); }}
 .leg-muscle {{ color: #ff9b6e; border: 1px solid rgba(255,155,110,0.35); }}
 .leg-immune {{ color: #7dffb2; border: 1px solid rgba(125,255,178,0.35); }}
 .synapse-canvas {{
-  flex: 1; width: 100%; min-height: 340px; display: block; cursor: pointer;
+  flex: 1 1 auto; width: 100% !important; min-width: 0;
+  min-height: 400px; max-height: 540px; aspect-ratio: 16 / 11;
+  display: block; cursor: pointer; position: relative; z-index: 1;
 }}
 .synapse-hint {{
   margin: 0; padding: 0.45rem 1rem 0.65rem; font-size: 0.65rem;

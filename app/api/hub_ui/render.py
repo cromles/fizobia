@@ -15,7 +15,7 @@ from app.mesh.agent_catalog import REVENUE_CORE_AGENT_IDS
 from app.mesh.cellular_taxonomy import CELLULAR_AGENT_IDS
 from app.workers.registry import LIVE_WORKERS
 
-HUB_UI_BUILD = "2026.06.28-synapse-net-v30"
+HUB_UI_BUILD = "2026.06.28-synapse-elegant-v31"
 
 
 def render_hub_dashboard(

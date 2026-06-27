@@ -1226,55 +1226,114 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
 
   function initSynapseNet(catalog) {{
     const canvas = $('synapseNet');
-    if (!canvas || !catalog?.workers?.length) return null;
+    const panel = canvas?.parentElement;
+    if (!canvas || !panel || !catalog?.workers?.length) return null;
 
     const ctx = canvas.getContext('2d');
     const workers = catalog.workers;
     const edges = catalog.mesh_edges || [];
-    const nodes = workers.map((w, i) => {{
-      const angle = (i / workers.length) * Math.PI * 2 - Math.PI / 2;
-      const ring = w.cell_type === 'brain' ? 0.22 : w.cell_type === 'sensory' ? 0.38 : w.cell_type === 'immune' ? 0.32 : 0.28;
-      return {{
-        id: w.agent_id,
-        label: w.display_name,
-        cellType: w.cell_type || 'muscle',
-        x: 0.5 + Math.cos(angle) * ring,
-        y: 0.5 + Math.sin(angle) * ring,
-        vx: 0, vy: 0,
-        phase: Math.random() * Math.PI * 2,
-      }};
+
+    function spreadArc(list, cx, cy, rx, ry, a0, a1) {{
+      const n = list.length;
+      if (!n) return;
+      list.forEach((w, i) => {{
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const ang = a0 + (a1 - a0) * t;
+        w._bx = cx + Math.cos(ang) * rx;
+        w._by = cy + Math.sin(ang) * ry;
+      }});
+    }}
+
+    const byType = {{ sensory: [], brain: [], muscle: [], immune: [] }};
+    workers.forEach(w => {{
+      const t = w.cell_type || 'muscle';
+      (byType[t] || byType.muscle).push(w);
     }});
+    spreadArc(byType.sensory, 0.5, 0.17, 0.44, 0.11, Math.PI * 1.12, Math.PI * -0.12);
+    spreadArc(byType.brain, 0.5, 0.46, 0.20, 0.10, Math.PI * 1.05, Math.PI * -0.05);
+    spreadArc(byType.muscle, 0.5, 0.78, 0.42, 0.11, Math.PI * 0.12, Math.PI * 0.88);
+    if (byType.immune.length === 1) {{
+      byType.immune[0]._bx = 0.5; byType.immune[0]._by = 0.58;
+    }} else {{
+      spreadArc(byType.immune, 0.5, 0.54, 0.46, 0.18, Math.PI * 0.62, Math.PI * 1.38);
+    }}
+
+    const nodes = workers.map((w, i) => ({{
+      id: w.agent_id,
+      label: w.display_name,
+      cellType: w.cell_type || 'muscle',
+      bx: w._bx ?? 0.5,
+      by: w._by ?? 0.5,
+      x: w._bx ?? 0.5,
+      y: w._by ?? 0.5,
+      phase: i * 0.7 + Math.random() * 0.4,
+    }}));
     const nodeById = {{}};
     nodes.forEach(n => {{ nodeById[n.id] = n; }});
 
     let selectedId = catalog.default_agent_id || nodes[0]?.id;
     let pulseT = 0;
     let raf = 0;
+    let running = true;
+    let ro = null;
 
     function resize() {{
-      const rect = canvas.parentElement.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(320, rect.width) * dpr;
-      canvas.height = Math.max(340, rect.height) * dpr;
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = Math.max(340, rect.height) + 'px';
+      const rect = panel.getBoundingClientRect();
+      const cssW = Math.max(360, rect.width);
+      const cssH = Math.max(400, Math.min(540, cssW * 0.62));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }}
 
-    function draw() {{
+    function drawBg(w, h) {{
+      const g = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, w * 0.55);
+      g.addColorStop(0, 'rgba(30,24,60,0.35)');
+      g.addColorStop(1, 'rgba(4,4,12,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(100,130,180,0.06)';
+      ctx.lineWidth = 1;
+      const step = 48;
+      for (let x = step; x < w; x += step) {{
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }}
+      for (let y = step; y < h; y += step) {{
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }}
+    }}
+
+    function edgeCurve(ax, ay, bx, by) {{
+      const mx = (ax + bx) * 0.5;
+      const my = (ay + by) * 0.5;
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const bend = Math.min(28, len * 0.12);
+      return {{ cpx: mx + nx * bend, cpy: my + ny * bend }};
+    }}
+
+    function draw(now) {{
+      if (!running) return;
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      pulseT += 0.016;
+      if (w < 10 || h < 10) {{ raf = requestAnimationFrame(draw); return; }}
+      pulseT += 0.012;
 
       nodes.forEach(n => {{
-        n.x += n.vx; n.y += n.vy;
-        n.vx *= 0.92; n.vy *= 0.92;
-        const drift = Math.sin(pulseT + n.phase) * 0.00008;
-        n.x += drift; n.y += Math.cos(pulseT * 0.7 + n.phase) * 0.00006;
-        n.x = Math.max(0.08, Math.min(0.92, n.x));
-        n.y = Math.max(0.08, Math.min(0.92, n.y));
+        const float = Math.sin(pulseT + n.phase) * 0.006;
+        const floatY = Math.cos(pulseT * 0.85 + n.phase) * 0.005;
+        n.x = n.bx + float;
+        n.y = n.by + floatY;
       }});
+
+      ctx.clearRect(0, 0, w, h);
+      drawBg(w, h);
 
       edges.forEach((e, ei) => {{
         const a = nodeById[e.from];
@@ -1282,68 +1341,68 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
         if (!a || !b) return;
         const active = selectedId === a.id || selectedId === b.id;
         const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
-        const grad = ctx.createLinearGradient(ax, ay, bx, by);
-        grad.addColorStop(0, active ? 'rgba(0,255,163,0.55)' : 'rgba(100,140,200,0.15)');
-        grad.addColorStop(0.5, active ? 'rgba(201,160,255,0.65)' : 'rgba(80,100,140,0.25)');
-        grad.addColorStop(1, active ? 'rgba(0,255,163,0.45)' : 'rgba(100,140,200,0.12)');
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = active ? 2.2 : 1;
+        const {{ cpx, cpy }} = edgeCurve(ax, ay, bx, by);
         ctx.beginPath();
         ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
+        ctx.quadraticCurveTo(cpx, cpy, bx, by);
+        ctx.strokeStyle = active
+          ? 'rgba(0,255,163,0.35)'
+          : 'rgba(90,120,170,0.14)';
+        ctx.lineWidth = active ? 1.8 : 0.9;
         ctx.stroke();
-        const t = (pulseT * 0.4 + ei * 0.1) % 1;
-        const px = ax + (bx - ax) * t;
-        const py = ay + (by - ay) * t;
-        ctx.fillStyle = active ? 'rgba(0,255,163,0.9)' : 'rgba(150,180,220,0.35)';
-        ctx.beginPath();
-        ctx.arc(px, py, active ? 3 : 2, 0, Math.PI * 2);
-        ctx.fill();
+        const pulses = active ? 2 : 1;
+        for (let pi = 0; pi < pulses; pi++) {{
+          const t = (pulseT * (active ? 0.22 : 0.12) + ei * 0.07 + pi * 0.45) % 1;
+          const omt = 1 - t;
+          const px = omt * omt * ax + 2 * omt * t * cpx + t * t * bx;
+          const py = omt * omt * ay + 2 * omt * t * cpy + t * t * by;
+          const alpha = active ? 0.35 + 0.55 * (1 - Math.abs(t - 0.5) * 2) : 0.25;
+          const pr = active ? 2.5 + Math.sin(pulseT * 3 + pi) * 0.5 : 1.5;
+          ctx.fillStyle = active ? `rgba(0,255,163,${{alpha}})` : `rgba(140,170,210,${{alpha * 0.6}})`;
+          ctx.beginPath();
+          ctx.arc(px, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }}
       }});
 
       nodes.forEach(n => {{
         const cx = n.x * w, cy = n.y * h;
         const sel = n.id === selectedId;
         const col = CELL_COLORS[n.cellType] || '#aaa';
-        const r = n.cellType === 'brain' ? (sel ? 26 : 22) : (sel ? 20 : 16);
-        ctx.shadowColor = sel ? col : 'transparent';
-        ctx.shadowBlur = sel ? 18 : 0;
-        if (n.cellType === 'brain') {{
-          ctx.fillStyle = col + (sel ? 'ee' : '99');
-          const s = r * 1.05;
+        const r = n.cellType === 'brain' ? (sel ? 24 : 20) : (sel ? 18 : 14);
+        if (sel) {{
+          ctx.fillStyle = col + '22';
           ctx.beginPath();
-          ctx.arc(cx, cy, s, 0, Math.PI * 2);
+          ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
           ctx.fill();
-          ctx.lineWidth = sel ? 3 : 2;
-          ctx.strokeStyle = sel ? '#fff' : col;
-          ctx.stroke();
-        }} else {{
-          ctx.fillStyle = col + (sel ? 'dd' : '88');
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = sel ? '#fff' : 'rgba(255,255,255,0.25)';
-          ctx.lineWidth = sel ? 2 : 1;
-          ctx.stroke();
         }}
+        ctx.shadowColor = sel ? col : 'transparent';
+        ctx.shadowBlur = sel ? 16 : 0;
+        ctx.fillStyle = col + (sel ? 'ee' : '99');
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = sel ? 2.5 : 1.2;
+        ctx.strokeStyle = sel ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)';
+        ctx.stroke();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#fff';
-        ctx.font = (sel ? '600 ' : '500 ') + (sel ? '10px' : '9px') + ' DM Sans, sans-serif';
+        ctx.fillStyle = sel ? '#fff' : 'rgba(255,255,255,0.85)';
+        ctx.font = (sel ? '600 10px' : '500 9px') + ' "DM Sans", sans-serif';
         ctx.textAlign = 'center';
-        const short = n.label.split('-')[0].slice(0, 12);
-        ctx.fillText(short, cx, cy + r + 14);
+        const short = (n.label.split('-')[0] || n.label).slice(0, 14);
+        ctx.fillText(short, cx, cy + r + 13);
       }});
+
       raf = requestAnimationFrame(draw);
     }}
 
     function pick(mx, my) {{
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width, h = rect.height;
+      const w = canvas.clientWidth, h = canvas.clientHeight;
       let hit = null, best = 999;
       nodes.forEach(n => {{
         const dx = mx - n.x * w, dy = my - n.y * h;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < 28 && d < best) {{ best = d; hit = n.id; }}
+        if (d < 32 && d < best) {{ best = d; hit = n.id; }}
       }});
       return hit;
     }}
@@ -1358,12 +1417,26 @@ def hub_scripts(build: str, demo_mode: bool, embed_mode: bool, onchain_json: str
     }});
 
     resize();
-    window.addEventListener('resize', resize);
+    if (typeof ResizeObserver !== 'undefined') {{
+      ro = new ResizeObserver(() => resize());
+      ro.observe(panel);
+    }} else {{
+      window.addEventListener('resize', resize);
+    }}
+    document.addEventListener('visibilitychange', () => {{
+      running = !document.hidden;
+      if (running) draw();
+    }});
     draw();
 
     return {{
       select(id) {{ selectedId = id; }},
-      destroy() {{ cancelAnimationFrame(raf); window.removeEventListener('resize', resize); }},
+      destroy() {{
+        running = false;
+        cancelAnimationFrame(raf);
+        if (ro) ro.disconnect();
+        else window.removeEventListener('resize', resize);
+      }},
     }};
   }}
 
