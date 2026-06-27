@@ -10,6 +10,7 @@ from app.mesh.founders import FOUNDER_ROLES, ORCHESTRATOR_ID, ORCHESTRATOR_NAME
 from app.protocol.schemas import AgentManifest
 
 from app.mesh.founder_profile import FOUNDER_NAME, FOUNDER_TITLE
+from app.mesh.cellular_taxonomy import CELLULAR_ORGANISM
 
 FOUNDER_OPERATOR_ID = "oam.founder.operator"
 FOUNDER_OPERATOR_NAME = FOUNDER_NAME
@@ -50,7 +51,7 @@ CHAIN_OF_COMMAND: List[Dict[str, Any]] = [
         "agent_id": "oam.mesh.workers",
         "display_name": "İşçi Ajanlar",
         "reports_to": ORCHESTRATOR_ID,
-        "mission": "Baş yardımcının ekibi — veri, sentiment, piyasa, zincir; ne gerekiyorsa yapar.",
+        "mission": "10 hücresel uzman — duyu, beyin, kas, bağışıklık; mesh ağında çalışır.",
     },
 ]
 
@@ -85,7 +86,7 @@ def get_hierarchy_status(
     """Hub için komuta zinciri özeti."""
     bus = get_dialogue_bus()
     thread_msgs = bus.list_messages(thread_id=HIERARCHY_THREAD_ID, limit=30)
-    worker_count = len(agents) if agents else 0
+    worker_count = len(agents) if agents else len(CELLULAR_ORGANISM)
     return {
         "chain": CHAIN_OF_COMMAND,
         "motto": f"{FOUNDER_NAME} → Baş Yardımcı → Koordinatör → İşçiler",

@@ -32,7 +32,7 @@ from app.investment.schemas import (
     UnstakeRequest,
     X402RevenueRequest,
 )
-from app.investment.x402 import parse_x402_payment, verify_webhook_secret
+from app.investment.revenue_summary import build_revenue_summary
 from app.investment.x402_gateway import (
     PaymentRequiredError,
     arena_price_usd,
@@ -60,7 +60,8 @@ from app.mesh.hierarchy import (
     record_founder_command,
 )
 from app.mesh.organism import get_organism_status
-from app.mesh.proof_vault import get_proof_vault
+from app.mesh.cellular_organism import get_cellular_organism_status
+from app.mesh.worker_catalog import build_workers_catalog
 from app.api.hub_ui.proof_card import render_proof_share_card
 from app.protocol.schemas import AgentCapability, AgentManifest
 from app.workers.market_pulse import AGENT_ID as MARKET_PULSE_AGENT_ID, fetch_market_snapshot_async
@@ -133,7 +134,7 @@ class FounderCommandRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-HUB_BUILD = "2026.06.26-qualified-agents-v23"
+HUB_BUILD = "2026.06.28-synapse-net-v30"
 
 router = APIRouter(prefix="/hub", tags=["The Hub"])
 
@@ -224,6 +225,7 @@ async def hub_sdk_config() -> Dict[str, Any]:
             "claim": f"{base}/hub/claim",
             "positions": f"{base}/hub/positions/{{investor_id}}",
             "revenue_config": f"{base}/hub/revenue/config",
+            "revenue_summary": f"{base}/hub/revenue/summary",
             "onchain_config": f"{base}/hub/onchain/config",
             "version": f"{base}/hub/version",
             "discovery": f"{base}/hub/discovery",
@@ -632,9 +634,6 @@ def _record_mesh_proof_revenue(
     return recorded
 
 
-    return recorded
-
-
 def _minimal_arena_manifest(agent_id: str, display_name: str) -> AgentManifest:
     schema = {"type": "object", "properties": {"prompt": {"type": "string"}}}
     return AgentManifest(
@@ -844,6 +843,57 @@ async def hub_data_apis(probe: bool = Query(default=False)) -> Dict[str, Any]:
     }
 
 
+@router.get("/workers")
+async def hub_workers_catalog() -> Dict[str, Any]:
+    """Gerçek işçiler — token, API, canlı veri rotası."""
+    return build_workers_catalog()
+
+
+@router.get("/data/web")
+async def hub_data_web(
+    url: str | None = Query(default=None, description="Opsiyonel RSS/HTML URL"),
+    limit: int = Query(default=12, ge=1, le=30),
+) -> Dict[str, Any]:
+    """Web-Crawler — canlı haber akışı (CoinDesk RSS varsayılan)."""
+    from app.workers.web_crawler import fetch_web_feed_async
+
+    try:
+        return await fetch_web_feed_async(url, limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Haber akışı hatası: {exc}") from exc
+
+
+@router.get("/data/market")
+async def hub_data_market(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Market-Pulse — ücretsiz piyasa özeti."""
+    try:
+        return await fetch_market_snapshot_async(symbol)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Piyasa API hatası: {exc}") from exc
+
+
+@router.get("/data/sentiment")
+async def hub_data_sentiment(
+    text: str = Query(default="Bitcoin ETF inflows rise while macro risk stays elevated"),
+) -> Dict[str, Any]:
+    """Sentiment-Radar — Fear&Greed + metin skoru."""
+    try:
+        return await fetch_sentiment_snapshot_async(text)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Sentiment API hatası: {exc}") from exc
+
+
+@router.get("/data/onchain")
+async def hub_data_onchain(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """On-Chain-Watcher — zincir durumu."""
+    from app.workers.on_chain_watcher import fetch_chain_snapshot_async
+
+    try:
+        return await fetch_chain_snapshot_async(symbol=symbol)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Zincir API hatası: {exc}") from exc
+
+
 @router.get("/data/fx")
 async def hub_data_fx(
     base: str = Query(default="USD"),
@@ -878,6 +928,113 @@ async def hub_data_btc_network() -> Dict[str, Any]:
         return await fetch_btc_network_snapshot_async()
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"BTC ağ API hatası: {exc}") from exc
+
+
+@router.get("/data/macro")
+async def hub_data_macro() -> Dict[str, Any]:
+    """Macro-Strategist — küresel piyasa ve döviz sepeti."""
+    from app.workers.macro_strategist import fetch_macro_snapshot_async
+
+    try:
+        return await fetch_macro_snapshot_async()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Makro API hatası: {exc}") from exc
+
+
+@router.get("/data/regulatory")
+async def hub_data_regulatory(
+    limit: int = Query(default=8, ge=3, le=20),
+) -> Dict[str, Any]:
+    """Regulatory-Radar — düzenleme ve politika haber akışı."""
+    from app.workers.regulatory_radar import fetch_regulatory_feed_async
+
+    try:
+        return await fetch_regulatory_feed_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Düzenleme akışı hatası: {exc}") from exc
+
+
+@router.get("/data/threat")
+async def hub_data_threat(
+    limit: int = Query(default=8, ge=3, le=25),
+) -> Dict[str, Any]:
+    """Threat-Intel — CISA bilinen istismar edilen zafiyetler."""
+    from app.workers.threat_intel import fetch_threat_snapshot_async
+
+    try:
+        return await fetch_threat_snapshot_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Tehdit istihbaratı hatası: {exc}") from exc
+
+
+@router.get("/data/yield")
+async def hub_data_yield(
+    limit: int = Query(default=6, ge=3, le=12),
+) -> Dict[str, Any]:
+    """Yield-Strategist — DeFi stabilcoin yield havuzları."""
+    from app.workers.yield_strategist import fetch_yield_snapshot_async
+
+    try:
+        return await fetch_yield_snapshot_async(limit=limit)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Yield API hatası: {exc}") from exc
+
+
+@router.get("/data/coordinator")
+async def hub_data_coordinator() -> Dict[str, Any]:
+    """Koordinatör — mesh durumu, otopilot, homeostazi."""
+    from app.mesh.cellular_organism import get_cellular_organism_status
+
+    try:
+        status = get_cellular_organism_status()
+        hs = status.get("homeostasis", {})
+        return {
+            "agent_id": "oam.orchestrator.pipeline.local",
+            "worker": "Pipeline Orchestrator",
+            "mode": hs.get("mode"),
+            "energy_usd": hs.get("energy_usd"),
+            "halted_muscles": status.get("nervous_system", {}).get("halted_muscles", {}),
+            "feedback_summary": status.get("feedback", {}).get("summary", ""),
+            "cell_count": status.get("cellular", {}).get("total_agents", 10),
+            "analysis": f"Koordinatör aktif — {hs.get('mode', 'normal')} mod · {hs.get('energy_usd', 0):.2f} USD enerji",
+            "real_data": True,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Koordinatör hatası: {exc}") from exc
+
+
+@router.get("/data/story")
+async def hub_data_story(symbol: str = Query(default="bitcoin")) -> Dict[str, Any]:
+    """Story-Weaver — canlı hikaye taslağı."""
+    from app.workers.media_story import weave_story_async
+    from app.workers.market_pulse import fetch_market_snapshot_async
+
+    try:
+        market = await fetch_market_snapshot_async(symbol)
+        story = await weave_story_async(
+            symbol=symbol,
+            headline=str(market.get("analysis", ""))[:120],
+            sentiment=str(market.get("change_24h_pct", "")),
+            price_usd=market.get("price_usd"),
+        )
+        return story
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Story hatası: {exc}") from exc
+
+
+@router.get("/data/critic")
+async def hub_data_critic(
+    text: str = Query(default="Bitcoin ETF inflows rise while macro risk stays elevated"),
+) -> Dict[str, Any]:
+    """Immune-Critic — örnek metin denetimi."""
+    from app.mesh.critic import audit_article
+
+    try:
+        result = audit_article(text)
+        result["real_data"] = True
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Critic hatası: {exc}") from exc
 
 
 @router.get("/departments")
@@ -1267,6 +1424,24 @@ async def hub_organism_status() -> Dict[str, Any]:
     return get_organism_status()
 
 
+@router.get("/cellular")
+async def hub_cellular_organism() -> Dict[str, Any]:
+    """Hücresel organizma — 10 ajan, homeostazi, metabolizma, mesh sinir sistemi."""
+    return get_cellular_organism_status()
+
+
+@router.post("/cellular/halt")
+async def hub_immune_halt(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Bağışıklık hücresi kas ajanını durdurur (mesh sinir sinyali)."""
+    from app.mesh.mesh_nervous import immune_halt_muscle
+
+    return immune_halt_muscle(
+        immune_agent=str(payload.get("immune_agent", "oam.critic.immune.local")),
+        target_muscle=str(payload.get("target_muscle", "")),
+        reason=str(payload.get("reason", "manuel denetim")),
+    )
+
+
 @router.get("/autopilot")
 async def hub_autopilot_status() -> Dict[str, Any]:
     """7/24 otopilot döngü durumu."""
@@ -1363,6 +1538,13 @@ async def hub_public_stats() -> Dict[str, Any]:
 @router.get("/revenue/config")
 async def revenue_config() -> RevenueSplitConfig:
     return get_investment_hub().split
+
+
+@router.get("/revenue/summary")
+async def revenue_summary() -> Dict[str, Any]:
+    """Gelir döngüsü — 7 çekirdek işçi, x402 kanıtı, stake modu."""
+    hub = get_investment_hub()
+    return build_revenue_summary(hub, _mesh().list_agents())
 
 
 @router.get("/revenue/events")
